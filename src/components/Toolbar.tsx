@@ -238,6 +238,40 @@ export default function Toolbar() {
       <div className={dividerBase} />
 
       <div className="flex items-center gap-1">
+        <button onClick={() => store.getState().applyNumberFormat({ type: 'percentage', decimalPlaces: 0 })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="百分比">
+          %
+        </button>
+        <button onClick={() => store.getState().applyNumberFormat({ type: 'number', decimalPlaces: 2 })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="数字">
+          0.00
+        </button>
+        <button onClick={() => {
+          const state = store.getState();
+          const sheet = state.getActiveSheet();
+          const ref = coordsToCell(state.selection.startRow, state.selection.startCol);
+          const cell = sheet.cells.get(ref);
+          const dp = cell?.numberFormat?.decimalPlaces ?? 2;
+          store.getState().applyNumberFormat({ type: 'number', decimalPlaces: dp + 1 });
+        }} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="增加小数位">
+          .0+
+        </button>
+        <button onClick={() => {
+          const state = store.getState();
+          const sheet = state.getActiveSheet();
+          const ref = coordsToCell(state.selection.startRow, state.selection.startCol);
+          const cell = sheet.cells.get(ref);
+          const dp = cell?.numberFormat?.decimalPlaces ?? 2;
+          store.getState().applyNumberFormat({ type: 'number', decimalPlaces: Math.max(0, dp - 1) });
+        }} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="减少小数位">
+          .0-
+        </button>
+        <button onClick={() => store.getState().applyNumberFormat(null)} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="常规">
+          常规
+        </button>
+      </div>
+
+      <div className={dividerBase} />
+
+      <div className="flex items-center gap-1">
         <button onClick={() => store.getState().applyStyleToSelection({ bgColor: '#f5f5f5' })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="浅灰背景">
           灰
         </button>
@@ -294,6 +328,17 @@ export default function Toolbar() {
       >
         重做
       </button>
+
+      <div className={dividerBase} />
+
+      <div className="flex items-center gap-1">
+        <button onClick={() => store.getState().sortByColumn(selection.startCol, 'asc')} className={btnBase} title="按选中列升序排序">
+          升序
+        </button>
+        <button onClick={() => store.getState().sortByColumn(selection.startCol, 'desc')} className={btnBase} title="按选中列降序排序">
+          降序
+        </button>
+      </div>
 
       <div className={dividerBase} />
 

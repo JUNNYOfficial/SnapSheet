@@ -156,6 +156,16 @@ export class CanvasRenderer {
     return Math.max(0, totalHeight - (rect.height - HEADER_ROW_HEIGHT));
   }
 
+  private formatCellValue(value: string, format?: { type: string; decimalPlaces?: number }): string {
+    if (!format || format.type === 'general') return value;
+    const num = parseFloat(value);
+    if (isNaN(num)) return value;
+    const decimals = format.decimalPlaces ?? 2;
+    if (format.type === 'percentage') return (num * 100).toFixed(decimals) + '%';
+    if (format.type === 'number') return num.toFixed(decimals);
+    return value;
+  }
+
   render(): void {
     const ctx = this.ctx;
     const canvas = this.opts.canvas;
@@ -215,6 +225,7 @@ export class CanvasRenderer {
         if (cell && cell.value) {
           const display = cell.computed !== undefined && cell.formula ? String(cell.computed) : cell.value;
           const isError = display.startsWith('#');
+          const formattedDisplay = isError ? display : this.formatCellValue(display, cell.numberFormat);
           const isNumeric = !isError && !isNaN(parseFloat(display)) && !cell.formula;
           const hasExplicitAlign = cell.style?.align !== undefined;
           ctx.font = cell.style?.bold ? 'bold ' + CELL_FONT : CELL_FONT;
@@ -236,7 +247,7 @@ export class CanvasRenderer {
           if (ctx.textAlign === 'center') textX = c.x + c.width / 2;
 
           const textY = r.y + r.height / 2;
-          const text = display;
+          const text = formattedDisplay;
           const maxTextWidth = c.width - textPadding * 2;
 
           const truncated = this.truncateText(ctx, text, maxTextWidth);

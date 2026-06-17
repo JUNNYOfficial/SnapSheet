@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Cell, Sheet, Workbook, Selection, CellStyle } from '../types';
+import type { Cell, Sheet, Workbook, Selection, CellStyle, NumberFormat } from '../types';
 import { DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT, MIN_ROW_HEIGHT, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../utils/constants';
 import { coordsToCell, cellToCoords, colToLetter, letterToCol } from '../utils/cellRef';
 import { createDefaultFormulaEngine } from '../engine/FormulaEngine';
@@ -42,6 +42,9 @@ interface SpreadsheetState {
     source: { startRow: number; startCol: number; endRow: number; endCol: number },
     target: { startRow: number; startCol: number; endRow: number; endCol: number }
   ) => void;
+
+  sortByColumn: (col: number, direction: 'asc' | 'desc') => void;
+  applyNumberFormat: (format: Partial<NumberFormat> | null) => void;
 
   pasteCells: (text: string, startRow: number, startCol: number) => void;
   copySelection: () => string;
@@ -727,6 +730,113 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
           }
         }
       }
+      set({ workbook: { ...get().workbook } });
+    },
+
+    sortByColumn: (col: number, direction: 'asc' | 'desc') => {
+      if (col < 0 || col >= SHEET_COL_COUNT) return;
+      const state = get();
+      const sheet = state.getActiveSheet();
+
+      const rowValues: { row: number; value: number | string }[] = [];
+      for (let r = 0; r < SHEET_ROW_COUNT; r++) {
+        const ref = coordsToCell(r, col);
+        const cell = sheet.cells.get(ref);
+        if (cell) {
+          const raw = cell.computed !== undefined && cell.formula ? cell.computed : cell.value;
+          rowValues.push({ row: r, value: raw });
+        }
+      }
+      if (rowValues.length === 0) return;
+
+      const parseValue = (v: number | string): number | string => {
+        if (typeof v === 'number') return v;
+        const n = parseFloat(String(v));
+        return isNaN(n) ? String(v) : n;
+      };
+
+      rowValues.sort((a, b) => {
+        const av = parseValue(a.value);
+        const bv = parseValue(b.value);
+        if (typeof av === 'number' && typeof bv === 'number') {
+          return direction === 'asc' ? av - bv : bv - av;
+        }
+        return direction === 'asc'
+          ? String(av).localeCompare(String(bv))
+          : String(bv).localeCompare(String(av));
+      });
+
+      pushHistory();
+      const sortedRows = rowValues.map((rv) => rv.row);
+      const newCells = new Map<string, Cell>();
+      const newRowHeights = new Map<number, number>();
+
+      for (let i = 0; i < sortedRows.length; i++) {
+        const oldRow = sortedRows[i];
+        const newRow = i;
+        for (let c = 0; c < SHEET_COL_COUNT; c++) {
+          const oldRef = coordsToCell(oldRow, c);
+          const cell = sheet.cells.get(oldRef);
+          if (cell) {
+            const newRef = coordsToCell(newRow, c);
+            const movedCell = moveCellRefs(cell, newRow - oldRow, 0, 0, 0);
+            newCells.set(newRef, movedCell);
+          }
+        }
+        const h = sheet.rowHeights.get(oldRow);
+        if (h !== undefined) newRowHeights.set(newRow, h);
+      }
+
+      for (const r of sortedRows) {
+        for (let c = 0; c < SHEET_COL_COUNT; c++) {
+          sheet.cells.delete(coordsToCell(r, c));
+        }
+        sheet.rowHeights.delete(r);
+      }
+      for (const [ref, cell] of newCells.entries()) {
+        sheet.cells.set(ref, cell);
+      }
+      for (const [r, h] of newRowHeights.entries()) {
+        sheet.rowHeights.set(r, h);
+      }
+      set({ workbook: { ...get().workbook } });
+    },
+
+    applyNumberFormat: (format: Partial<NumberFormat> | null) => {
+      const state = get();
+      const sel = state.selection;
+      const sheet = state.getActiveSheet();
+      const minRow = Math.max(0, Math.min(SHEET_ROW_COUNT - 1, Math.min(sel.startRow, sel.endRow)));
+      const maxRow = Math.max(0, Math.min(SHEET_ROW_COUNT - 1, Math.max(sel.startRow, sel.endRow)));
+      const minCol = Math.max(0, Math.min(SHEET_COL_COUNT - 1, Math.min(sel.startCol, sel.endCol)));
+      const maxCol = Math.max(0, Math.min(SHEET_COL_COUNT - 1, Math.max(sel.startCol, sel.endCol)));
+
+      let hasChanges = false;
+      for (let r = minRow; r <= maxRow; r++) {
+        for (let c = minCol; c <= maxCol; c++) {
+          const ref = coordsToCell(r, c);
+          const cell = sheet.cells.get(ref);
+          if (!cell) continue;
+          if (format === null) {
+            if (cell.numberFormat) {
+              hasChanges = true;
+              cell.numberFormat = undefined;
+            }
+            continue;
+          }
+          const current: NumberFormat = cell.numberFormat || { type: 'general' };
+          const next: NumberFormat = { ...current, ...format };
+          if (format.decimalPlaces === undefined && current.type === 'number' && format.type === 'number') {
+            (next as NumberFormat).decimalPlaces = current.decimalPlaces ?? 2;
+          }
+          if (JSON.stringify(next) !== JSON.stringify(current)) {
+            hasChanges = true;
+            cell.numberFormat = next;
+          }
+        }
+      }
+      if (!hasChanges) return;
+      pushHistory();
       set({ workbook: { ...get().workbook } });
     },
 
