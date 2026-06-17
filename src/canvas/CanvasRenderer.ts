@@ -9,6 +9,7 @@ import {
   CELL_TEXT,
   SELECTED_BORDER,
   SELECTED_BG,
+  ERROR_TEXT,
   HEADER_FONT,
   CELL_FONT,
   FONT_SIZE,
@@ -42,6 +43,7 @@ export class CanvasRenderer {
   private ctx: CanvasRenderingContext2D;
   private scrollLeft = 0;
   private scrollTop = 0;
+  private selection: Selection;
   private mouseDown = false;
   private dragStart: { row: number; col: number } | null = null;
   private resizingCol: number | null = null;
@@ -49,6 +51,7 @@ export class CanvasRenderer {
 
   constructor(opts: CanvasRendererOptions) {
     this.opts = opts;
+    this.selection = opts.selection;
     const ctx = opts.canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas 2D context not available');
     this.ctx = ctx;
@@ -68,6 +71,10 @@ export class CanvasRenderer {
   setScroll(scrollLeft: number, scrollTop: number): void {
     this.scrollLeft = scrollLeft;
     this.scrollTop = scrollTop;
+  }
+
+  setSelection(selection: Selection): void {
+    this.selection = selection;
   }
 
   scrollIntoView(row: number, col: number): void {
@@ -111,9 +118,34 @@ export class CanvasRenderer {
     newScrollLeft = Math.max(0, newScrollLeft);
     newScrollTop = Math.max(0, newScrollTop);
 
+    const maxScrollLeft = this.computeMaxScrollLeft();
+    const maxScrollTop = this.computeMaxScrollTop();
+    newScrollLeft = Math.min(newScrollLeft, maxScrollLeft);
+    newScrollTop = Math.min(newScrollTop, maxScrollTop);
+
     if (newScrollLeft !== this.scrollLeft || newScrollTop !== this.scrollTop) {
       this.opts.onScrollChange(newScrollLeft, newScrollTop);
     }
+  }
+
+  private computeMaxScrollLeft(): number {
+    let totalWidth = 0;
+    for (let c = 0; c < this.opts.maxCols; c++) {
+      totalWidth += this.opts.getColWidth(c);
+    }
+    const canvas = this.opts.canvas;
+    const rect = canvas.getBoundingClientRect();
+    return Math.max(0, totalWidth - (rect.width - HEADER_COL_WIDTH));
+  }
+
+  private computeMaxScrollTop(): number {
+    let totalHeight = 0;
+    for (let r = 0; r < this.opts.maxRows; r++) {
+      totalHeight += this.opts.getRowHeight(r);
+    }
+    const canvas = this.opts.canvas;
+    const rect = canvas.getBoundingClientRect();
+    return Math.max(0, totalHeight - (rect.height - HEADER_ROW_HEIGHT));
   }
 
   render(): void {
@@ -149,16 +181,18 @@ export class CanvasRenderer {
       if (rowY > height) break;
     }
 
-    const sel = this.opts.selection;
+    const sel = this.selection;
+    const minRow = Math.min(sel.startRow, sel.endRow);
+    const maxRow = Math.max(sel.startRow, sel.endRow);
+    const minCol = Math.min(sel.startCol, sel.endCol);
+    const maxCol = Math.max(sel.startCol, sel.endCol);
 
     for (const r of visibleRows) {
       for (const c of visibleCols) {
         const cell = this.opts.getCell(r.row, c.col);
         const isSelected =
-          r.row >= Math.min(sel.startRow, sel.endRow) &&
-          r.row <= Math.max(sel.startRow, sel.endRow) &&
-          c.col >= Math.min(sel.startCol, sel.endCol) &&
-          c.col <= Math.max(sel.startCol, sel.endCol);
+          r.row >= minRow && r.row <= maxRow &&
+          c.col >= minCol && c.col <= maxCol;
 
         if (isSelected) {
           ctx.fillStyle = SELECTED_BG;
@@ -167,10 +201,21 @@ export class CanvasRenderer {
 
         if (cell && cell.value) {
           const display = cell.computed !== undefined && cell.formula ? String(cell.computed) : cell.value;
+          const isError = display.startsWith('#');
+          const isNumeric = !isError && !isNaN(parseFloat(display)) && !cell.formula;
+          const hasExplicitAlign = cell.style?.align !== undefined;
           ctx.font = cell.style?.bold ? 'bold ' + CELL_FONT : CELL_FONT;
-          ctx.fillStyle = CELL_TEXT;
+          ctx.fillStyle = isError ? ERROR_TEXT : CELL_TEXT;
           ctx.textBaseline = 'middle';
-          ctx.textAlign = cell.style?.align === 'right' ? 'right' : cell.style?.align === 'center' ? 'center' : 'left';
+          ctx.textAlign = hasExplicitAlign
+            ? cell.style!.align === 'right'
+              ? 'right'
+              : cell.style!.align === 'center'
+                ? 'center'
+                : 'left'
+            : isNumeric
+              ? 'right'
+              : 'left';
 
           const textPadding = 6;
           let textX = c.x + textPadding;
@@ -205,10 +250,12 @@ export class CanvasRenderer {
     this.renderCorner(ctx, 0, 0, HEADER_COL_WIDTH, HEADER_ROW_HEIGHT);
 
     for (const c of visibleCols) {
-      this.renderColumnHeader(ctx, c.x, 0, c.width, HEADER_ROW_HEIGHT, colToLetter(c.col));
+      const isHighlighted = c.col >= minCol && c.col <= maxCol;
+      this.renderColumnHeader(ctx, c.x, 0, c.width, HEADER_ROW_HEIGHT, colToLetter(c.col), isHighlighted);
     }
     for (const r of visibleRows) {
-      this.renderRowHeader(ctx, 0, r.y, HEADER_COL_WIDTH, r.height, String(r.row + 1));
+      const isHighlighted = r.row >= minRow && r.row <= maxRow;
+      this.renderRowHeader(ctx, 0, r.y, HEADER_COL_WIDTH, r.height, String(r.row + 1), isHighlighted);
     }
 
     if (visibleCols.length > 0 && visibleRows.length > 0) {
@@ -262,7 +309,7 @@ export class CanvasRenderer {
       const activeRow = visibleRows.find((r) => r.row === sel.startRow);
       if (activeCol && activeRow && (sel.startRow !== sel.endRow || sel.startCol !== sel.endCol)) {
         ctx.save();
-        ctx.strokeStyle = '#2563eb';
+        ctx.strokeStyle = '#525252';
         ctx.lineWidth = 1.5;
         ctx.setLineDash([4, 4]);
         ctx.strokeRect(activeCol.x + 1.5, activeRow.y + 1.5, activeCol.width - 3, activeRow.height - 3);
@@ -280,11 +327,11 @@ export class CanvasRenderer {
     ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
   }
 
-  private renderColumnHeader(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, label: string): void {
-    ctx.fillStyle = HEADER_BG;
+  private renderColumnHeader(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, label: string, highlighted = false): void {
+    ctx.fillStyle = highlighted ? '#d4d4d4' : HEADER_BG;
     ctx.fillRect(x, y, w, h);
-    ctx.font = HEADER_FONT;
-    ctx.fillStyle = HEADER_TEXT;
+    ctx.font = highlighted ? 'bold ' + HEADER_FONT : HEADER_FONT;
+    ctx.fillStyle = highlighted ? '#171717' : HEADER_TEXT;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
     ctx.fillText(label, x + w / 2, y + h / 2);
@@ -293,11 +340,11 @@ export class CanvasRenderer {
     ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
   }
 
-  private renderRowHeader(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, label: string): void {
-    ctx.fillStyle = HEADER_BG;
+  private renderRowHeader(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, label: string, highlighted = false): void {
+    ctx.fillStyle = highlighted ? '#d4d4d4' : HEADER_BG;
     ctx.fillRect(x, y, w, h);
-    ctx.font = HEADER_FONT;
-    ctx.fillStyle = HEADER_TEXT;
+    ctx.font = highlighted ? 'bold ' + HEADER_FONT : HEADER_FONT;
+    ctx.fillStyle = highlighted ? '#171717' : HEADER_TEXT;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
     ctx.fillText(label, x + w / 2, y + h / 2);
@@ -425,6 +472,26 @@ export class CanvasRenderer {
     });
 
     canvas.addEventListener('dblclick', (e) => {
+      const resizeCol = this.getColResizeAt(e.clientX);
+      if (resizeCol !== null) {
+        const textPadding = 12;
+        let maxWidth = 40;
+        const ctx = this.ctx;
+        ctx.font = CELL_FONT;
+        const headerWidth = ctx.measureText(colToLetter(resizeCol)).width + textPadding;
+        for (let r = 0; r < this.opts.maxRows; r++) {
+          const cell = this.opts.getCell(r, resizeCol);
+          if (cell && cell.value) {
+            const display = cell.computed !== undefined && cell.formula ? String(cell.computed) : cell.value;
+            const w = ctx.measureText(display).width + textPadding;
+            if (w > maxWidth) maxWidth = w;
+          }
+        }
+        maxWidth = Math.max(maxWidth, headerWidth);
+        this.opts.setColWidth(resizeCol, maxWidth);
+        return;
+      }
+
       const cell = this.getCellAtPoint(e.clientX, e.clientY);
       if (cell) {
         this.opts.onEdit(cell.row, cell.col);
@@ -433,16 +500,18 @@ export class CanvasRenderer {
 
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
-      const newLeft = this.scrollLeft + e.deltaX;
-      const newTop = this.scrollTop + e.deltaY;
-      this.opts.onScrollChange(Math.max(0, newLeft), Math.max(0, newTop));
+      const maxLeft = this.computeMaxScrollLeft();
+      const maxTop = this.computeMaxScrollTop();
+      const newLeft = Math.min(Math.max(0, this.scrollLeft + e.deltaX), maxLeft);
+      const newTop = Math.min(Math.max(0, this.scrollTop + e.deltaY), maxTop);
+      this.opts.onScrollChange(newLeft, newTop);
     });
 
     window.addEventListener('keydown', (e) => {
       if (e.target && (e.target as HTMLElement).tagName === 'INPUT') return;
       if (e.target && (e.target as HTMLElement).tagName === 'TEXTAREA') return;
 
-      const sel = this.opts.selection;
+      const sel = this.selection;
       let row = sel.startRow;
       let col = sel.startCol;
       let changed = false;
@@ -488,27 +557,70 @@ export class CanvasRenderer {
       }
 
       if (e.key === 'ArrowUp') {
-        row = Math.max(0, row - 1);
-        changed = true;
+        if (e.shiftKey) {
+          row = Math.max(0, row - 1);
+          changed = true;
+        } else {
+          row = Math.max(0, row - 1);
+          col = col;
+          changed = true;
+        }
         e.preventDefault();
       } else if (e.key === 'ArrowDown') {
-        row = row + 1;
-        changed = true;
+        if (e.shiftKey) {
+          row = Math.min(this.opts.maxRows - 1, row + 1);
+          changed = true;
+        } else {
+          row = Math.min(this.opts.maxRows - 1, row + 1);
+          changed = true;
+        }
         e.preventDefault();
       } else if (e.key === 'ArrowLeft') {
         col = Math.max(0, col - 1);
         changed = true;
         e.preventDefault();
       } else if (e.key === 'ArrowRight') {
-        col = col + 1;
+        col = Math.min(this.opts.maxCols - 1, col + 1);
+        changed = true;
+        e.preventDefault();
+      } else if (e.key === 'Home') {
+        if (e.ctrlKey || e.metaKey) {
+          row = 0;
+          col = 0;
+        } else {
+          col = 0;
+        }
+        changed = true;
+        e.preventDefault();
+      } else if (e.key === 'End') {
+        if (e.ctrlKey || e.metaKey) {
+          row = this.opts.maxRows - 1;
+          col = this.opts.maxCols - 1;
+        } else {
+          col = this.opts.maxCols - 1;
+        }
+        changed = true;
+        e.preventDefault();
+      } else if (e.key === 'PageUp') {
+        const canvas = this.opts.canvas;
+        const rect = canvas.getBoundingClientRect();
+        const visibleRows = Math.max(1, Math.floor((rect.height - HEADER_ROW_HEIGHT) / DEFAULT_ROW_HEIGHT));
+        row = Math.max(0, row - visibleRows);
+        changed = true;
+        e.preventDefault();
+      } else if (e.key === 'PageDown') {
+        const canvas2 = this.opts.canvas;
+        const rect2 = canvas2.getBoundingClientRect();
+        const visibleRows2 = Math.max(1, Math.floor((rect2.height - HEADER_ROW_HEIGHT) / DEFAULT_ROW_HEIGHT));
+        row = Math.min(this.opts.maxRows - 1, row + visibleRows2);
         changed = true;
         e.preventDefault();
       } else if (e.key === 'Tab') {
-        col = col + 1;
+        col = Math.min(this.opts.maxCols - 1, col + 1);
         changed = true;
         e.preventDefault();
       } else if (e.key === 'Enter') {
-        row = row + 1;
+        row = Math.min(this.opts.maxRows - 1, row + 1);
         changed = true;
         e.preventDefault();
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -534,8 +646,8 @@ export class CanvasRenderer {
       }
 
       if (changed) {
-        col = Math.max(0, col);
-        row = Math.max(0, row);
+        col = Math.max(0, Math.min(this.opts.maxCols - 1, col));
+        row = Math.max(0, Math.min(this.opts.maxRows - 1, row));
         this.opts.onSelect(row, col);
         this.opts.onSelection({ startRow: row, startCol: col, endRow: row, endCol: col });
       }

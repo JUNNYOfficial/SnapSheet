@@ -5,15 +5,15 @@ import SheetTabs from './components/SheetTabs';
 
 export default function App() {
   return (
-    <div className="flex h-screen w-screen flex-col bg-gray-100">
-      <div className="border-b border-gray-200 bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-2.5">
+    <div className="flex h-screen w-screen flex-col bg-neutral-100" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}>
+      <div className="border-b border-neutral-200 bg-white px-6 py-2.5">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-white/20">
-            <span className="text-sm font-bold text-white">📊</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded border border-neutral-300 bg-neutral-50">
+            <span className="text-sm text-neutral-800" style={{ fontFamily: 'SimHei, 黑体, sans-serif' }}>表</span>
           </div>
-          <div className="text-white">
-            <h1 className="text-lg font-bold leading-tight">SnapSheet</h1>
-            <p className="text-xs opacity-80">高性能电子表格 · 公式计算 · AI 辅助分析</p>
+          <div className="text-neutral-800">
+            <h1 className="text-lg leading-tight" style={{ fontFamily: 'SimHei, 黑体, sans-serif' }}>SnapSheet</h1>
+            <p className="text-xs text-neutral-500">电子表格 · 公式计算 · 数据分析</p>
           </div>
         </div>
       </div>

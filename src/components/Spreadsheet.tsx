@@ -80,6 +80,7 @@ export default function Spreadsheet() {
 
   useEffect(() => {
     if (rendererRef.current) {
+      rendererRef.current.setSelection(selection);
       rendererRef.current.scrollIntoView(selection.startRow, selection.startCol);
       rendererRef.current.render();
     }
@@ -127,10 +128,10 @@ export default function Spreadsheet() {
         <input
           ref={editInputRef}
           type="text"
-          className="absolute z-10 border-2 border-blue-500 bg-white px-1.5 outline-none"
+          className="absolute z-10 border-2 border-neutral-800 bg-white px-1.5 outline-none"
           style={{
             ...getEditInputStyle(),
-            fontFamily: 'monospace',
+            fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace',
             fontSize: '13px',
             lineHeight: String(DEFAULT_ROW_HEIGHT) + 'px',
           }}

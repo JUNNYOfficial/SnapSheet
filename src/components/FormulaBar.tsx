@@ -33,12 +33,12 @@ export default function FormulaBar() {
   };
 
   return (
-    <div className="flex items-center border-b border-gray-200 bg-white">
-      <div className="flex w-20 items-center justify-center border-r border-gray-200 px-2 py-2" title="当前单元格地址">
-        <span className="font-mono text-sm font-semibold text-gray-700">{colToLetter(selection.startCol)}{selection.startRow + 1}</span>
+    <div className="flex items-center border-b border-neutral-200 bg-white">
+      <div className="flex w-24 items-center justify-center border-r border-neutral-200 px-2 py-2.5" title="当前单元格地址">
+        <span className="text-sm text-neutral-700" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace' }}>{colToLetter(selection.startCol)}{selection.startRow + 1}</span>
       </div>
-      <div className="flex items-center border-r border-gray-200 px-3 py-2 text-sm italic text-gray-500" title="函数">
-        <span className="font-serif font-bold">fx</span>
+      <div className="flex items-center border-r border-neutral-200 px-3 py-2 text-sm text-neutral-400" title="函数">
+        <span style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, serif', fontStyle: 'italic' }}>fx</span>
       </div>
       <input
         ref={inputRef}
@@ -61,7 +61,8 @@ export default function FormulaBar() {
             store.getState().setFormulaBarValue('');
           }
         }}
-        className="flex-1 bg-transparent px-3 py-2 text-sm font-mono outline-none focus:bg-blue-50"
+        className="flex-1 bg-transparent px-3 py-2.5 text-sm outline-none focus:bg-neutral-100"
+        style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace' }}
         placeholder="输入值或公式，例如 =SUM(A1:A5)"
       />
     </div>

@@ -190,85 +190,89 @@ export default function Toolbar() {
     }
   };
 
+  const btnBase = 'rounded px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-100 transition-colors';
+  const dividerBase = 'mx-2 h-5 w-px bg-neutral-200';
+
   return (
-    <div className="flex items-center gap-2 border-b border-gray-200 bg-white px-4 py-2">
+    <div className="flex items-center gap-2 border-b border-neutral-200 bg-white px-4 py-2" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}>
       <div className="flex items-center gap-1">
-        <button onClick={() => store.getState().newWorkbook()} className="rounded bg-gray-100 px-3 py-1.5 text-sm hover:bg-gray-200" title="新建">
+        <button onClick={() => store.getState().newWorkbook()} className={btnBase} title="新建">
           新建
         </button>
         <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
-        <button onClick={() => fileInputRef.current?.click()} className="rounded bg-gray-100 px-3 py-1.5 text-sm hover:bg-gray-200" title="导入 CSV">
+        <button onClick={() => fileInputRef.current?.click()} className={btnBase} title="导入 CSV">
           导入 CSV
         </button>
         <input ref={jsonInputRef} type="file" accept=".json" className="hidden" onChange={handleImportJSON} />
-        <button onClick={() => jsonInputRef.current?.click()} className="rounded bg-gray-100 px-3 py-1.5 text-sm hover:bg-gray-200" title="导入 JSON">
+        <button onClick={() => jsonInputRef.current?.click()} className={btnBase} title="导入 JSON">
           导入 JSON
         </button>
-        <button onClick={handleExportCSV} className="rounded bg-gray-100 px-3 py-1.5 text-sm hover:bg-gray-200" title="导出 CSV">
+        <button onClick={handleExportCSV} className={btnBase} title="导出 CSV">
           导出 CSV
         </button>
-        <button onClick={handleExportJSON} className="rounded bg-gray-100 px-3 py-1.5 text-sm hover:bg-gray-200" title="导出 JSON">
+        <button onClick={handleExportJSON} className={btnBase} title="导出 JSON">
           导出 JSON
         </button>
       </div>
 
-      <div className="mx-2 h-5 w-px bg-gray-300" />
+      <div className={dividerBase} />
 
       <div className="flex items-center gap-1">
-        <button onClick={handleBold} className="rounded px-2.5 py-1.5 text-sm font-bold hover:bg-gray-100" title="加粗">
-          B
+        <button onClick={handleBold} className="rounded px-2.5 py-1.5 text-sm text-neutral-700 hover:bg-neutral-100" title="加粗">
+          <span style={{ fontWeight: 700 }}>B</span>
         </button>
-        <button onClick={handleAlignLeft} className="rounded px-2.5 py-1.5 text-sm hover:bg-gray-100" title="左对齐">
-          ⬅
+        <button onClick={handleAlignLeft} className="rounded px-2.5 py-1.5 text-sm text-neutral-700 hover:bg-neutral-100" title="左对齐">
+          左
         </button>
-        <button onClick={handleAlignCenter} className="rounded px-2.5 py-1.5 text-sm hover:bg-gray-100" title="居中">
-          ↔
+        <button onClick={handleAlignCenter} className="rounded px-2.5 py-1.5 text-sm text-neutral-700 hover:bg-neutral-100" title="居中">
+          中
         </button>
-        <button onClick={handleAlignRight} className="rounded px-2.5 py-1.5 text-sm hover:bg-gray-100" title="右对齐">
-          ➡
+        <button onClick={handleAlignRight} className="rounded px-2.5 py-1.5 text-sm text-neutral-700 hover:bg-neutral-100" title="右对齐">
+          右
         </button>
       </div>
 
-      <div className="mx-2 h-5 w-px bg-gray-300" />
+      <div className={dividerBase} />
 
-      <button onClick={handleClear} className="rounded bg-red-50 px-3 py-1.5 text-sm text-red-700 hover:bg-red-100" title="清除选中区域">
+      <button onClick={handleClear} className={btnBase} title="清除选中区域">
         清除
       </button>
 
-      <div className="mx-2 h-5 w-px bg-gray-300" />
+      <div className={dividerBase} />
 
       <div className="flex items-center gap-1">
-        <button onClick={() => { handleAnalyze(); setAiOpen(true); }} className="rounded bg-green-50 px-3 py-1.5 text-sm text-green-700 hover:bg-green-100" title="AI 分析">
+        <button onClick={() => { handleAnalyze(); setAiOpen(true); }} className={btnBase} title="AI 分析">
           分析
         </button>
-        <button onClick={() => setAiOpen(!aiOpen)} className="rounded bg-blue-50 px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-100" title="AI 生成公式">
+        <button onClick={() => setAiOpen(!aiOpen)} className={btnBase} title="AI 生成公式">
           AI 公式
         </button>
       </div>
 
       {aiOpen && (
-        <div className="ml-4 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-2">
+        <div className="ml-4 flex items-center gap-2 rounded border border-neutral-300 bg-neutral-50 p-2">
           <input
             type="text"
             value={aiPrompt}
             onChange={(e) => setAiPrompt(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleFormulaGenerate()}
             placeholder="输入指令: 如 求平均值、求和、最大值..."
-            className="w-64 rounded border border-blue-300 bg-white px-2 py-1 text-sm outline-none focus:border-blue-500"
+            className="w-64 rounded border border-neutral-300 bg-white px-2 py-1 text-sm outline-none focus:border-neutral-600"
+            style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}
           />
-          <button onClick={handleFormulaGenerate} className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700">
+          <button onClick={handleFormulaGenerate} className="rounded bg-neutral-800 px-3 py-1 text-sm text-white hover:bg-neutral-700" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}>
             生成
           </button>
           {aiResult && (
-            <div className="max-h-32 w-72 overflow-auto whitespace-pre-wrap rounded bg-white p-2 text-xs text-gray-700">
+            <div className="max-h-32 w-72 overflow-auto whitespace-pre-wrap rounded border border-neutral-200 bg-white p-2 text-xs text-neutral-700" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}>
               {aiResult}
             </div>
           )}
         </div>
       )}
 
-      <div className="ml-auto text-xs text-gray-500">
-        选中: <span className="font-mono">{colToLetter(selection.startCol)}{selection.startRow + 1}{selection.endRow !== selection.startRow || selection.endCol !== selection.startCol ? ':' + colToLetter(selection.endCol) + (selection.endRow + 1) : ''}</span>
+      <div className="ml-auto text-xs text-neutral-500" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace' }}>
+        选中: {colToLetter(selection.startCol)}{selection.startRow + 1}{selection.endRow !== selection.startRow || selection.endCol !== selection.startCol ? ':' + colToLetter(selection.endCol) + (selection.endRow + 1) : ''}
       </div>
     </div>
   );
