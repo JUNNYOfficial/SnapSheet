@@ -8,6 +8,7 @@ import {
   DEFAULT_ROW_HEIGHT,
   HEADER_ROW_HEIGHT,
   HEADER_COL_WIDTH,
+  MIN_COL_WIDTH,
   GRID_COLOR,
   HEADER_BG,
   HEADER_TEXT,
@@ -19,27 +20,55 @@ import {
   SHEET_ROW_COUNT,
   SHEET_COL_COUNT,
 } from '@/utils/constants';
-import type { Cell, Selection } from '@/types';
+import type { Cell, CellStyle, Selection, Sheet } from '@/types';
+
+const createEmptySheet = (id: string, name: string): Sheet => ({
+  id,
+  name,
+  cells: new Map(),
+  colWidths: new Map(),
+  rowHeights: new Map(),
+  frozenRows: 0,
+  frozenCols: 0,
+  conditionalFormats: [],
+});
 
 export default function Home() {
-  const [cells, setCells] = useState<Map<string, Cell>>(new Map());
+  const [sheets, setSheets] = useState<Sheet[]>([createEmptySheet('sheet1', 'Sheet1')]);
+  const [activeSheetId, setActiveSheetId] = useState('sheet1');
   const [selection, setSelection] = useState<Selection>({ startRow: 0, startCol: 0, endRow: 0, endCol: 0 });
   const [scrollLeft, setScrollLeft] = useState(0);
   const [scrollTop, setScrollTop] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
-  const [colWidths] = useState<Map<number, number>>(new Map());
-  const [rowHeights] = useState<Map<number, number>>(new Map());
+  const [isDraggingCol, setIsDraggingCol] = useState(false);
+  const [dragColIndex, setDragColIndex] = useState(0);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragStartWidth, setDragStartWidth] = useState(0);
+  const [showAIPanel, setShowAIPanel] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const activeSheet = sheets.find(s => s.id === activeSheetId) || sheets[0];
+  const cells = activeSheet.cells;
+  const colWidths = activeSheet.colWidths;
+  const rowHeights = activeSheet.rowHeights;
+
   const getColWidth = useCallback((col: number) => colWidths.get(col) ?? DEFAULT_COL_WIDTH, [colWidths]);
   const getRowHeight = useCallback((row: number) => rowHeights.get(row) ?? DEFAULT_ROW_HEIGHT, [rowHeights]);
 
   const getCell = useCallback((ref: string) => cells.get(ref), [cells]);
+
+  const updateSheet = useCallback((updates: Partial<Sheet> | ((prev: Sheet) => Partial<Sheet>)) => {
+    setSheets(prev => prev.map(s => {
+      if (s.id !== activeSheetId) return s;
+      const newUpdates = typeof updates === 'function' ? updates(s) : updates;
+      return { ...s, ...newUpdates };
+    }));
+  }, [activeSheetId]);
 
   const recomputeAll = useCallback(() => {
     const newCells = new Map<string, Cell>();
@@ -77,12 +106,8 @@ export default function Home() {
       recompute(ref);
     });
 
-    setCells(newCells);
-  }, [cells, getCell]);
-
-  useEffect(() => {
-    recomputeAll();
-  }, [recomputeAll]);
+    updateSheet({ cells: newCells });
+  }, [cells, getCell, updateSheet]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -163,16 +188,6 @@ export default function Home() {
       y += rowH;
     }
 
-    x = HEADER_COL_WIDTH - scrollLeft;
-    for (let col = 0; col <= SHEET_COL_COUNT; col++) {
-      x += getColWidth(col);
-    }
-
-    y = HEADER_ROW_HEIGHT - scrollTop;
-    for (let row = 0; row <= SHEET_ROW_COUNT; row++) {
-      y += getRowHeight(row);
-    }
-
     const viewLeft = HEADER_COL_WIDTH - scrollLeft;
     const viewTop = HEADER_ROW_HEIGHT - scrollTop;
     const viewWidth = width - HEADER_COL_WIDTH;
@@ -234,10 +249,6 @@ export default function Home() {
     ctx.lineWidth = 2;
     ctx.strokeRect(selStartX, selStartY, selEndX - selStartX, selEndY - selStartY);
 
-    ctx.fillStyle = CELL_TEXT;
-    ctx.font = CELL_FONT;
-    ctx.textBaseline = 'middle';
-
     for (let row = startRow; row <= SHEET_ROW_COUNT; row++) {
       let totalRowY = 0;
       for (let r = 0; r < row; r++) totalRowY += getRowHeight(r);
@@ -267,10 +278,17 @@ export default function Home() {
           ctx.clip();
 
           ctx.fillStyle = CELL_TEXT;
-          ctx.textAlign = 'left';
+          ctx.font = (cell.style?.bold ? 'bold ' : '') + CELL_FONT;
+          ctx.textAlign = cell.style?.align || 'left';
+          ctx.textBaseline = 'middle';
+
+          const alignX = cell.style?.align === 'right' ? cellXPos + getColWidth(col) - cellPadding :
+                         cell.style?.align === 'center' ? cellXPos + getColWidth(col) / 2 :
+                         cellXPos + cellPadding;
+
           ctx.fillText(
             displayValue,
-            cellXPos + cellPadding,
+            alignX,
             cellY + getRowHeight(row) / 2,
             maxWidth
           );
@@ -296,6 +314,13 @@ export default function Home() {
     let col = 0;
     let colX = HEADER_COL_WIDTH - scrollLeft;
     while (colX < x && col < SHEET_COL_COUNT) {
+      if (Math.abs(x - colX) < 3) {
+        setIsDraggingCol(true);
+        setDragColIndex(col);
+        setDragStartX(e.clientX);
+        setDragStartWidth(getColWidth(col));
+        return;
+      }
       colX += getColWidth(col);
       col++;
     }
@@ -313,6 +338,31 @@ export default function Home() {
     setEditValue('');
     setIsEditing(false);
   };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingCol) return;
+      const delta = e.clientX - dragStartX;
+      const newWidth = Math.max(MIN_COL_WIDTH, dragStartWidth + delta);
+      const newColWidths = new Map(colWidths);
+      newColWidths.set(dragColIndex, newWidth);
+      updateSheet({ colWidths: newColWidths });
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingCol(false);
+    };
+
+    if (isDraggingCol) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingCol, dragStartX, dragStartWidth, dragColIndex, colWidths, updateSheet]);
 
   const handleCanvasDoubleClick = () => {
     const ref = coordsToCell(selection.startRow, selection.startCol);
@@ -338,6 +388,24 @@ export default function Home() {
       return;
     }
 
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+      e.preventDefault();
+      copyCells();
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+      e.preventDefault();
+      pasteCells();
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key === 'x') {
+      e.preventDefault();
+      cutCells();
+      return;
+    }
+
     const ref = coordsToCell(selection.startRow, selection.startCol);
     const cell = cells.get(ref);
 
@@ -348,11 +416,7 @@ export default function Home() {
         setTimeout(() => editInputRef.current?.focus(), 0);
       }
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
-      setCells(prev => {
-        const next = new Map(prev);
-        next.delete(ref);
-        return next;
-      });
+      deleteSelectedCells();
       recomputeAll();
     } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
       setEditValue(e.key);
@@ -387,23 +451,21 @@ export default function Home() {
     const value = editValue.trim();
 
     if (!value) {
-      setCells(prev => {
-        const next = new Map(prev);
-        next.delete(ref);
-        return next;
-      });
+      const newCells = new Map(cells);
+      newCells.delete(ref);
+      updateSheet({ cells: newCells });
     } else {
       const isFormula = value.startsWith('=');
+      const cell = cells.get(ref);
       const newCell: Cell = {
         value,
         formula: isFormula ? value : undefined,
+        style: cell?.style,
       };
 
-      setCells(prev => {
-        const next = new Map(prev);
-        next.set(ref, newCell);
-        return next;
-      });
+      const newCells = new Map(cells);
+      newCells.set(ref, newCell);
+      updateSheet({ cells: newCells });
 
       if (isFormula) {
         try {
@@ -413,29 +475,118 @@ export default function Home() {
           const ast = parser.parse();
 
           const compute = () => {
-            setCells(prev => {
-              const cell = prev.get(ref);
+            updateSheet(prev => {
+              const cellMap = prev.cells;
+              const cell = cellMap.get(ref);
               if (!cell) return prev;
               try {
-                const computed = evaluate(ast, (r) => prev.get(r));
-                return new Map(prev).set(ref, { ...cell, computed });
+                const computed = evaluate(ast, (r) => cellMap.get(r));
+                const newCellMap = new Map(cellMap);
+                newCellMap.set(ref, { ...cell, computed });
+                return { ...prev, cells: newCellMap };
               } catch {
-                return new Map(prev).set(ref, { ...cell, computed: '#ERROR!' });
+                const newCellMap = new Map(cellMap);
+                newCellMap.set(ref, { ...cell, computed: '#ERROR!' });
+                return { ...prev, cells: newCellMap };
               }
             });
           };
           compute();
         } catch {
-          setCells(prev => new Map(prev).set(ref, { ...newCell, computed: '#ERROR!' }));
+          const newCells2 = new Map(cells);
+          newCells2.set(ref, { ...newCell, computed: '#ERROR!' });
+          updateSheet({ cells: newCells2 });
         }
       } else {
         const num = parseFloat(value);
-        setCells(prev => new Map(prev).set(ref, { ...newCell, computed: isNaN(num) ? value : num }));
+        const newCells2 = new Map(cells);
+        newCells2.set(ref, { ...newCell, computed: isNaN(num) ? value : num });
+        updateSheet({ cells: newCells2 });
       }
     }
 
     setIsEditing(false);
     setEditValue('');
+  };
+
+  const deleteSelectedCells = () => {
+    const newCells = new Map(cells);
+    for (let r = selection.startRow; r <= selection.endRow; r++) {
+      for (let c = selection.startCol; c <= selection.endCol; c++) {
+        newCells.delete(coordsToCell(r, c));
+      }
+    }
+    updateSheet({ cells: newCells });
+  };
+
+  const copyCells = () => {
+    const data: Cell[][] = [];
+    for (let r = selection.startRow; r <= selection.endRow; r++) {
+      const row: Cell[] = [];
+      for (let c = selection.startCol; c <= selection.endCol; c++) {
+        const ref = coordsToCell(r, c);
+        row.push(cells.get(ref) || { value: '', computed: '' });
+      }
+      data.push(row);
+    }
+    navigator.clipboard.writeText(JSON.stringify(data));
+  };
+
+  const cutCells = () => {
+    copyCells();
+    deleteSelectedCells();
+    recomputeAll();
+  };
+
+  const pasteCells = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const data = JSON.parse(text) as Cell[][];
+      if (!Array.isArray(data) || data.length === 0) return;
+
+      const newCells = new Map(cells);
+      const offsetRow = selection.startRow;
+      const offsetCol = selection.startCol;
+
+      for (let r = 0; r < data.length; r++) {
+        for (let c = 0; c < data[r].length; c++) {
+          const targetRow = offsetRow + r;
+          const targetCol = offsetCol + c;
+          if (targetRow >= SHEET_ROW_COUNT || targetCol >= SHEET_COL_COUNT) continue;
+
+          const ref = coordsToCell(targetRow, targetCol);
+          const cell = data[r][c];
+
+          if (cell.formula) {
+            const newCell: Cell = { ...cell };
+            newCells.set(ref, newCell);
+
+            try {
+              const lexer = new Lexer(cell.formula);
+              const tokens = lexer.tokenize();
+              const parser = new Parser(tokens);
+              const ast = parser.parse();
+              const computed = evaluate(ast, (r) => newCells.get(r));
+              newCells.set(ref, { ...newCell, computed });
+            } catch {
+              newCells.set(ref, { ...newCell, computed: '#ERROR!' });
+            }
+          } else {
+            newCells.set(ref, cell);
+          }
+        }
+      }
+
+      updateSheet({ cells: newCells });
+      setSelection({
+        startRow: offsetRow,
+        startCol: offsetCol,
+        endRow: Math.min(SHEET_ROW_COUNT - 1, offsetRow + data.length - 1),
+        endCol: Math.min(SHEET_COL_COUNT - 1, offsetCol + (data[0]?.length || 0) - 1),
+      });
+    } catch {
+      alert('无法粘贴数据');
+    }
   };
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -477,7 +628,7 @@ export default function Home() {
                 });
               });
             });
-            setCells(newCells);
+            updateSheet({ cells: newCells });
           }
         } catch {
           alert('Invalid JSON file');
@@ -497,7 +648,7 @@ export default function Home() {
             });
           });
         });
-        setCells(newCells);
+        updateSheet({ cells: newCells });
       }
     };
     reader.readAsText(file);
@@ -548,18 +699,88 @@ export default function Home() {
   };
 
   const handleNewSheet = () => {
-    setCells(new Map());
+    const newId = 'sheet' + Date.now();
+    const newName = 'Sheet' + (sheets.length + 1);
+    setSheets(prev => [...prev, createEmptySheet(newId, newName)]);
+    setActiveSheetId(newId);
     setSelection({ startRow: 0, startCol: 0, endRow: 0, endCol: 0 });
     setScrollLeft(0);
     setScrollTop(0);
   };
 
+  const handleDeleteSheet = () => {
+    if (sheets.length <= 1) {
+      alert('至少保留一个工作表');
+      return;
+    }
+    setSheets(prev => prev.filter(s => s.id !== activeSheetId));
+    setActiveSheetId(sheets[0].id === activeSheetId ? sheets[1].id : sheets[0].id);
+  };
+
+  const applyStyle = (style: Partial<CellStyle>) => {
+    const newCells = new Map(cells);
+    for (let r = selection.startRow; r <= selection.endRow; r++) {
+      for (let c = selection.startCol; c <= selection.endCol; c++) {
+        const ref = coordsToCell(r, c);
+        const cell = newCells.get(ref) || { value: '', computed: '' };
+        newCells.set(ref, {
+          ...cell,
+          style: { ...cell.style, ...style },
+        });
+      }
+    }
+    updateSheet({ cells: newCells });
+  };
+
+  const toggleBold = () => {
+    const ref = coordsToCell(selection.startRow, selection.startCol);
+    const cell = cells.get(ref);
+    applyStyle({ bold: !(cell?.style?.bold) });
+  };
+
+  const setAlign = (align: 'left' | 'center' | 'right') => {
+    applyStyle({ align });
+  };
+
+  const analyzeSelection = () => {
+    const values: number[] = [];
+    for (let r = selection.startRow; r <= selection.endRow; r++) {
+      for (let c = selection.startCol; c <= selection.endCol; c++) {
+        const ref = coordsToCell(r, c);
+        const cell = cells.get(ref);
+        if (cell?.computed !== undefined) {
+          const num = parseFloat(String(cell.computed));
+          if (!isNaN(num)) values.push(num);
+        }
+      }
+    }
+
+    if (values.length === 0) return null;
+
+    const sum = values.reduce((a, b) => a + b, 0);
+    const avg = sum / values.length;
+    const max = Math.max(...values);
+    const min = Math.min(...values);
+    const range = max - min;
+
+    return {
+      count: values.length,
+      sum,
+      avg,
+      max,
+      min,
+      range,
+      trend: avg > (max + min) / 2 ? '偏高' : '偏低',
+    };
+  };
+
+  const aiAnalysis = analyzeSelection();
   const currentCellRef = coordsToCell(selection.startRow, selection.startCol);
   const currentCell = cells.get(currentCellRef);
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      <div className="flex items-center h-12 px-4 border-b border-gray-200 gap-2">
+      <div className="flex items-center h-12 px-4 border-b border-gray-200 gap-4">
         <div className="flex items-center gap-1">
           <button
             onClick={handleNewSheet}
@@ -575,7 +796,7 @@ export default function Home() {
           </button>
           <div className="relative group">
             <button className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded">
-              导出 ▾
+              导出
             </button>
             <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg hidden group-hover:block z-50">
               <button
@@ -594,9 +815,45 @@ export default function Home() {
           </div>
         </div>
 
+        <div className="h-6 w-px bg-gray-300" />
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={toggleBold}
+            className={`px-3 py-1.5 text-sm font-medium hover:bg-gray-100 rounded ${currentCell?.style?.bold ? 'bg-gray-200' : ''}`}
+            style={{ fontWeight: 'bold' }}
+          >
+            B
+          </button>
+          <button
+            onClick={() => setAlign('left')}
+            className={`px-3 py-1.5 text-sm font-medium hover:bg-gray-100 rounded ${currentCell?.style?.align === 'left' ? 'bg-gray-200' : ''}`}
+          >
+            左
+          </button>
+          <button
+            onClick={() => setAlign('center')}
+            className={`px-3 py-1.5 text-sm font-medium hover:bg-gray-100 rounded ${currentCell?.style?.align === 'center' ? 'bg-gray-200' : ''}`}
+          >
+            中
+          </button>
+          <button
+            onClick={() => setAlign('right')}
+            className={`px-3 py-1.5 text-sm font-medium hover:bg-gray-100 rounded ${currentCell?.style?.align === 'right' ? 'bg-gray-200' : ''}`}
+          >
+            右
+          </button>
+        </div>
+
         <div className="flex-1" />
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAIPanel(!showAIPanel)}
+            className={`px-3 py-1.5 text-sm font-medium rounded ${showAIPanel ? 'bg-blue-100 text-blue-600' : 'text-gray-700 hover:bg-gray-100'}`}
+          >
+            AI 分析
+          </button>
           <span className="text-sm text-gray-500">SnapSheet</span>
         </div>
       </div>
@@ -631,25 +888,93 @@ export default function Home() {
         </div>
       </div>
 
-      <div
-        ref={containerRef}
-        className="flex-1 overflow-auto relative"
-        onScroll={handleScroll}
-        onWheel={handleWheel}
-      >
-        <canvas
-          ref={canvasRef}
-          onMouseDown={handleCanvasMouseDown}
-          onDoubleClick={handleCanvasDoubleClick}
-          tabIndex={0}
-          onKeyDown={handleKeyDown}
-          className="absolute inset-0 outline-none"
-        />
+      <div className="flex flex-1 overflow-hidden">
+        <div
+          ref={containerRef}
+          className="flex-1 overflow-auto relative"
+          onScroll={handleScroll}
+          onWheel={handleWheel}
+        >
+          <canvas
+            ref={canvasRef}
+            onMouseDown={handleCanvasMouseDown}
+            onDoubleClick={handleCanvasDoubleClick}
+            tabIndex={0}
+            onKeyDown={handleKeyDown}
+            className={`absolute inset-0 outline-none ${isDraggingCol ? 'cursor-col-resize' : ''}`}
+          />
+        </div>
+
+        {showAIPanel && (
+          <div className="w-72 border-l border-gray-200 bg-white overflow-y-auto p-4">
+            <h3 className="font-semibold text-gray-800 mb-3">AI 数据分析</h3>
+            <div className="text-sm text-gray-600 mb-2">
+              选中区域: {coordsToCell(selection.startRow, selection.startCol)} - {coordsToCell(selection.endRow, selection.endCol)}
+            </div>
+
+            {aiAnalysis ? (
+              <div className="space-y-3">
+                <div className="bg-gray-50 rounded p-3">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><span className="text-gray-500">数量:</span> {aiAnalysis.count}</div>
+                    <div><span className="text-gray-500">总和:</span> {aiAnalysis.sum.toFixed(2)}</div>
+                    <div><span className="text-gray-500">平均:</span> {aiAnalysis.avg.toFixed(2)}</div>
+                    <div><span className="text-gray-500">最大:</span> {aiAnalysis.max.toFixed(2)}</div>
+                    <div><span className="text-gray-500">最小:</span> {aiAnalysis.min.toFixed(2)}</div>
+                    <div><span className="text-gray-500">范围:</span> {aiAnalysis.range.toFixed(2)}</div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 rounded p-3">
+                  <div className="text-sm font-medium text-blue-700 mb-1">趋势分析</div>
+                  <div className="text-sm text-blue-600">
+                    数据整体{aiAnalysis.trend}，平均值位于区间{aiAnalysis.avg > aiAnalysis.max * 0.7 ? '上' : aiAnalysis.avg < aiAnalysis.min * 1.3 ? '下' : '中'}部。
+                  </div>
+                </div>
+
+                <div className="bg-green-50 rounded p-3">
+                  <div className="text-sm font-medium text-green-700 mb-1">建议公式</div>
+                  <div className="text-xs text-green-600 space-y-1">
+                    <div>=SUM({coordsToCell(selection.startRow, selection.startCol)}:{coordsToCell(selection.endRow, selection.endCol)})</div>
+                    <div>=AVG({coordsToCell(selection.startRow, selection.startCol)}:{coordsToCell(selection.endRow, selection.endCol)})</div>
+                    <div>=MAX({coordsToCell(selection.startRow, selection.startCol)}:{coordsToCell(selection.endRow, selection.endCol)})</div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500 italic">
+                选中包含数值的单元格以查看分析结果
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      <div className="flex items-center h-8 px-4 border-t border-gray-200 bg-gray-50">
+      <div className="flex items-center h-8 px-4 border-t border-gray-200 bg-gray-50 gap-2">
         <div className="flex items-center gap-1">
-          <span className="text-xs text-gray-500">Sheet1</span>
+          {sheets.map(sheet => (
+            <button
+              key={sheet.id}
+              onClick={() => setActiveSheetId(sheet.id)}
+              className={`px-3 py-1 text-xs font-medium rounded ${activeSheetId === sheet.id ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
+            >
+              {sheet.name}
+            </button>
+          ))}
+          <button
+            onClick={handleNewSheet}
+            className="px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 rounded"
+          >
+            +
+          </button>
+          {sheets.length > 1 && (
+            <button
+              onClick={handleDeleteSheet}
+              className="px-2 py-1 text-xs font-medium text-red-500 hover:bg-red-50 rounded"
+            >
+              x
+            </button>
+          )}
         </div>
       </div>
 
