@@ -35,6 +35,7 @@ export interface CanvasRendererOptions {
   onRedo: () => void;
   onScrollChange: (scrollLeft: number, scrollTop: number) => void;
   onFill: (source: { startRow: number; startCol: number; endRow: number; endCol: number }, target: { startRow: number; startCol: number; endRow: number; endCol: number }) => void;
+  onContextMenu: (row: number, col: number, x: number, y: number) => void;
   maxRows: number;
   maxCols: number;
   selection: Selection;
@@ -658,6 +659,16 @@ export class CanvasRenderer {
       this.fillHandleSource = null;
       this.fillHandleTarget = null;
       canvas.style.cursor = 'cell';
+    });
+
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const cell = this.getCellAtPoint(e.clientX, e.clientY);
+      if (cell) {
+        this.opts.onSelect(cell.row, cell.col);
+        this.opts.onSelection({ startRow: cell.row, startCol: cell.col, endRow: cell.row, endCol: cell.col });
+        this.opts.onContextMenu(cell.row, cell.col, e.clientX, e.clientY);
+      }
     });
 
     canvas.addEventListener('dblclick', (e) => {

@@ -4,9 +4,36 @@ import FormulaBar from './components/FormulaBar';
 import Spreadsheet from './components/Spreadsheet';
 import SheetTabs from './components/SheetTabs';
 import FindDialog from './components/FindDialog';
+import { useSpreadsheetStore } from './store/useSpreadsheetStore';
+import { workbookToJSON, workbookFromJSON } from './utils/json';
+
+const STORAGE_KEY = 'snapsheet_autosave';
 
 export default function App() {
   const [findOpen, setFindOpen] = useState(false);
+  const store = useSpreadsheetStore;
+
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const workbook = workbookFromJSON(saved);
+        if (workbook.sheets.length > 0) {
+          store.getState().loadWorkbook(workbook);
+        }
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = store.subscribe((state) => {
+      const json = workbookToJSON(state.workbook);
+      localStorage.setItem(STORAGE_KEY, json);
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

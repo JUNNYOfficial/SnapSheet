@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CanvasRenderer } from '../canvas/CanvasRenderer';
 import { useSpreadsheetStore, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../store/useSpreadsheetStore';
 import { coordsToCell } from '../utils/cellRef';
@@ -7,6 +7,7 @@ import {
   HEADER_COL_WIDTH,
   HEADER_ROW_HEIGHT,
 } from '../utils/constants';
+import ContextMenu from './ContextMenu';
 
 export default function Spreadsheet() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -19,6 +20,7 @@ export default function Spreadsheet() {
   const formulaBarValue = store((s) => s.formulaBarValue);
   const scrollLeft = store((s) => s.scrollLeft);
   const scrollTop = store((s) => s.scrollTop);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -54,6 +56,11 @@ export default function Spreadsheet() {
       onUndo: () => store.getState().undo(),
       onRedo: () => store.getState().redo(),
       onFill: (source, target) => store.getState().fillRange(source, target),
+      onContextMenu: (row, col, x, y) => {
+        void row;
+        void col;
+        setContextMenu({ x, y });
+      },
       onScrollChange: (left, top) => store.getState().setScroll(left, top),
       maxRows: SHEET_ROW_COUNT,
       maxCols: SHEET_COL_COUNT,
@@ -122,9 +129,33 @@ export default function Spreadsheet() {
     };
   };
 
+  const handlePaste = async () => {
+    const text = await navigator.clipboard.readText();
+    const sel = store.getState().selection;
+    store.getState().pasteCells(text, sel.startRow, sel.startCol);
+  };
+
   return (
     <div className="relative flex-1 overflow-hidden bg-white">
       <canvas ref={canvasRef} className="w-full h-full cursor-cell" style={{ display: 'block' }} />
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          onCopy={() => {
+            const text = store.getState().copySelection();
+            if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
+          }}
+          onPaste={handlePaste}
+          onClear={() => store.getState().clearSelection()}
+          onClearFormat={() => store.getState().clearFormatSelection()}
+          onInsertRow={() => store.getState().insertRow(selection.startRow)}
+          onDeleteRow={() => store.getState().deleteRow(selection.startRow)}
+          onInsertCol={() => store.getState().insertCol(selection.startCol)}
+          onDeleteCol={() => store.getState().deleteCol(selection.startCol)}
+        />
+      )}
       {editing && (
         <input
           ref={editInputRef}
