@@ -35,6 +35,7 @@ export default function Spreadsheet() {
       getColWidth: (col) => store.getState().getColWidth(col),
       getRowHeight: (row) => store.getState().getRowHeight(row),
       setColWidth: (col, width) => store.getState().setColWidth(col, width),
+      setRowHeight: (row, height) => store.getState().setRowHeight(row, height),
       onSelect: (row, col) => {
         store.getState().setSelection({ startRow: row, startCol: col, endRow: row, endCol: col });
       },
@@ -52,6 +53,7 @@ export default function Spreadsheet() {
       },
       onUndo: () => store.getState().undo(),
       onRedo: () => store.getState().redo(),
+      onFill: (source, target) => store.getState().fillRange(source, target),
       onScrollChange: (left, top) => store.getState().setScroll(left, top),
       maxRows: SHEET_ROW_COUNT,
       maxCols: SHEET_COL_COUNT,

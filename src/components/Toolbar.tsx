@@ -7,11 +7,14 @@ import { colToLetter, coordsToCell } from '../utils/cellRef';
 export default function Toolbar() {
   const store = useSpreadsheetStore;
   const selection = useSpreadsheetStore((s) => s.selection);
+  const workbook = useSpreadsheetStore((s) => s.workbook);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiResult, setAiResult] = useState('');
+  const canUndo = store.getState().canUndo();
+  const canRedo = store.getState().canRedo();
 
   const handleExportCSV = () => {
     const sheet = store.getState().getActiveSheet();
@@ -254,13 +257,41 @@ export default function Toolbar() {
       <button onClick={handleClear} className={btnBase} title="清除选中区域">
         清除
       </button>
+      <button onClick={() => store.getState().clearFormatSelection()} className={btnBase} title="清除选中区域格式">
+        清格式
+      </button>
 
       <div className={dividerBase} />
 
-      <button onClick={() => store.getState().undo()} className={btnBase} title="撤销 (Ctrl+Z)">
+      <button onClick={() => store.getState().insertRow(selection.startRow)} className={btnBase} title="在选中行前插入一行">
+        插行
+      </button>
+      <button onClick={() => store.getState().deleteRow(selection.startRow)} className={btnBase} title="删除选中行">
+        删行
+      </button>
+      <button onClick={() => store.getState().insertCol(selection.startCol)} className={btnBase} title="在选中列前插入一列">
+        插列
+      </button>
+      <button onClick={() => store.getState().deleteCol(selection.startCol)} className={btnBase} title="删除选中列">
+        删列
+      </button>
+
+      <div className={dividerBase} />
+
+      <button
+        onClick={() => store.getState().undo()}
+        disabled={!canUndo}
+        className={btnBase + (canUndo ? '' : ' opacity-40 cursor-not-allowed')}
+        title="撤销 (Ctrl+Z)"
+      >
         撤销
       </button>
-      <button onClick={() => store.getState().redo()} className={btnBase} title="重做 (Ctrl+Y)">
+      <button
+        onClick={() => store.getState().redo()}
+        disabled={!canRedo}
+        className={btnBase + (canRedo ? '' : ' opacity-40 cursor-not-allowed')}
+        title="重做 (Ctrl+Y)"
+      >
         重做
       </button>
 
@@ -297,8 +328,13 @@ export default function Toolbar() {
         </div>
       )}
 
-      <div className="ml-auto text-xs text-neutral-500" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace' }}>
-        选中: {colToLetter(selection.startCol)}{selection.startRow + 1}{selection.endRow !== selection.startRow || selection.endCol !== selection.startCol ? ':' + colToLetter(selection.endCol) + (selection.endRow + 1) : ''}
+      <div className="ml-auto flex items-center gap-3 text-xs text-neutral-500" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace' }}>
+        <span>
+          选中: {colToLetter(selection.startCol)}{selection.startRow + 1}{selection.endRow !== selection.startRow || selection.endCol !== selection.startCol ? ':' + colToLetter(selection.endCol) + (selection.endRow + 1) : ''}
+        </span>
+        <span>
+          {workbook.sheets.find((s) => s.id === workbook.activeSheetId)?.name}
+        </span>
       </div>
     </div>
   );

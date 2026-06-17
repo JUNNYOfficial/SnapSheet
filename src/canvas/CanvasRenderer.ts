@@ -23,6 +23,7 @@ export interface CanvasRendererOptions {
   getColWidth: (col: number) => number;
   getRowHeight: (row: number) => number;
   setColWidth: (col: number, width: number) => void;
+  setRowHeight: (row: number, height: number) => void;
   onSelect: (row: number, col: number) => void;
   onSelection: (selection: Selection) => void;
   onEdit: (row: number, col: number) => void;
@@ -33,6 +34,7 @@ export interface CanvasRendererOptions {
   onUndo: () => void;
   onRedo: () => void;
   onScrollChange: (scrollLeft: number, scrollTop: number) => void;
+  onFill: (source: { startRow: number; startCol: number; endRow: number; endCol: number }, target: { startRow: number; startCol: number; endRow: number; endCol: number }) => void;
   maxRows: number;
   maxCols: number;
   selection: Selection;
@@ -47,7 +49,12 @@ export class CanvasRenderer {
   private mouseDown = false;
   private dragStart: { row: number; col: number } | null = null;
   private resizingCol: number | null = null;
+  private resizingRow: number | null = null;
   private lastMouseX = 0;
+  private lastMouseY = 0;
+  private fillHandleDragging = false;
+  private fillHandleSource: { startRow: number; startCol: number; endRow: number; endCol: number } | null = null;
+  private fillHandleTarget: { row: number; col: number } | null = null;
 
   constructor(opts: CanvasRendererOptions) {
     this.opts = opts;
@@ -308,6 +315,52 @@ export class CanvasRenderer {
         ctx.lineWidth = 2;
         ctx.strokeRect(leftX + 1, topY + 1, selWidth - 2, selHeight - 2);
         ctx.restore();
+
+        const handleX = leftX + selWidth - 4;
+        const handleY = topY + selHeight - 4;
+        ctx.save();
+        ctx.fillStyle = '#262626';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.fillRect(handleX, handleY, 8, 8);
+        ctx.strokeRect(handleX + 0.5, handleY + 0.5, 7, 7);
+        ctx.restore();
+
+        if (this.fillHandleDragging && this.fillHandleTarget) {
+          const tRow = this.fillHandleTarget.row;
+          const tCol = this.fillHandleTarget.col;
+          const fMinRow = Math.min(sel.startRow, sel.endRow, tRow);
+          const fMaxRow = Math.max(sel.startRow, sel.endRow, tRow);
+          const fMinCol = Math.min(sel.startCol, sel.endCol, tCol);
+          const fMaxCol = Math.max(sel.startCol, sel.endCol, tCol);
+
+          let fx = leftX, fy = topY, fw = selWidth, fh = selHeight;
+          let fxFound = false, fyFound = false, fwFound = false, fhFound = false;
+          let cx = HEADER_COL_WIDTH - this.scrollLeft;
+          for (let c = 0; c <= fMaxCol && c < this.opts.maxCols; c++) {
+            const cw = this.opts.getColWidth(c);
+            if (c === fMinCol) { fx = cx; fxFound = true; }
+            if (c === fMaxCol) { fw = cx + cw - fx; fwFound = true; break; }
+            cx += cw;
+          }
+          let cy = HEADER_ROW_HEIGHT - this.scrollTop;
+          for (let r = 0; r <= fMaxRow && r < this.opts.maxRows; r++) {
+            const rh = this.opts.getRowHeight(r);
+            if (r === fMinRow) { fy = cy; fyFound = true; }
+            if (r === fMaxRow) { fh = cy + rh - fy; fhFound = true; break; }
+            cy += rh;
+          }
+          if (fxFound && fyFound && fwFound && fhFound) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+            ctx.fillRect(fx, fy, fw, fh);
+            ctx.strokeStyle = '#525252';
+            ctx.setLineDash([4, 4]);
+            ctx.strokeRect(fx + 1, fy + 1, fw - 2, fh - 2);
+            ctx.setLineDash([]);
+            ctx.restore();
+          }
+        }
       }
 
       const activeCol = visibleCols.find((c) => c.col === sel.startCol);
@@ -421,16 +474,96 @@ export class CanvasRenderer {
     return null;
   }
 
+  getRowResizeAt(clientY: number): number | null {
+    const rect = this.opts.canvas.getBoundingClientRect();
+    const y = clientY - rect.top;
+    if (y < HEADER_ROW_HEIGHT) return null;
+
+    let rowY = HEADER_ROW_HEIGHT - this.scrollTop;
+    for (let r = 0; r < this.opts.maxRows; r++) {
+      const rh = this.opts.getRowHeight(r);
+      const boundary = rowY + rh;
+      if (y >= boundary - 4 && y <= boundary + 4) {
+        return r;
+      }
+      rowY += rh;
+      if (rowY > rect.height) break;
+    }
+    return null;
+  }
+
+  private getFillHandleRect(): { x: number; y: number } | null {
+    const sel = this.selection;
+    const maxRow = Math.max(sel.startRow, sel.endRow);
+    const maxCol = Math.max(sel.startCol, sel.endCol);
+
+    let x = HEADER_COL_WIDTH - this.scrollLeft;
+    for (let c = 0; c <= maxCol && c < this.opts.maxCols; c++) {
+      const cw = this.opts.getColWidth(c);
+      if (c === maxCol) {
+        x += cw - 4;
+        break;
+      }
+      x += cw;
+    }
+
+    let y = HEADER_ROW_HEIGHT - this.scrollTop;
+    for (let r = 0; r <= maxRow && r < this.opts.maxRows; r++) {
+      const rh = this.opts.getRowHeight(r);
+      if (r === maxRow) {
+        y += rh - 4;
+        break;
+      }
+      y += rh;
+    }
+
+    const rect = this.opts.canvas.getBoundingClientRect();
+    if (x < 0 || y < 0 || x > rect.width || y > rect.height) return null;
+    return { x, y };
+  }
+
+  private getFillHandleAt(clientX: number, clientY: number): boolean {
+    const rect = this.getFillHandleRect();
+    if (!rect) return false;
+    const canvasRect = this.opts.canvas.getBoundingClientRect();
+    const x = clientX - canvasRect.left;
+    const y = clientY - canvasRect.top;
+    return x >= rect.x && x <= rect.x + 8 && y >= rect.y && y <= rect.y + 8;
+  }
+
   private bindEvents(): void {
     const canvas = this.opts.canvas;
 
     canvas.addEventListener('mousedown', (e) => {
+      if (this.getFillHandleAt(e.clientX, e.clientY)) {
+        this.fillHandleDragging = true;
+        this.fillHandleSource = {
+          startRow: Math.min(this.selection.startRow, this.selection.endRow),
+          startCol: Math.min(this.selection.startCol, this.selection.endCol),
+          endRow: Math.max(this.selection.startRow, this.selection.endRow),
+          endCol: Math.max(this.selection.startCol, this.selection.endCol),
+        };
+        this.fillHandleTarget = { row: this.selection.endRow, col: this.selection.endCol };
+        this.mouseDown = true;
+        canvas.style.cursor = 'crosshair';
+        return;
+      }
+
       const resizeCol = this.getColResizeAt(e.clientX);
       if (resizeCol !== null) {
         this.resizingCol = resizeCol;
         this.lastMouseX = e.clientX;
         this.mouseDown = true;
         canvas.style.cursor = 'col-resize';
+        return;
+      }
+
+      const resizeRow = this.getRowResizeAt(e.clientY);
+      if (resizeRow !== null) {
+        this.resizingRow = resizeRow;
+        this.lastMouseY = e.clientY;
+        this.mouseDown = true;
+        canvas.style.cursor = 'row-resize';
         return;
       }
 
@@ -453,8 +586,42 @@ export class CanvasRenderer {
         return;
       }
 
+      if (this.mouseDown && this.resizingRow !== null) {
+        const delta = e.clientY - this.lastMouseY;
+        const currentHeight = this.opts.getRowHeight(this.resizingRow);
+        const newHeight = Math.max(20, currentHeight + delta);
+        this.opts.setRowHeight(this.resizingRow, newHeight);
+        this.lastMouseY = e.clientY;
+        return;
+      }
+
+      if (this.mouseDown && this.fillHandleDragging && this.fillHandleSource) {
+        const cell = this.getCellAtPoint(e.clientX, e.clientY);
+        if (cell) {
+          const source = this.fillHandleSource;
+          let targetRow = cell.row;
+          let targetCol = cell.col;
+          if (source.startRow === source.endRow && source.startCol === source.endCol) {
+            // single cell: allow any direction
+          } else if (source.startRow === source.endRow) {
+            targetRow = source.endRow;
+          } else if (source.startCol === source.endCol) {
+            targetCol = source.endCol;
+          }
+          this.fillHandleTarget = { row: targetRow, col: targetCol };
+          this.render();
+        }
+        return;
+      }
+
       const resizeCol = this.getColResizeAt(e.clientX);
-      canvas.style.cursor = resizeCol !== null ? 'col-resize' : 'cell';
+      const resizeRow = this.getRowResizeAt(e.clientY);
+      const overHandle = this.getFillHandleAt(e.clientX, e.clientY);
+      let cursor = 'cell';
+      if (resizeCol !== null) cursor = 'col-resize';
+      else if (resizeRow !== null) cursor = 'row-resize';
+      else if (overHandle) cursor = 'crosshair';
+      canvas.style.cursor = cursor;
 
       if (this.mouseDown && this.dragStart) {
         const cell = this.getCellAtPoint(e.clientX, e.clientY);
@@ -470,9 +637,26 @@ export class CanvasRenderer {
     });
 
     window.addEventListener('mouseup', () => {
+      if (this.fillHandleDragging && this.fillHandleSource && this.fillHandleTarget) {
+        const source = this.fillHandleSource;
+        const target = this.fillHandleTarget;
+        const tMinRow = Math.min(source.startRow, target.row);
+        const tMaxRow = Math.max(source.endRow, target.row);
+        const tMinCol = Math.min(source.startCol, target.col);
+        const tMaxCol = Math.max(source.endCol, target.col);
+        this.opts.onFill(
+          { startRow: source.startRow, startCol: source.startCol, endRow: source.endRow, endCol: source.endCol },
+          { startRow: tMinRow, startCol: tMinCol, endRow: tMaxRow, endCol: tMaxCol }
+        );
+        this.opts.onSelection({ startRow: tMinRow, startCol: tMinCol, endRow: tMaxRow, endCol: tMaxCol });
+      }
       this.mouseDown = false;
       this.dragStart = null;
       this.resizingCol = null;
+      this.resizingRow = null;
+      this.fillHandleDragging = false;
+      this.fillHandleSource = null;
+      this.fillHandleTarget = null;
       canvas.style.cursor = 'cell';
     });
 
@@ -494,6 +678,12 @@ export class CanvasRenderer {
         }
         maxWidth = Math.max(maxWidth, headerWidth);
         this.opts.setColWidth(resizeCol, maxWidth);
+        return;
+      }
+
+      const resizeRow = this.getRowResizeAt(e.clientY);
+      if (resizeRow !== null) {
+        this.opts.setRowHeight(resizeRow, DEFAULT_ROW_HEIGHT);
         return;
       }
 

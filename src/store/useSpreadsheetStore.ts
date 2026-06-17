@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Cell, Sheet, Workbook, Selection, CellStyle } from '../types';
-import { DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../utils/constants';
-import { coordsToCell } from '../utils/cellRef';
+import { DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT, MIN_ROW_HEIGHT, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../utils/constants';
+import { coordsToCell, cellToCoords, colToLetter, letterToCol } from '../utils/cellRef';
 import { createDefaultFormulaEngine } from '../engine/FormulaEngine';
 
 interface SpreadsheetState {
@@ -21,6 +21,7 @@ interface SpreadsheetState {
   commitEdit: (value: string) => void;
   setCellStyle: (row: number, col: number, style: CellStyle) => void;
   applyStyleToSelection: (style: Partial<CellStyle>) => void;
+  clearFormatSelection: () => void;
 
   setSelection: (selection: Selection) => void;
   setEditing: (row: number, col: number | null) => void;
@@ -28,8 +29,19 @@ interface SpreadsheetState {
   setScroll: (scrollLeft: number, scrollTop: number) => void;
 
   setColWidth: (col: number, width: number) => void;
+  setRowHeight: (row: number, height: number) => void;
   getColWidth: (col: number) => number;
   getRowHeight: (row: number) => number;
+
+  insertRow: (row: number) => void;
+  deleteRow: (row: number) => void;
+  insertCol: (col: number) => void;
+  deleteCol: (col: number) => void;
+
+  fillRange: (
+    source: { startRow: number; startCol: number; endRow: number; endCol: number },
+    target: { startRow: number; startCol: number; endRow: number; endCol: number }
+  ) => void;
 
   pasteCells: (text: string, startRow: number, startCol: number) => void;
   copySelection: () => string;
@@ -236,6 +248,31 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     return formulaState.engine;
   };
 
+  const shiftFormulaRefs = (formula: string, rowDelta: number, colDelta: number, startRow: number, startCol: number): string => {
+    if (!formula.startsWith('=')) return formula;
+    return formula.replace(/([A-Z]+)(\d+)(?::([A-Z]+)(\d+))?/g, (match, c1, r1, c2, r2) => {
+      const shift = (col: number, row: number) => {
+        const newRow = rowDelta > 0 ? (row >= startRow ? row + rowDelta : row) : (row > startRow - 1 ? row + rowDelta : row);
+        const newCol = colDelta > 0 ? (col >= startCol ? col + colDelta : col) : (col > startCol - 1 ? col + colDelta : col);
+        return colToLetter(newCol) + (newRow + 1);
+      };
+      const start = shift(letterToCol(c1), parseInt(r1, 10) - 1);
+      if (c2 && r2) return start + ':' + shift(letterToCol(c2), parseInt(r2, 10) - 1);
+      return start;
+    });
+  };
+
+  const moveCellRefs = (cell: Cell, rowDelta: number, colDelta: number, startRow: number, startCol: number): Cell => {
+    if (!cell.formula) return cell;
+    const newFormula = shiftFormulaRefs(cell.formula, rowDelta, colDelta, startRow, startCol);
+    if (newFormula === cell.formula) return cell;
+    const newCell: Cell = { ...cell, formula: newFormula };
+    const engine = initEngine();
+    const ref = coordsToCell(0, 0);
+    newCell.computed = engine.evaluate(ref, newFormula);
+    return newCell;
+  };
+
   return {
     workbook: createInitialWorkbook(),
     selection: { startRow: 0, startCol: 0, endRow: 0, endCol: 0 },
@@ -372,6 +409,32 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    clearFormatSelection: () => {
+      const state = get();
+      const sel = state.selection;
+      const sheet = state.getActiveSheet();
+      const minRow = Math.max(0, Math.min(SHEET_ROW_COUNT - 1, Math.min(sel.startRow, sel.endRow)));
+      const maxRow = Math.max(0, Math.min(SHEET_ROW_COUNT - 1, Math.max(sel.startRow, sel.endRow)));
+      const minCol = Math.max(0, Math.min(SHEET_COL_COUNT - 1, Math.min(sel.startCol, sel.endCol)));
+      const maxCol = Math.max(0, Math.min(SHEET_COL_COUNT - 1, Math.max(sel.startCol, sel.endCol)));
+
+      let hasChanges = false;
+      for (let r = minRow; r <= maxRow; r++) {
+        for (let c = minCol; c <= maxCol; c++) {
+          const ref = coordsToCell(r, c);
+          const cell = sheet.cells.get(ref);
+          if (cell?.style && Object.keys(cell.style).length > 0) {
+            hasChanges = true;
+            cell.style = {};
+            sheet.cells.set(ref, cell);
+          }
+        }
+      }
+      if (!hasChanges) return;
+      pushHistory();
+      set({ workbook: { ...get().workbook } });
+    },
+
     setSelection: (selection: Selection) => {
       const clamped = {
         startRow: Math.max(0, Math.min(SHEET_ROW_COUNT - 1, selection.startRow)),
@@ -413,6 +476,16 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    setRowHeight: (row: number, height: number) => {
+      if (row < 0 || row >= SHEET_ROW_COUNT) return;
+      const sheet = get().getActiveSheet();
+      const existing = sheet.rowHeights.get(row);
+      if (existing === height) return;
+      pushHistory();
+      sheet.rowHeights.set(row, Math.max(MIN_ROW_HEIGHT, height));
+      set({ workbook: { ...get().workbook } });
+    },
+
     getColWidth: (col: number) => {
       const sheet = get().getActiveSheet();
       return sheet.colWidths.get(col) || DEFAULT_COL_WIDTH;
@@ -421,6 +494,240 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     getRowHeight: (row: number) => {
       const sheet = get().getActiveSheet();
       return sheet.rowHeights.get(row) || DEFAULT_ROW_HEIGHT;
+    },
+
+    insertRow: (row: number) => {
+      if (row < 0 || row >= SHEET_ROW_COUNT) return;
+      pushHistory();
+      const sheet = get().getActiveSheet();
+      const newCells = new Map<string, Cell>();
+      for (const [ref, cell] of sheet.cells.entries()) {
+        const coords = cellToCoords(ref);
+        if (coords.row < row) {
+          newCells.set(ref, cell);
+        } else {
+          const newRow = coords.row + 1;
+          if (newRow >= SHEET_ROW_COUNT) continue;
+          const newRef = coordsToCell(newRow, coords.col);
+          const movedCell = moveCellRefs(cell, 1, 0, row, 0);
+          newCells.set(newRef, movedCell);
+        }
+      }
+      sheet.cells.clear();
+      for (const [ref, cell] of newCells.entries()) {
+        sheet.cells.set(ref, cell);
+      }
+
+      const newRowHeights = new Map<number, number>();
+      for (const [r, h] of sheet.rowHeights.entries()) {
+        if (r < row) newRowHeights.set(r, h);
+        else if (r + 1 < SHEET_ROW_COUNT) newRowHeights.set(r + 1, h);
+      }
+      sheet.rowHeights.clear();
+      for (const [r, h] of newRowHeights.entries()) {
+        sheet.rowHeights.set(r, h);
+      }
+
+      set({ workbook: { ...get().workbook } });
+    },
+
+    deleteRow: (row: number) => {
+      if (row < 0 || row >= SHEET_ROW_COUNT) return;
+      pushHistory();
+      const sheet = get().getActiveSheet();
+      const newCells = new Map<string, Cell>();
+      for (const [ref, cell] of sheet.cells.entries()) {
+        const coords = cellToCoords(ref);
+        if (coords.row < row) {
+          newCells.set(ref, cell);
+        } else if (coords.row > row) {
+          const newRow = coords.row - 1;
+          const newRef = coordsToCell(newRow, coords.col);
+          const movedCell = moveCellRefs(cell, -1, 0, row, 0);
+          newCells.set(newRef, movedCell);
+        }
+      }
+      sheet.cells.clear();
+      for (const [ref, cell] of newCells.entries()) {
+        sheet.cells.set(ref, cell);
+      }
+
+      const newRowHeights = new Map<number, number>();
+      for (const [r, h] of sheet.rowHeights.entries()) {
+        if (r < row) newRowHeights.set(r, h);
+        else if (r > row) newRowHeights.set(r - 1, h);
+      }
+      sheet.rowHeights.clear();
+      for (const [r, h] of newRowHeights.entries()) {
+        sheet.rowHeights.set(r, h);
+      }
+
+      const state = get();
+      const sel = state.selection;
+      if (sel.startRow >= row) {
+        const newRow = Math.max(0, sel.startRow - 1);
+        state.setSelection({ startRow: newRow, startCol: sel.startCol, endRow: newRow, endCol: sel.endCol });
+      }
+      set({ workbook: { ...get().workbook } });
+    },
+
+    insertCol: (col: number) => {
+      if (col < 0 || col >= SHEET_COL_COUNT) return;
+      pushHistory();
+      const sheet = get().getActiveSheet();
+      const newCells = new Map<string, Cell>();
+      for (const [ref, cell] of sheet.cells.entries()) {
+        const coords = cellToCoords(ref);
+        if (coords.col < col) {
+          newCells.set(ref, cell);
+        } else {
+          const newCol = coords.col + 1;
+          if (newCol >= SHEET_COL_COUNT) continue;
+          const newRef = coordsToCell(coords.row, newCol);
+          const movedCell = moveCellRefs(cell, 0, 1, 0, col);
+          newCells.set(newRef, movedCell);
+        }
+      }
+      sheet.cells.clear();
+      for (const [ref, cell] of newCells.entries()) {
+        sheet.cells.set(ref, cell);
+      }
+
+      const newColWidths = new Map<number, number>();
+      for (const [c, w] of sheet.colWidths.entries()) {
+        if (c < col) newColWidths.set(c, w);
+        else if (c + 1 < SHEET_COL_COUNT) newColWidths.set(c + 1, w);
+      }
+      sheet.colWidths.clear();
+      for (const [c, w] of newColWidths.entries()) {
+        sheet.colWidths.set(c, w);
+      }
+
+      set({ workbook: { ...get().workbook } });
+    },
+
+    deleteCol: (col: number) => {
+      if (col < 0 || col >= SHEET_COL_COUNT) return;
+      pushHistory();
+      const sheet = get().getActiveSheet();
+      const newCells = new Map<string, Cell>();
+      for (const [ref, cell] of sheet.cells.entries()) {
+        const coords = cellToCoords(ref);
+        if (coords.col < col) {
+          newCells.set(ref, cell);
+        } else if (coords.col > col) {
+          const newCol = coords.col - 1;
+          const newRef = coordsToCell(coords.row, newCol);
+          const movedCell = moveCellRefs(cell, 0, -1, 0, col);
+          newCells.set(newRef, movedCell);
+        }
+      }
+      sheet.cells.clear();
+      for (const [ref, cell] of newCells.entries()) {
+        sheet.cells.set(ref, cell);
+      }
+
+      const newColWidths = new Map<number, number>();
+      for (const [c, w] of sheet.colWidths.entries()) {
+        if (c < col) newColWidths.set(c, w);
+        else if (c > col) newColWidths.set(c - 1, w);
+      }
+      sheet.colWidths.clear();
+      for (const [c, w] of newColWidths.entries()) {
+        sheet.colWidths.set(c, w);
+      }
+
+      const state = get();
+      const sel = state.selection;
+      if (sel.startCol >= col) {
+        const newCol = Math.max(0, sel.startCol - 1);
+        state.setSelection({ startRow: sel.startRow, startCol: newCol, endRow: sel.endRow, endCol: newCol });
+      }
+      set({ workbook: { ...get().workbook } });
+    },
+
+    fillRange: (source, target) => {
+      const sHeight = source.endRow - source.startRow + 1;
+      const sWidth = source.endCol - source.startCol + 1;
+      const tHeight = target.endRow - target.startRow + 1;
+      const tWidth = target.endCol - target.startCol + 1;
+      if (sHeight <= 0 || sWidth <= 0 || tHeight <= 0 || tWidth <= 0) return;
+
+      pushHistory();
+      const sheet = get().getActiveSheet();
+      const engine = initEngine();
+
+      const getCellValue = (r: number, c: number): number | string | null => {
+        const ref = coordsToCell(r, c);
+        const cell = sheet.cells.get(ref);
+        if (!cell) return null;
+        return cell.computed !== undefined && cell.formula ? cell.computed : cell.value;
+      };
+
+      const isSingleRow = sHeight === 1;
+      const isSingleCol = sWidth === 1;
+
+      for (let r = target.startRow; r <= target.endRow; r++) {
+        for (let c = target.startCol; c <= target.endCol; c++) {
+          if (r >= source.startRow && r <= source.endRow && c >= source.startCol && c <= source.endCol) continue;
+          const relRow = (r - source.startRow) % sHeight;
+          const relCol = (c - source.startCol) % sWidth;
+          const srcRow = source.startRow + relRow;
+          const srcCol = source.startCol + relCol;
+          const srcRef = coordsToCell(srcRow, srcCol);
+          const srcCell = sheet.cells.get(srcRef);
+          const targetRef = coordsToCell(r, c);
+
+          let value: string | undefined;
+          let formula: string | undefined;
+
+          if (isSingleCol && !srcCell?.formula) {
+            const nums: number[] = [];
+            for (let i = 0; i < sHeight; i++) {
+              const v = getCellValue(source.startRow + i, source.startCol);
+              const n = typeof v === 'number' ? v : parseFloat(String(v));
+              if (!isNaN(n) && String(v).trim() !== '') nums.push(n);
+              else break;
+            }
+            if (nums.length === sHeight && sHeight >= 2) {
+              const step = nums[1] - nums[0];
+              const idx = r - source.startRow;
+              value = String(nums[0] + step * idx);
+            }
+          } else if (isSingleRow && !srcCell?.formula) {
+            const nums: number[] = [];
+            for (let i = 0; i < sWidth; i++) {
+              const v = getCellValue(source.startRow, source.startCol + i);
+              const n = typeof v === 'number' ? v : parseFloat(String(v));
+              if (!isNaN(n) && String(v).trim() !== '') nums.push(n);
+              else break;
+            }
+            if (nums.length === sWidth && sWidth >= 2) {
+              const step = nums[1] - nums[0];
+              const idx = c - source.startCol;
+              value = String(nums[0] + step * idx);
+            }
+          }
+
+          if (srcCell) {
+            if (value === undefined && srcCell.formula) {
+              formula = shiftFormulaRefs(srcCell.formula, r - srcRow, c - srcCol, 0, 0);
+              value = formula;
+            } else if (value === undefined) {
+              value = srcCell.value;
+            }
+            const newCell: Cell = { value: value || '', style: srcCell.style };
+            if (formula) {
+              newCell.formula = formula;
+              newCell.computed = engine.evaluate(targetRef, formula);
+            }
+            sheet.cells.set(targetRef, newCell);
+          } else if (value !== undefined) {
+            sheet.cells.set(targetRef, { value: String(value) });
+          }
+        }
+      }
+      set({ workbook: { ...get().workbook } });
     },
 
     pasteCells: (text: string, startRow: number, startCol: number) => {
