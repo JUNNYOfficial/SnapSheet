@@ -1,99 +1,79 @@
-import type { Token } from '../types';
+import type { Token, TokenType } from '../types';
 
 export class Lexer {
+  private pos = 0;
   private input: string;
-  private pos: number;
 
   constructor(input: string) {
-    this.input = input;
-    this.pos = 0;
+    this.input = input.startsWith('=') ? input.slice(1) : input;
   }
 
   tokenize(): Token[] {
     const tokens: Token[] = [];
     while (this.pos < this.input.length) {
-      const char = this.input[this.pos];
-
-      if (char === ' ' || char === '\t') {
-        this.pos++;
-        continue;
-      }
-
-      if (char === '=') {
-        tokens.push({ type: 'EQ', value: '=' });
-        this.pos++;
-        continue;
-      }
-
-      if (char === '+') {
-        tokens.push({ type: 'PLUS', value: '+' });
-        this.pos++;
-        continue;
-      }
-
-      if (char === '-') {
-        tokens.push({ type: 'MINUS', value: '-' });
-        this.pos++;
-        continue;
-      }
-
-      if (char === '*') {
-        tokens.push({ type: 'MULTIPLY', value: '*' });
-        this.pos++;
-        continue;
-      }
-
-      if (char === '/') {
-        tokens.push({ type: 'DIVIDE', value: '/' });
-        this.pos++;
-        continue;
-      }
-
-      if (char === '(') {
-        tokens.push({ type: 'LPAREN', value: '(' });
-        this.pos++;
-        continue;
-      }
-
-      if (char === ')') {
-        tokens.push({ type: 'RPAREN', value: ')' });
-        this.pos++;
-        continue;
-      }
-
-      if (char === ',') {
-        tokens.push({ type: 'COMMA', value: ',' });
-        this.pos++;
-        continue;
-      }
-
-      if (this.isDigit(char) || (char === '.' && this.isDigit(this.peekNext()))) {
-        tokens.push(this.readNumber());
-        continue;
-      }
-
-      if (this.isAlpha(char)) {
-        const word = this.readWord();
-        if (/^[A-Z]+\d+$/.test(word)) {
-          if (this.peek() === ':' && this.isAlpha(this.peekNext())) {
-            const nextWord = this.readWordAhead();
-            if (/^[A-Z]+\d+$/.test(nextWord)) {
-              tokens.push({ type: 'RANGE', value: word + ':' + nextWord });
-              continue;
-            }
-          }
-          tokens.push({ type: 'CELL_REF', value: word });
-        } else {
-          tokens.push({ type: 'FUNCTION', value: word });
-        }
-        continue;
-      }
-
-      this.pos++;
+      const token = this.nextToken();
+      if (token) tokens.push(token);
     }
-
     tokens.push({ type: 'EOF', value: '' });
     return tokens;
+  }
+
+  private nextToken(): Token | null {
+    this.skipWhitespace();
+    if (this.pos >= this.input.length) return null;
+
+    const ch = this.input[this.pos];
+
+    if (ch === '+') {
+      this.pos++;
+      return { type: 'PLUS', value: '+' };
+    }
+    if (ch === '-') {
+      this.pos++;
+      return { type: 'MINUS', value: '-' };
+    }
+    if (ch === '*') {
+      this.pos++;
+      return { type: 'MULTIPLY', value: '*' };
+    }
+    if (ch === '/') {
+      this.pos++;
+      return { type: 'DIVIDE', value: '/' };
+    }
+    if (ch === '(') {
+      this.pos++;
+      return { type: 'LPAREN', value: '(' };
+    }
+    if (ch === ')') {
+      this.pos++;
+      return { type: 'RPAREN', value: ')' };
+    }
+    if (ch === ',') {
+      this.pos++;
+      return { type: 'COMMA', value: ',' };
+    }
+    if (ch === '"' || ch === "'") {
+      return this.readString(ch);
+    }
+    if (this.isDigit(ch) || ch === '.') {
+      return this.readNumber();
+    }
+    if (this.isLetter(ch)) {
+      return this.readIdentifier();
+    }
+    this.pos++;
+    return null;
+  }
+
+  private readString(quote: string): Token {
+    this.pos++;
+    let value = '';
+    while (this.pos < this.input.length && this.input[this.pos] !== quote) {
+      value += this.input[this.pos];
+      this.pos++;
+    }
+    this.pos++;
+    return { type: 'STRING', value };
   }
 
   private readNumber(): Token {
@@ -105,39 +85,51 @@ export class Lexer {
     return { type: 'NUMBER', value };
   }
 
-  private readWord(): string {
+  private readIdentifier(): Token {
     let value = '';
-    while (this.pos < this.input.length && (this.isAlpha(this.input[this.pos]) || this.isDigit(this.input[this.pos]))) {
+    let hasLetters = false;
+    let hasDigits = false;
+    const startPos = this.pos;
+
+    while (this.pos < this.input.length && (this.isLetter(this.input[this.pos]) || this.isDigit(this.input[this.pos]))) {
+      if (this.isLetter(this.input[this.pos])) hasLetters = true;
+      if (this.isDigit(this.input[this.pos])) hasDigits = true;
       value += this.input[this.pos];
       this.pos++;
     }
-    return value;
-  }
 
-  private readWordAhead(): string {
-    let tempPos = this.pos + 1;
-    let value = '';
-    while (tempPos < this.input.length && (this.isAlpha(this.input[tempPos]) || this.isDigit(this.input[tempPos]))) {
-      value += this.input[tempPos];
-      tempPos++;
+    const isCellRef = hasLetters && hasDigits && /^[A-Z]+\d+$/.test(value);
+    if (isCellRef) {
+      if (this.pos < this.input.length && this.input[this.pos] === ':') {
+        this.pos++;
+        let secondRef = '';
+        while (this.pos < this.input.length && (this.isLetter(this.input[this.pos]) || this.isDigit(this.input[this.pos]))) {
+          secondRef += this.input[this.pos];
+          this.pos++;
+        }
+        return { type: 'RANGE', value: value + ':' + secondRef };
+      }
+      return { type: 'CELL_REF', value };
     }
-    this.pos = tempPos;
-    return value;
+
+    if (this.pos < this.input.length && this.input[this.pos] === '(') {
+      return { type: 'FUNCTION', value: value.toUpperCase() };
+    }
+    void startPos;
+    return { type: 'STRING', value };
   }
 
-  private peek(): string {
-    return this.pos < this.input.length ? this.input[this.pos] : '';
+  private skipWhitespace(): void {
+    while (this.pos < this.input.length && /\s/.test(this.input[this.pos])) {
+      this.pos++;
+    }
   }
 
-  private peekNext(): string {
-    return this.pos + 1 < this.input.length ? this.input[this.pos + 1] : '';
+  private isDigit(ch: string): boolean {
+    return ch >= '0' && ch <= '9';
   }
 
-  private isDigit(char: string): boolean {
-    return char >= '0' && char <= '9';
-  }
-
-  private isAlpha(char: string): boolean {
-    return (char >= 'A' && char <= 'Z') || (char >= 'a' && char <= 'z');
+  private isLetter(ch: string): boolean {
+    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
   }
 }

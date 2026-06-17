@@ -1,37 +1,39 @@
-import type { Token, ASTNode } from '../types';
+import { Lexer } from './Lexer';
+import type { Token, TokenType, ASTNode } from '../types';
 
 export class Parser {
   private tokens: Token[];
-  private pos: number;
+  private pos = 0;
 
-  constructor(tokens: Token[]) {
-    this.tokens = tokens;
-    this.pos = 0;
+  constructor(input: string) {
+    const lexer = new Lexer(input);
+    this.tokens = lexer.tokenize();
   }
 
   parse(): ASTNode {
-    if (this.current().type === 'EQ') {
-      this.pos++;
+    const result = this.parseExpression();
+    if (this.current().type !== 'EOF') {
+      throw new Error('Unexpected token: ' + this.current().value);
     }
-    return this.parseExpression();
+    return result;
   }
 
   private parseExpression(): ASTNode {
-    return this.parseAdditive();
+    return this.parseTerm();
   }
 
-  private parseAdditive(): ASTNode {
-    let left = this.parseMultiplicative();
+  private parseTerm(): ASTNode {
+    let left = this.parseFactor();
     while (this.current().type === 'PLUS' || this.current().type === 'MINUS') {
       const op = this.current().type === 'PLUS' ? '+' : '-';
       this.pos++;
-      const right = this.parseMultiplicative();
+      const right = this.parseFactor();
       left = { type: 'binary', op, left, right };
     }
     return left;
   }
 
-  private parseMultiplicative(): ASTNode {
+  private parseFactor(): ASTNode {
     let left = this.parsePrimary();
     while (this.current().type === 'MULTIPLY' || this.current().type === 'DIVIDE') {
       const op = this.current().type === 'MULTIPLY' ? '*' : '/';
@@ -50,6 +52,11 @@ export class Parser {
       return { type: 'number', value: parseFloat(token.value) };
     }
 
+    if (token.type === 'STRING') {
+      this.pos++;
+      return { type: 'string', value: token.value };
+    }
+
     if (token.type === 'CELL_REF') {
       this.pos++;
       return { type: 'cell', ref: token.value };
@@ -62,48 +69,48 @@ export class Parser {
     }
 
     if (token.type === 'FUNCTION') {
-      return this.parseFunction();
+      const name = token.value;
+      this.pos++;
+      this.expect('LPAREN');
+      const args: ASTNode[] = [];
+      if (this.current().type !== 'RPAREN') {
+        args.push(this.parseExpression());
+        while (this.current().type === 'COMMA') {
+          this.pos++;
+          args.push(this.parseExpression());
+        }
+      }
+      this.expect('RPAREN');
+      return { type: 'function', name, args };
     }
 
     if (token.type === 'LPAREN') {
       this.pos++;
       const expr = this.parseExpression();
-      if (this.current().type === 'RPAREN') {
-        this.pos++;
-      }
+      this.expect('RPAREN');
       return expr;
     }
 
-    this.pos++;
-    return { type: 'number', value: 0 };
-  }
-
-  private parseFunction(): ASTNode {
-    const name = this.current().value;
-    this.pos++;
-
-    if (this.current().type !== 'LPAREN') {
-      return { type: 'cell', ref: name };
-    }
-    this.pos++;
-
-    const args: ASTNode[] = [];
-    if (this.current().type !== 'RPAREN') {
-      args.push(this.parseExpression());
-      while (this.current().type === 'COMMA') {
-        this.pos++;
-        args.push(this.parseExpression());
-      }
-    }
-
-    if (this.current().type === 'RPAREN') {
+    if (token.type === 'MINUS') {
       this.pos++;
+      const primary = this.parsePrimary();
+      if (primary.type === 'number') {
+        return { type: 'number', value: -primary.value };
+      }
+      return { type: 'binary', op: '-', left: { type: 'number', value: 0 }, right: primary };
     }
 
-    return { type: 'function', name: name.toUpperCase(), args };
+    throw new Error('Unexpected token: ' + token.value);
   }
 
   private current(): Token {
-    return this.tokens[this.pos] || { type: 'EOF', value: '' };
+    return this.tokens[this.pos];
+  }
+
+  private expect(type: TokenType): void {
+    if (this.current().type !== type) {
+      throw new Error('Expected ' + type + ' but got ' + this.current().type);
+    }
+    this.pos++;
   }
 }
