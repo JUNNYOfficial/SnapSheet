@@ -1,9 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { CanvasRenderer } from '../canvas/CanvasRenderer';
 import { useSpreadsheetStore, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../store/useSpreadsheetStore';
-import { coordsToCell, colToLetter } from '../utils/cellRef';
+import { coordsToCell } from '../utils/cellRef';
 import {
-  DEFAULT_COL_WIDTH,
   DEFAULT_ROW_HEIGHT,
   HEADER_COL_WIDTH,
   HEADER_ROW_HEIGHT,
@@ -167,5 +166,3 @@ export default function Spreadsheet() {
     </div>
   );
 }
-
-export { DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT, HEADER_COL_WIDTH, HEADER_ROW_HEIGHT, colToLetter };

@@ -557,23 +557,12 @@ export class CanvasRenderer {
       }
 
       if (e.key === 'ArrowUp') {
-        if (e.shiftKey) {
-          row = Math.max(0, row - 1);
-          changed = true;
-        } else {
-          row = Math.max(0, row - 1);
-          col = col;
-          changed = true;
-        }
+        row = Math.max(0, row - 1);
+        changed = true;
         e.preventDefault();
       } else if (e.key === 'ArrowDown') {
-        if (e.shiftKey) {
-          row = Math.min(this.opts.maxRows - 1, row + 1);
-          changed = true;
-        } else {
-          row = Math.min(this.opts.maxRows - 1, row + 1);
-          changed = true;
-        }
+        row = Math.min(this.opts.maxRows - 1, row + 1);
+        changed = true;
         e.preventDefault();
       } else if (e.key === 'ArrowLeft') {
         col = Math.max(0, col - 1);

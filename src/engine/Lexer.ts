@@ -1,4 +1,4 @@
-import type { Token, TokenType } from '../types';
+import type { Token } from '../types';
 
 export class Lexer {
   private pos = 0;
