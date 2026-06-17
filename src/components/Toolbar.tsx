@@ -240,6 +240,15 @@ export default function Toolbar() {
 
       <div className={dividerBase} />
 
+      <button onClick={() => store.getState().undo()} className={btnBase} title="撤销 (Ctrl+Z)">
+        撤销
+      </button>
+      <button onClick={() => store.getState().redo()} className={btnBase} title="重做 (Ctrl+Y)">
+        重做
+      </button>
+
+      <div className={dividerBase} />
+
       <div className="flex items-center gap-1">
         <button onClick={() => { handleAnalyze(); setAiOpen(true); }} className={btnBase} title="AI 分析">
           分析

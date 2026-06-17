@@ -36,6 +36,8 @@ interface SpreadsheetState {
   clearSelection: () => void;
   undo: () => void;
   redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
   loadWorkbook: (workbook: Workbook) => void;
   newWorkbook: () => void;
 }
@@ -171,29 +173,42 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     graph: null as ReturnType<typeof createDefaultFormulaEngine>['graph'] | null,
   };
 
-  const history: Map<string, Cell>[] = [];
-  const redoStack: Map<string, Cell>[] = [];
+  interface SheetSnapshot {
+    cells: Map<string, Cell>;
+    colWidths: Map<number, number>;
+  }
 
-  const snapshotActiveSheetCells = (): Map<string, Cell> => {
+  const history: SheetSnapshot[] = [];
+  const redoStack: SheetSnapshot[] = [];
+
+  const snapshotActiveSheet = (): SheetSnapshot => {
     const sheet = get().getActiveSheet();
-    const snapshot = new Map<string, Cell>();
+    const cells = new Map<string, Cell>();
     for (const [key, cell] of sheet.cells.entries()) {
-      snapshot.set(key, { ...cell });
+      cells.set(key, { ...cell });
     }
-    return snapshot;
+    const colWidths = new Map<number, number>();
+    for (const [key, width] of sheet.colWidths.entries()) {
+      colWidths.set(key, width);
+    }
+    return { cells, colWidths };
   };
 
   const pushHistory = () => {
-    history.push(snapshotActiveSheetCells());
+    history.push(snapshotActiveSheet());
     while (history.length > 100) history.shift();
     redoStack.length = 0;
   };
 
-  const restoreCellsFromSnapshot = (snapshot: Map<string, Cell>) => {
+  const restoreFromSnapshot = (snapshot: SheetSnapshot) => {
     const sheet = get().getActiveSheet();
     sheet.cells.clear();
-    for (const [key, cell] of snapshot.entries()) {
+    for (const [key, cell] of snapshot.cells.entries()) {
       sheet.cells.set(key, { ...cell });
+    }
+    sheet.colWidths.clear();
+    for (const [key, width] of snapshot.colWidths.entries()) {
+      sheet.colWidths.set(key, width);
     }
     set({ workbook: { ...get().workbook } });
   };
@@ -312,9 +327,16 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     },
 
     setCellStyle: (row: number, col: number, style: CellStyle) => {
+      if (row < 0 || row >= SHEET_ROW_COUNT || col < 0 || col >= SHEET_COL_COUNT) return;
       const sheet = get().getActiveSheet();
       const ref = coordsToCell(row, col);
       const cell = sheet.cells.get(ref) || { value: '' };
+      const existingStyle = cell.style || {};
+      const needsUpdate = Object.entries(style).some(
+        ([k, v]) => (existingStyle as Record<string, unknown>)[k] !== v
+      );
+      if (!needsUpdate) return;
+      pushHistory();
       cell.style = { ...cell.style, ...style };
       sheet.cells.set(ref, cell);
       set({ workbook: { ...get().workbook } });
@@ -329,14 +351,24 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       const minCol = Math.max(0, Math.min(SHEET_COL_COUNT - 1, Math.min(sel.startCol, sel.endCol)));
       const maxCol = Math.max(0, Math.min(SHEET_COL_COUNT - 1, Math.max(sel.startCol, sel.endCol)));
 
+      let hasChanges = false;
       for (let r = minRow; r <= maxRow; r++) {
         for (let c = minCol; c <= maxCol; c++) {
           const ref = coordsToCell(r, c);
           const cell = sheet.cells.get(ref) || { value: '' };
-          cell.style = { ...cell.style, ...style };
-          sheet.cells.set(ref, cell);
+          const existingStyle = cell.style || {};
+          const needsUpdate = Object.entries(style).some(
+            ([k, v]) => (existingStyle as Record<string, unknown>)[k] !== v
+          );
+          if (needsUpdate) {
+            hasChanges = true;
+            cell.style = { ...cell.style, ...style };
+            sheet.cells.set(ref, cell);
+          }
         }
       }
+      if (!hasChanges) return;
+      pushHistory();
       set({ workbook: { ...get().workbook } });
     },
 
@@ -374,6 +406,9 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     setColWidth: (col: number, width: number) => {
       if (col < 0 || col >= SHEET_COL_COUNT) return;
       const sheet = get().getActiveSheet();
+      const existing = sheet.colWidths.get(col);
+      if (existing === width) return;
+      pushHistory();
       sheet.colWidths.set(col, width);
       set({ workbook: { ...get().workbook } });
     },
@@ -478,19 +513,22 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
 
     undo: () => {
       if (history.length === 0) return;
-      const current = snapshotActiveSheetCells();
+      const current = snapshotActiveSheet();
       redoStack.push(current);
       const previous = history.pop()!;
-      restoreCellsFromSnapshot(previous);
+      restoreFromSnapshot(previous);
     },
 
     redo: () => {
       if (redoStack.length === 0) return;
-      const current = snapshotActiveSheetCells();
+      const current = snapshotActiveSheet();
       history.push(current);
       const next = redoStack.pop()!;
-      restoreCellsFromSnapshot(next);
+      restoreFromSnapshot(next);
     },
+
+    canUndo: () => history.length > 0,
+    canRedo: () => redoStack.length > 0,
 
     loadWorkbook: (workbook: Workbook) => {
       set({
