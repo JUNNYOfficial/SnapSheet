@@ -194,6 +194,11 @@ export class CanvasRenderer {
           r.row >= minRow && r.row <= maxRow &&
           c.col >= minCol && c.col <= maxCol;
 
+        if (cell?.style?.bgColor) {
+          ctx.fillStyle = cell.style.bgColor;
+          ctx.fillRect(c.x, r.y, c.width, r.height);
+        }
+
         if (isSelected) {
           ctx.fillStyle = SELECTED_BG;
           ctx.fillRect(c.x, r.y, c.width, r.height);
@@ -205,7 +210,7 @@ export class CanvasRenderer {
           const isNumeric = !isError && !isNaN(parseFloat(display)) && !cell.formula;
           const hasExplicitAlign = cell.style?.align !== undefined;
           ctx.font = cell.style?.bold ? 'bold ' + CELL_FONT : CELL_FONT;
-          ctx.fillStyle = isError ? ERROR_TEXT : CELL_TEXT;
+          ctx.fillStyle = isError ? ERROR_TEXT : (cell.style?.color || CELL_TEXT);
           ctx.textBaseline = 'middle';
           ctx.textAlign = hasExplicitAlign
             ? cell.style!.align === 'right'

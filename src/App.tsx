@@ -1,11 +1,26 @@
+import { useState, useEffect } from 'react';
 import Toolbar from './components/Toolbar';
 import FormulaBar from './components/FormulaBar';
 import Spreadsheet from './components/Spreadsheet';
 import SheetTabs from './components/SheetTabs';
+import FindDialog from './components/FindDialog';
 
 export default function App() {
+  const [findOpen, setFindOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        setFindOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
-    <div className="flex h-screen w-screen flex-col bg-neutral-100" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}>
+    <div className="relative flex h-screen w-screen flex-col bg-neutral-100" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}>
       <div className="border-b border-neutral-200 bg-white px-6 py-2.5">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded border border-neutral-300 bg-neutral-50">
@@ -21,6 +36,7 @@ export default function App() {
       <FormulaBar />
       <Spreadsheet />
       <SheetTabs />
+      <FindDialog open={findOpen} onClose={() => setFindOpen(false)} />
     </div>
   );
 }

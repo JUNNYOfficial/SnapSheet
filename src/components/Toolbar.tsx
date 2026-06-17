@@ -234,6 +234,23 @@ export default function Toolbar() {
 
       <div className={dividerBase} />
 
+      <div className="flex items-center gap-1">
+        <button onClick={() => store.getState().applyStyleToSelection({ bgColor: '#f5f5f5' })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="浅灰背景">
+          灰
+        </button>
+        <button onClick={() => store.getState().applyStyleToSelection({ bgColor: '#e5e5e5' })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="中灰背景">
+          深灰
+        </button>
+        <button onClick={() => store.getState().applyStyleToSelection({ bgColor: '#262626', color: '#ffffff' })} className="rounded px-2 py-1.5 text-xs text-white bg-neutral-800 hover:bg-neutral-700" title="黑底白字">
+          黑
+        </button>
+        <button onClick={() => store.getState().applyStyleToSelection({ bgColor: undefined })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="清除背景色">
+          无
+        </button>
+      </div>
+
+      <div className={dividerBase} />
+
       <button onClick={handleClear} className={btnBase} title="清除选中区域">
         清除
       </button>
