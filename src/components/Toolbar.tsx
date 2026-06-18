@@ -4,6 +4,7 @@ import { toCSV } from '../utils/csv';
 import { workbookToJSON, workbookFromJSON, downloadFile } from '../utils/json';
 import { colToLetter, coordsToCell } from '../utils/cellRef';
 import { TEMPLATES } from '../templates';
+import { FONT_OPTIONS } from '../utils/constants';
 
 interface ToolbarProps {
   isDark?: boolean;
@@ -252,6 +253,25 @@ export default function Toolbar({ isDark = false, onToggleTheme }: ToolbarProps)
         <button onClick={handleBold} className="rounded px-2.5 py-1.5 text-sm hover:opacity-80" style={toolbarBtnStyle} title="加粗">
           <span style={{ fontWeight: 700 }}>B</span>
         </button>
+        <select
+          value=""
+          onChange={(e) => {
+            if (e.target.value) {
+              store.getState().applyStyleToSelection({ fontFamily: e.target.value });
+              e.target.value = '';
+            }
+          }}
+          className="rounded border px-1 py-1.5 text-sm outline-none"
+          style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)', fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}
+          title="字体"
+        >
+          <option value="">字体</option>
+          {FONT_OPTIONS.map((f) => (
+            <option key={f.label} value={f.value} style={{ fontFamily: f.value }}>
+              {f.label}
+            </option>
+          ))}
+        </select>
         <button onClick={handleAlignLeft} className="rounded px-2.5 py-1.5 text-sm hover:opacity-80" style={toolbarBtnStyle} title="左对齐">
           左
         </button>

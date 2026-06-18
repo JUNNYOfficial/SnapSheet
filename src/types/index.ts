@@ -8,6 +8,7 @@ export interface CellStyle {
   align?: 'left' | 'center' | 'right';
   color?: string;
   bgColor?: string;
+  fontFamily?: string;
   wrap?: boolean;
   borderTop?: BorderStyle;
   borderBottom?: BorderStyle;

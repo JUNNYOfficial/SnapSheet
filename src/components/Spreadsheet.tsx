@@ -122,6 +122,12 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
     if (rendererRef.current) rendererRef.current.render();
   });
 
+  const getEditCell = () => {
+    if (!editing) return undefined;
+    const sheet = store.getState().getActiveSheet();
+    return sheet.cells.get(coordsToCell(editing.row, editing.col));
+  };
+
   const getEditInputStyle = () => {
     if (!editing) return {};
     const colWidths: number[] = [];
@@ -181,7 +187,7 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
             borderColor: 'var(--ss-selected-border)',
             background: 'var(--ss-bg)',
             color: 'var(--ss-cell-text)',
-            fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace',
+            fontFamily: getEditCell()?.style?.fontFamily || 'SimSun, 宋体, SimHei, 黑体, monospace',
             fontSize: '13px',
             lineHeight: String(DEFAULT_ROW_HEIGHT) + 'px',
           }}

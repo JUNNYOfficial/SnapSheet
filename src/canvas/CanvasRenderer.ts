@@ -92,6 +92,14 @@ export class CanvasRenderer {
     return this.theme[key];
   }
 
+  private buildCellFont(style?: Cell['style']): string {
+    const family = style?.fontFamily || CELL_FONT;
+    // If a custom fontFamily is provided, it may already include size; otherwise prepend size.
+    const hasSize = /\d+px/.test(family);
+    const font = hasSize ? family : FONT_SIZE + 'px ' + family;
+    return style?.bold ? 'bold ' + font : font;
+  }
+
   scrollIntoView(row: number, col: number): void {
     const canvas = this.opts.canvas;
     const rect = canvas.getBoundingClientRect();
@@ -307,7 +315,7 @@ export class CanvasRenderer {
           const formattedDisplay = isError ? display : this.formatCellValue(display, cell.numberFormat);
           const isNumeric = !isError && !isNaN(parseFloat(display)) && !cell.formula;
           const hasExplicitAlign = cell.style?.align !== undefined;
-          ctx.font = cell.style?.bold ? 'bold ' + CELL_FONT : CELL_FONT;
+          ctx.font = this.buildCellFont(cell.style);
           ctx.fillStyle = isError ? this.themeColor('errorText') : (cell.style?.color || this.themeColor('cellText'));
           ctx.textBaseline = 'middle';
           ctx.textAlign = hasExplicitAlign
