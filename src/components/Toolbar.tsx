@@ -173,21 +173,48 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    // 检查文件类型
+    const validTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'application/octet-stream'
+    ];
+    const extension = file.name.toLowerCase().split('.').pop();
+    
+    if (!validTypes.includes(file.type) && !['xlsx', 'xls'].includes(extension || '')) {
+      alert('请选择有效的 Excel 文件（.xlsx 或 .xls）');
+      if (excelInputRef.current) excelInputRef.current.value = '';
+      return;
+    }
+    
     try {
       const result = await importFromExcel(file);
-      const sheet = store.getState().getActiveSheet();
+      
+      // 检查返回的数据是否有效
+      if (!result.sheets || result.sheets.length === 0) {
+        alert('Excel 文件中没有可导入的工作表');
+        return;
+      }
+      
       // 清除现有数据
       store.getState().newWorkbook();
+      
       // 导入第一个工作表的数据
-      if (result.sheets.length > 0) {
-        const importedSheet = result.sheets[0];
-        importedSheet.data.forEach((cell, ref) => {
-          const [row, col] = ref.split(':').map(Number);
-          store.getState().setCellValue(row, col, cell.value);
+      const importedSheet = result.sheets[0];
+      if (importedSheet.data && importedSheet.data.length > 0) {
+        importedSheet.data.forEach((cell) => {
+          // 确保行列索引有效
+          if (cell.row >= 0 && cell.col >= 0) {
+            store.getState().setCellValue(cell.row, cell.col, cell.value);
+          }
         });
+        alert(`成功导入 Excel 文件：${file.name}，共 ${importedSheet.data.length} 个单元格`);
+      } else {
+        alert(`成功导入 Excel 文件：${file.name}，但文件中没有数据`);
       }
-      alert(`成功导入 Excel 文件：${file.name}`);
     } catch (err) {
+      console.error('Excel 导入错误:', err);
       alert('导入 Excel 文件失败: ' + (err as Error).message);
     }
     if (excelInputRef.current) excelInputRef.current.value = '';

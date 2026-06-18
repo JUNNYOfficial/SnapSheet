@@ -61,27 +61,67 @@ export function exportToExcel(workbook: Workbook, filename: string = 'snapsheet.
   URL.revokeObjectURL(url);
 }
 
-export function importFromExcel(file: File): Promise<{ name: string; sheets: { name: string; data: Map<string, { value: any; formula?: string }> }[] }> {
+export function importFromExcel(file: File): Promise<{
+  name: string;
+  sheets: {
+    name: string;
+    data: { row: number; col: number; value: any; formula?: string }[];
+  }[];
+}> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const data = e.target?.result;
-        const wb = XLSX.read(data, { type: 'array' });
+        if (!e.target?.result) {
+          reject(new Error('文件读取结果为空'));
+          return;
+        }
+        const data = e.target.result;
+        
+        // 检查数据是否有效
+        if (!(data instanceof ArrayBuffer) && typeof data !== 'string') {
+          reject(new Error('无效的文件数据格式'));
+          return;
+        }
+        
+        const wb = XLSX.read(data, { type: ArrayBuffer.isView(data) ? 'array' : 'binary', cellDates: true, cellNF: true });
 
-        const sheets: { name: string; data: Map<string, { value: any; formula?: string }> }[] = [];
+        // 检查工作表是否存在
+        if (!wb.SheetNames || wb.SheetNames.length === 0) {
+          reject(new Error('Excel 文件中没有工作表'));
+          return;
+        }
+
+        const sheets: {
+          name: string;
+          data: { row: number; col: number; value: any; formula?: string }[];
+        }[] = [];
 
         wb.SheetNames.forEach((sheetName) => {
           const ws = wb.Sheets[sheetName];
-          const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null }) as (string | number | null)[][];
+          if (!ws) {
+            return;
+          }
+          
+          // 使用 sheet_to_json 进行转换，设置 defval: null 处理空单元格
+          const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false }) as (string | number | null | Date)[][];
 
-          const cells = new Map<string, { value: any; formula?: string }>();
+          const cells: { row: number; col: number; value: any; formula?: string }[] = [];
 
           json.forEach((row, rowIndex) => {
+            if (!row) return;
             row.forEach((cell, colIndex) => {
-              if (cell !== null && cell !== undefined) {
-                const ref = coordsToCell(rowIndex, colIndex);
-                cells.set(ref, { value: cell });
+              // 处理日期对象
+              let value: any = cell;
+              if (cell instanceof Date) {
+                value = cell.toISOString().slice(0, 10);
+              } else if (cell !== null && cell !== undefined) {
+                value = String(cell);
+              }
+              
+              // 只添加非空单元格
+              if (value !== null && value !== undefined && value !== '') {
+                cells.push({ row: rowIndex, col: colIndex, value });
               }
             });
           });
@@ -92,16 +132,23 @@ export function importFromExcel(file: File): Promise<{ name: string; sheets: { n
           });
         });
 
+        // 确保至少有一个工作表
+        if (sheets.length === 0) {
+          reject(new Error('Excel 文件中没有有效的工作表'));
+          return;
+        }
+
         resolve({
           name: wb.SheetNames[0] || 'Sheet1',
           sheets,
         });
       } catch (error) {
+        console.error('Excel 解析错误:', error);
         reject(new Error('无法解析 Excel 文件: ' + (error as Error).message));
       }
     };
     reader.onerror = () => {
-      reject(new Error('读取文件失败'));
+      reject(new Error('读取文件失败，请重试'));
     };
     reader.readAsArrayBuffer(file);
   });
