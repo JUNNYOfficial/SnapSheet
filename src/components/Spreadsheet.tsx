@@ -62,6 +62,7 @@ export default function Spreadsheet() {
         setContextMenu({ x, y });
       },
       getMergedRange: (row, col) => store.getState().getMergedRange(row, col),
+      getConditionalFormats: () => store.getState().getActiveSheet().conditionalFormats,
       onScrollChange: (left, top) => store.getState().setScroll(left, top),
       maxRows: SHEET_ROW_COUNT,
       maxCols: SHEET_COL_COUNT,

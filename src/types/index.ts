@@ -22,12 +22,15 @@ export interface NumberFormat {
 }
 
 export interface ConditionalFormat {
+  range: { startRow: number; startCol: number; endRow: number; endCol: number };
   type: 'colorScale' | 'dataBar' | 'iconSet' | 'value';
   condition: 'greaterThan' | 'lessThan' | 'equalTo' | 'between' | 'containsText' | 'topN' | 'bottomN' | 'aboveAverage' | 'belowAverage';
   value?: number | string;
   value2?: number | string;
   color?: string;
   bgColor?: string;
+  minColor?: string;
+  maxColor?: string;
 }
 
 export interface Cell {

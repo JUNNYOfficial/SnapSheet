@@ -309,6 +309,66 @@ export default function Toolbar() {
       <div className={dividerBase} />
 
       <div className="flex items-center gap-1">
+        <button
+          onClick={() => {
+            const sel = store.getState().selection;
+            const value = window.prompt('高亮大于多少的单元格？', '0');
+            if (value === null) return;
+            store.getState().addConditionalFormat({
+              range: { startRow: Math.min(sel.startRow, sel.endRow), startCol: Math.min(sel.startCol, sel.endCol), endRow: Math.max(sel.startRow, sel.endRow), endCol: Math.max(sel.startCol, sel.endCol) },
+              type: 'value',
+              condition: 'greaterThan',
+              value: parseFloat(value),
+              bgColor: '#e5e5e5',
+            });
+          }}
+          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          title="高亮大于某值的单元格"
+        >
+          大于
+        </button>
+        <button
+          onClick={() => {
+            const sel = store.getState().selection;
+            const value = window.prompt('高亮小于多少的单元格？', '0');
+            if (value === null) return;
+            store.getState().addConditionalFormat({
+              range: { startRow: Math.min(sel.startRow, sel.endRow), startCol: Math.min(sel.startCol, sel.endCol), endRow: Math.max(sel.startRow, sel.endRow), endCol: Math.max(sel.startCol, sel.endCol) },
+              type: 'value',
+              condition: 'lessThan',
+              value: parseFloat(value),
+              bgColor: '#d4d4d4',
+            });
+          }}
+          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          title="高亮小于某值的单元格"
+        >
+          小于
+        </button>
+        <button
+          onClick={() => {
+            const sel = store.getState().selection;
+            store.getState().addConditionalFormat({
+              range: { startRow: Math.min(sel.startRow, sel.endRow), startCol: Math.min(sel.startCol, sel.endCol), endRow: Math.max(sel.startRow, sel.endRow), endCol: Math.max(sel.startCol, sel.endCol) },
+              type: 'colorScale',
+              condition: 'between',
+              minColor: '#fee2e2',
+              maxColor: '#dcfce7',
+            });
+          }}
+          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          title="颜色刻度"
+        >
+          色阶
+        </button>
+        <button onClick={() => store.getState().clearConditionalFormats()} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="清除条件格式">
+          清色阶
+        </button>
+      </div>
+
+      <div className={dividerBase} />
+
+      <div className="flex items-center gap-1">
         <button onClick={() => store.getState().applyStyleToSelection({ bgColor: '#f5f5f5' })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="浅灰背景">
           灰
         </button>

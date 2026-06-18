@@ -15,7 +15,7 @@ import {
   FONT_SIZE,
 } from '../utils/constants';
 import { colToLetter } from '../utils/cellRef';
-import type { Cell, Selection, MergeRange } from '../types';
+import type { Cell, Selection, MergeRange, ConditionalFormat } from '../types';
 
 export interface CanvasRendererOptions {
   canvas: HTMLCanvasElement;
@@ -37,6 +37,7 @@ export interface CanvasRendererOptions {
   onFill: (source: { startRow: number; startCol: number; endRow: number; endCol: number }, target: { startRow: number; startCol: number; endRow: number; endCol: number }) => void;
   onContextMenu: (row: number, col: number, x: number, y: number) => void;
   getMergedRange: (row: number, col: number) => MergeRange | null;
+  getConditionalFormats: () => ConditionalFormat[];
   maxRows: number;
   maxCols: number;
   selection: Selection;
@@ -220,8 +221,19 @@ export class CanvasRenderer {
         const isMergedChild = merge && !isMergeMain;
         const mergeKey = merge ? `${merge.startRow},${merge.startCol}` : `${r.row},${c.col}`;
 
-        if (cell?.style?.bgColor || isSelected) {
-          ctx.fillStyle = isSelected ? SELECTED_BG : cell!.style!.bgColor!;
+        if (cell?.style?.bgColor) {
+          ctx.fillStyle = cell.style.bgColor;
+          ctx.fillRect(c.x, r.y, c.width, r.height);
+        }
+
+        const conditionalBg = this.getConditionalBgColor(r.row, c.col, cell);
+        if (conditionalBg) {
+          ctx.fillStyle = conditionalBg;
+          ctx.fillRect(c.x, r.y, c.width, r.height);
+        }
+
+        if (isSelected) {
+          ctx.fillStyle = SELECTED_BG;
           ctx.fillRect(c.x, r.y, c.width, r.height);
         }
 
@@ -434,6 +446,75 @@ export class CanvasRenderer {
         ctx.restore();
       }
     }
+  }
+
+  private getConditionalBgColor(row: number, col: number, cell: Cell | undefined): string | null {
+    const formats = this.opts.getConditionalFormats();
+    if (formats.length === 0) return null;
+    let colorScaleValue: number | null = null;
+    let colorScaleFormat: ConditionalFormat | null = null;
+
+    for (const f of formats) {
+      if (row < f.range.startRow || row > f.range.endRow || col < f.range.startCol || col > f.range.endCol) continue;
+      const v = cell?.computed !== undefined && cell?.formula ? cell.computed : cell?.value;
+      const num = typeof v === 'number' ? v : parseFloat(v as string);
+
+      if (f.type === 'colorScale') {
+        if (!isNaN(num)) {
+          colorScaleValue = num;
+          colorScaleFormat = f;
+        }
+        continue;
+      }
+
+      if (f.type === 'value') {
+        const cv = f.value !== undefined ? (typeof f.value === 'number' ? f.value : parseFloat(f.value)) : NaN;
+        if (isNaN(num) || isNaN(cv)) continue;
+        if (f.condition === 'greaterThan' && num > cv && f.bgColor) return f.bgColor;
+        if (f.condition === 'lessThan' && num < cv && f.bgColor) return f.bgColor;
+        if (f.condition === 'equalTo' && num === cv && f.bgColor) return f.bgColor;
+      }
+    }
+
+    if (colorScaleFormat && colorScaleValue !== null) {
+      const f = colorScaleFormat;
+      let min = Infinity;
+      let max = -Infinity;
+      for (let r = f.range.startRow; r <= f.range.endRow; r++) {
+        for (let c = f.range.startCol; c <= f.range.endCol; c++) {
+          const other = this.opts.getCell(r, c);
+          const ov = other?.computed !== undefined && other?.formula ? other.computed : other?.value;
+          const on = typeof ov === 'number' ? ov : parseFloat(ov as string);
+          if (!isNaN(on)) {
+            if (on < min) min = on;
+            if (on > max) max = on;
+          }
+        }
+      }
+      if (min !== Infinity && max !== -Infinity && max !== min) {
+        const ratio = (colorScaleValue - min) / (max - min);
+        return this.interpolateColor(f.minColor || '#fee2e2', f.maxColor || '#dcfce7', ratio);
+      }
+    }
+
+    return null;
+  }
+
+  private interpolateColor(start: string, end: string, ratio: number): string {
+    const parse = (hex: string) => {
+      const h = hex.replace('#', '');
+      return {
+        r: parseInt(h.substring(0, 2), 16),
+        g: parseInt(h.substring(2, 4), 16),
+        b: parseInt(h.substring(4, 6), 16),
+      };
+    };
+    const s = parse(start);
+    const e = parse(end);
+    const r = Math.round(s.r + (e.r - s.r) * ratio);
+    const g = Math.round(s.g + (e.g - s.g) * ratio);
+    const b = Math.round(s.b + (e.b - s.b) * ratio);
+    return `rgb(${r}, ${g}, ${b})`;
   }
 
   private renderCellBorders(

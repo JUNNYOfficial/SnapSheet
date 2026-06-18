@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Cell, Sheet, Workbook, Selection, CellStyle, NumberFormat, BorderStyle, MergeRange } from '../types';
+import type { Cell, Sheet, Workbook, Selection, CellStyle, NumberFormat, BorderStyle, MergeRange, ConditionalFormat } from '../types';
 import { DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT, MIN_ROW_HEIGHT, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../utils/constants';
 import { coordsToCell, cellToCoords, colToLetter, letterToCol } from '../utils/cellRef';
 import { createDefaultFormulaEngine } from '../engine/FormulaEngine';
@@ -50,6 +50,9 @@ interface SpreadsheetState {
   unmergeCells: () => void;
   getMergedRange: (row: number, col: number) => MergeRange | null;
   isCellMerged: (row: number, col: number) => boolean;
+
+  addConditionalFormat: (format: ConditionalFormat) => void;
+  clearConditionalFormats: () => void;
 
   pasteCells: (text: string, startRow: number, startCol: number) => void;
   copySelection: () => string;
@@ -967,6 +970,21 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
 
     isCellMerged: (row: number, col: number) => {
       return get().getMergedRange(row, col) !== null;
+    },
+
+    addConditionalFormat: (format: ConditionalFormat) => {
+      const sheet = get().getActiveSheet();
+      sheet.conditionalFormats.push(format);
+      pushHistory();
+      set({ workbook: { ...get().workbook } });
+    },
+
+    clearConditionalFormats: () => {
+      const sheet = get().getActiveSheet();
+      if (sheet.conditionalFormats.length === 0) return;
+      sheet.conditionalFormats = [];
+      pushHistory();
+      set({ workbook: { ...get().workbook } });
     },
 
     pasteCells: (text: string, startRow: number, startCol: number) => {

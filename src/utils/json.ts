@@ -14,6 +14,7 @@ interface SerializableSheet {
   colWidths: Record<number, number>;
   rowHeights: Record<number, number>;
   mergedCells?: Record<string, { startRow: number; startCol: number; endRow: number; endCol: number }>;
+  conditionalFormats?: Sheet['conditionalFormats'];
 }
 
 interface SerializableWorkbook {
@@ -35,6 +36,7 @@ export function workbookToJSON(workbook: Workbook): string {
       colWidths: Object.fromEntries(Array.from(sheet.colWidths.entries())),
       rowHeights: Object.fromEntries(Array.from(sheet.rowHeights.entries())),
       mergedCells: Object.fromEntries(Array.from(sheet.mergedCells.entries())),
+      conditionalFormats: sheet.conditionalFormats,
     })),
   };
   return JSON.stringify(serializable, null, 2);
