@@ -267,6 +267,12 @@ export default function Toolbar() {
         <button onClick={() => store.getState().applyNumberFormat(null)} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="常规">
           常规
         </button>
+        <button onClick={() => store.getState().applyNumberFormat({ type: 'currency', decimalPlaces: 2, currencySymbol: '¥' })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="货币">
+          ¥
+        </button>
+        <button onClick={() => store.getState().applyNumberFormat({ type: 'date' })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="日期">
+          日期
+        </button>
       </div>
 
       <div className={dividerBase} />
