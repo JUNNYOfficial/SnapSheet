@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useSpreadsheetStore } from '../store/useSpreadsheetStore';
 import { toCSV } from '../utils/csv';
 import { workbookToJSON, workbookFromJSON, downloadFile } from '../utils/json';
+import { exportToExcel, importFromExcel } from '../utils/excel';
 import { coordsToCell } from '../utils/cellRef';
 import { TEMPLATES } from '../templates';
 import { FONT_OPTIONS } from '../utils/constants';
@@ -82,6 +83,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   const selection = useSpreadsheetStore((s) => s.selection);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
+  const excelInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<RibbonTab>('home');
   const [collapsed, setCollapsed] = useState(false);
   const canUndo = store.getState().canUndo();
@@ -161,6 +163,34 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
     };
     reader.readAsText(file);
     if (jsonInputRef.current) jsonInputRef.current.value = '';
+  };
+
+  const handleExportExcel = () => {
+    const wb = store.getState().workbook;
+    exportToExcel(wb, 'snapsheet.xlsx');
+  };
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const result = await importFromExcel(file);
+      const sheet = store.getState().getActiveSheet();
+      // 清除现有数据
+      store.getState().newWorkbook();
+      // 导入第一个工作表的数据
+      if (result.sheets.length > 0) {
+        const importedSheet = result.sheets[0];
+        importedSheet.data.forEach((cell, ref) => {
+          const [row, col] = ref.split(':').map(Number);
+          store.getState().setCellValue(row, col, cell.value);
+        });
+      }
+      alert(`成功导入 Excel 文件：${file.name}`);
+    } catch (err) {
+      alert('导入 Excel 文件失败: ' + (err as Error).message);
+    }
+    if (excelInputRef.current) excelInputRef.current.value = '';
   };
 
   const handleBold = () => {
@@ -329,11 +359,14 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
               <TooltipButton onClick={() => fileInputRef.current?.click()} icon={<Upload size={16} />} label="CSV" title="导入 CSV" variant="both" />
               <input ref={jsonInputRef} type="file" accept=".json" className="hidden" onChange={handleImportJSON} />
               <TooltipButton onClick={() => jsonInputRef.current?.click()} icon={<Upload size={16} />} label="JSON" title="导入 JSON" variant="both" />
+              <input ref={excelInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
+              <TooltipButton onClick={() => excelInputRef.current?.click()} icon={<Upload size={16} />} label="Excel" title="导入 Excel (.xlsx/.xls)" variant="both" />
             </Group>
             <Divider />
             <Group title="导出">
               <TooltipButton onClick={handleExportCSV} icon={<Download size={16} />} label="CSV" title="导出 CSV" variant="both" />
               <TooltipButton onClick={handleExportJSON} icon={<Download size={16} />} label="JSON" title="导出 JSON" variant="both" />
+              <TooltipButton onClick={handleExportExcel} icon={<Download size={16} />} label="Excel" title="导出 Excel (.xlsx)" variant="both" />
             </Group>
           </>
         )}
