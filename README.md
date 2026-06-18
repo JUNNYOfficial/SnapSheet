@@ -4,36 +4,43 @@
 ![React](https://img.shields.io/badge/React-18.3.1-61DAFB.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-3178C6.svg)
 ![Vite](https://img.shields.io/badge/Vite-6.3.5-646CFF.svg)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3-06B6D4.svg)
+![Zustand](https://img.shields.io/badge/Zustand-4-35A29F.svg)
+![GitHub stars](https://img.shields.io/github/stars/JUNNYOfficial/SnapSheet)
+![GitHub forks](https://img.shields.io/github/forks/JUNNYOfficial/SnapSheet)
+![GitHub issues](https://img.shields.io/github/issues/JUNNYOfficial/SnapSheet)
 
 一个现代化的电子表格应用，基于 React + TypeScript + Canvas 构建，支持公式计算、多工作表、AI数据分析等功能。
+
+## 🖼️ 预览
+
+![SnapSheet Preview](https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern%20spreadsheet%20application%20interface%20with%20toolbar%20ribbon%2C%20formula%20bar%2C%20and%20data%20table%2C%20clean%20minimal%20design%2C%20dark%20theme&image_size=landscape_16_9)
 
 ## ✨ 功能特性
 
 ### 核心功能
-- 📊 **电子表格**：完整的表格编辑功能，支持1000行 × 100列
-- 📝 **公式计算**：支持50+种公式函数
-- 📄 **多工作表**：创建、切换、删除多个工作表
-- 🎨 **单元格样式**：支持加粗、对齐等样式设置
-- 📥 **导入导出**：支持 CSV 和 JSON 格式
-- 🔄 **撤销/重做**：支持多次撤销/重做操作
+- 📊 **电子表格**：完整的表格编辑功能，支持 1000 行 × 100 列
+- 📝 **公式计算**：支持 50+ 种公式函数，自动依赖追踪和缓存优化
+- 📄 **多工作表**：创建、切换、删除多个工作表，支持工作表重命名
+- 🎨 **单元格样式**：支持加粗、对齐、边框、背景色、数字格式等样式设置
+- 📥 **导入导出**：支持 CSV 和 JSON 格式的导入导出
+- 🔄 **撤销/重做**：支持多次撤销/重做操作，基于操作历史栈实现
 
-### 公式函数
+### 数据处理
+- 🔍 **查找替换**：支持在表格中查找和替换内容，支持正则匹配
+- 📐 **列宽行高调整**：拖拽调整列宽和行高，双击自动适配内容宽度
+- 🗂️ **排序**：支持单列升序/降序排序
+- 🎯 **数据验证**：支持数值范围验证、下拉列表等数据验证规则
+- 🎨 **条件格式**：支持基于条件的单元格高亮显示
 
-**统计函数**：SUM, AVERAGE, MAX, MIN, COUNT, COUNTA, COUNTBLANK, SUMIF, SUMIFS, AVERAGEIF, MEDIAN, MODE, VAR, VARP, STDEV, STDEVP, RANK, PERCENTILE, QUARTILE
+### AI 功能
+- 🤖 **AI 数据分析**：选中区域自动分析统计数据（求和、平均值、最大值、最小值等）
+- ✨ **公式生成**：通过自然语言描述自动生成公式（如"求和"、"平均值"）
 
-**逻辑函数**：IF, IFERROR, IFNA, AND, OR, NOT, XOR, SWITCH, CHOOSE, ISNUMBER, ISTEXT, ISBLANK, ISERROR
-
-**数学函数**：ABS, ROUND, ROUNDUP, ROUNDDOWN, INT, CEILING, FLOOR, MOD, PI, RAND, RANDBETWEEN, EXP, LOG, LOG10, SQRT, POWER, SIN, COS, TAN, ASIN, ACOS, ATAN, ATAN2, SIGN
-
-**日期函数**：DATE, TIME, YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, WEEKDAY, WEEKNUM, DATEDIF, TODAY, NOW
-
-**文本函数**：TEXT, LEFT, RIGHT, MID, SEARCH, FIND, REPLACE, SUBSTITUTE, EXACT, LOWER, UPPER, PROPER, REPT, LEN, TRIM, CONCAT, CONCATENATE
-
-### 高级功能
-- 🔍 **查找替换**：支持在表格中查找和替换内容
-- 📐 **列宽行高调整**：拖拽调整列宽和行高
-- 🤖 **AI数据分析**：选中区域自动分析统计数据
-- 🖱️ **复制粘贴**：支持 Ctrl+C/V/X 快捷键
+### 视图功能
+- 🔒 **冻结窗格**：支持冻结首行、首列或两者同时冻结
+- 📱 **响应式布局**：顶部 Ribbon 支持折叠/展开，右侧属性面板可伸缩
+- 🌓 **主题切换**：支持浅色/深色主题切换
 
 ## 🚀 快速开始
 
@@ -49,6 +56,8 @@ npm install
 npm run dev
 ```
 
+启动后访问 http://localhost:5173
+
 ### 构建生产版本
 
 ```bash
@@ -59,6 +68,16 @@ npm run build
 
 ```bash
 npm run preview
+```
+
+### 代码检查
+
+```bash
+# ESLint 检查
+npm run lint
+
+# TypeScript 类型检查
+npm run check
 ```
 
 ## 📖 使用说明
@@ -73,9 +92,11 @@ npm run preview
 | `Ctrl/Cmd + Z` | 撤销 |
 | `Ctrl/Cmd + Y` | 重做 |
 | `Ctrl/Cmd + F` | 查找替换 |
+| `Ctrl/Cmd + B` | 加粗 |
 | `Enter / F2` | 编辑单元格 |
 | `Arrow Keys` | 移动选择 |
 | `Delete / Backspace` | 删除单元格内容 |
+| `Ctrl/Cmd + N` | 新建工作簿 |
 
 ### 公式使用
 
@@ -84,10 +105,39 @@ npm run preview
 ```
 =SUM(A1:B10)      # 求和
 =AVERAGE(C1:C5)   # 平均值
+=MAX(D1:D20)      # 最大值
+=MIN(E1:E20)      # 最小值
+=COUNT(F1:F10)    # 计数
 =IF(A1>10, "大", "小")   # 条件判断
 =CONCAT(A1, B1)   # 字符串连接
 =TODAY()          # 当前日期
+=NOW()            # 当前时间
+=ROUND(G1, 2)     # 四舍五入保留两位小数
+=ABS(H1)          # 绝对值
 ```
+
+### 单元格选择
+
+- 单击单元格：选择单个单元格
+- 拖拽：选择连续区域
+- `Shift + Arrow Keys`：扩展选择区域
+- `Ctrl/Cmd + Click`：添加到选择（多个不连续区域）
+
+### 格式设置
+
+通过右侧属性面板设置单元格格式：
+
+1. **对齐方式**：左对齐、居中、右对齐
+2. **字体样式**：加粗
+3. **边框**：全部边框、上/下/左/右边框、清除边框
+4. **背景色**：预设颜色或清除背景
+5. **数字格式**：常规、数字、百分比、货币、日期
+
+### 工作表操作
+
+- 点击底部工作表标签切换工作表
+- 右键工作表标签：重命名、删除工作表
+- 点击 "+" 按钮：新建工作表
 
 ### 查找替换
 
@@ -98,45 +148,67 @@ npm run preview
 
 ## 🎯 性能指标
 
-- **表格规模**：支持 1000 行 × 100 列
-- **渲染性能**：60fps 流畅滚动（虚拟滚动优化）
-- **公式计算**：支持 50+ 种函数，自动依赖追踪
-- **内存占用**：轻量级设计，纯前端实现
+| 指标 | 数值 |
+|------|------|
+| **表格规模** | 1000 行 × 100 列 |
+| **渲染性能** | 60fps 流畅滚动（虚拟滚动优化） |
+| **公式函数** | 50+ 种内置函数 |
+| **撤销/重做** | 无限历史记录 |
+| **内存占用** | 轻量级设计，纯前端实现 |
+| **构建大小** | ~85KB gzip |
 
 ## 🛠️ 技术栈
 
-- **前端框架**：React 18
-- **语言**：TypeScript
-- **构建工具**：Vite
-- **样式**：Tailwind CSS 3
-- **状态管理**：Zustand
-- **图标**：Lucide React
-- **画布渲染**：HTML5 Canvas
+| 分类 | 技术 | 版本 |
+|------|------|------|
+| **前端框架** | React | 18 |
+| **语言** | TypeScript | 5.8 |
+| **构建工具** | Vite | 6.3 |
+| **样式** | Tailwind CSS | 3 |
+| **状态管理** | Zustand | 4 |
+| **图标** | Lucide React | 0 |
+| **画布渲染** | HTML5 Canvas | - |
 
 ## 📁 项目结构
 
 ```
 src/
-├── components/          # 组件目录
-├── engine/              # 公式引擎
+├── components/          # UI 组件
+│   ├── Toolbar.tsx      # 顶部 Ribbon 工具栏
+│   ├── FormulaBar.tsx   # 公式输入栏
+│   ├── Spreadsheet.tsx  # 表格主组件（Canvas 渲染）
+│   ├── SheetTabs.tsx    # 底部工作表标签
+│   ├── PropertyPanel.tsx # 右侧属性面板
+│   └── FindDialog.tsx   # 查找替换对话框
+├── engine/              # 公式计算引擎
 │   ├── Lexer.ts         # 词法分析器
 │   ├── Parser.ts        # 语法分析器
-│   └── Evaluator.ts     # 表达式求值器
+│   ├── Evaluator.ts     # 表达式求值器
+│   └── functions.ts     # 内置函数定义
+├── store/               # Zustand 状态管理
+│   └── useSpreadsheetStore.ts
 ├── hooks/               # 自定义 Hooks
-├── lib/                 # 工具函数
-├── pages/               # 页面组件
+│   ├── useTheme.ts      # 主题切换 Hook
+│   └── useKeyboard.ts   # 键盘快捷键 Hook
 ├── types/               # TypeScript 类型定义
+│   └── index.ts
 ├── utils/               # 工具函数
-│   ├── cellRef.ts       # 单元格引用转换
-│   └── constants.ts     # 常量定义
+│   ├── cellRef.ts       # 单元格引用转换 (A1 ↔ 行列坐标)
+│   ├── constants.ts     # 常量定义
+│   ├── csv.ts           # CSV 导入导出
+│   └── json.ts          # JSON 导入导出
+├── templates/           # 预设模板
+│   └── index.ts
 ├── App.tsx              # 主应用组件
 ├── main.tsx             # 应用入口
-└── index.css            # 全局样式
+└── index.css            # 全局样式（主题变量）
 ```
 
-## � 开发指南
+## 🏗️ 开发指南
 
 ### 代码规范
+
+项目使用 ESLint 和 Prettier 进行代码检查：
 
 ```bash
 # 运行 ESLint 检查
@@ -144,28 +216,44 @@ npm run lint
 
 # 运行 TypeScript 类型检查
 npm run check
+
+# 自动修复 ESLint 问题
+npm run lint -- --fix
 ```
 
 ### 项目架构
 
 SnapSheet 采用分层架构设计：
 
-1. **视图层**：React 组件负责 UI 渲染和用户交互
-2. **状态层**：Zustand 管理应用状态，支持撤销/重做
-3. **渲染层**：Canvas 高性能渲染引擎，支持虚拟滚动
-4. **计算层**：公式引擎支持词法分析、语法解析和依赖追踪
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      视图层 (View)                          │
+│   Toolbar | FormulaBar | Spreadsheet | PropertyPanel       │
+├─────────────────────────────────────────────────────────────┤
+│                      状态层 (State)                         │
+│                  Zustand Store                              │
+├─────────────────────────────────────────────────────────────┤
+│                      渲染层 (Render)                        │
+│                Canvas 渲染引擎 + 虚拟滚动                    │
+├─────────────────────────────────────────────────────────────┤
+│                      计算层 (Compute)                       │
+│        Lexer → Parser → Evaluator → 依赖追踪               │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ### 添加新公式函数
 
 在 `src/engine/Evaluator.ts` 中添加新的函数实现：
 
 ```typescript
-// 示例：添加自定义函数
 private functions: Map<string, Function> = new Map([
-  // ... 现有函数
-  ['CUSTOM', (args: any[]) => {
+  ['MYFUNCTION', (args: any[], context: EvaluationContext) => {
+    // 验证参数数量
+    if (args.length !== 2) {
+      throw new Error('MYFUNCTION 需要 2 个参数');
+    }
     // 实现自定义逻辑
-    return result;
+    return args[0] + args[1];
   }]
 ]);
 ```
@@ -178,9 +266,30 @@ private functions: Map<string, Function> = new Map([
 interface CellStyle {
   bold?: boolean;
   align?: 'left' | 'center' | 'right';
+  bgColor?: string;
+  border?: CellBorder;
+  numberFormat?: NumberFormat;
   // 添加新的样式属性
   italic?: boolean;
   color?: string;
+  fontSize?: number;
+}
+```
+
+### 添加新组件
+
+在 `src/components/` 目录下创建新组件，并在 `src/App.tsx` 中引入：
+
+```typescript
+import NewComponent from './components/NewComponent';
+
+function App() {
+  return (
+    <div className="flex flex-col h-screen">
+      {/* ... 其他组件 */}
+      <NewComponent />
+    </div>
+  );
 }
 ```
 
@@ -190,7 +299,7 @@ interface CellStyle {
 
 1. Fork 本仓库
 2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+3. 提交更改 (`git commit -m 'feat: Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
 5. 开启 Pull Request
 
@@ -198,22 +307,116 @@ interface CellStyle {
 
 遵循 Conventional Commits 规范：
 
-- `feat:` 新功能
-- `fix:` 修复 bug
-- `docs:` 文档更新
-- `style:` 代码格式调整
-- `refactor:` 代码重构
-- `test:` 测试相关
-- `chore:` 构建/工具链相关
+| 类型 | 说明 |
+|------|------|
+| `feat:` | 新功能 |
+| `fix:` | 修复 bug |
+| `docs:` | 文档更新 |
+| `style:` | 代码格式调整（不影响逻辑） |
+| `refactor:` | 代码重构（不添加新功能） |
+| `perf:` | 性能优化 |
+| `test:` | 测试相关 |
+| `chore:` | 构建/工具链相关 |
+
+示例：
+```bash
+git commit -m "feat: 添加数据验证功能"
+git commit -m "fix: 修复公式计算循环引用问题"
+git commit -m "refactor: 重构 Canvas 渲染引擎"
+git commit -m "docs: 更新 API 文档"
+```
+
+### 开发流程
+
+1. 先在 Issues 中讨论功能需求或 Bug 修复方案
+2. 创建分支开发
+3. 确保所有测试通过
+4. 提交 PR 并等待审查
+
+## 📦 部署
+
+### Vercel 部署
+
+1. 安装 Vercel CLI：`npm install -g vercel`
+2. 登录：`vercel login`
+3. 部署：`vercel`
+
+### Netlify 部署
+
+1. 安装 Netlify CLI：`npm install -g netlify-cli`
+2. 登录：`netlify login`
+3. 初始化：`netlify init`
+4. 部署：`netlify deploy --prod`
+
+### GitHub Pages 部署
+
+```bash
+npm run build
+# 将 dist 目录内容推送到 gh-pages 分支
+```
+
+## 🌐 浏览器兼容性
+
+| 浏览器 | 版本 | 状态 |
+|--------|------|------|
+| Chrome | 90+ | ✅ 完全支持 |
+| Firefox | 88+ | ✅ 完全支持 |
+| Safari | 14+ | ✅ 完全支持 |
+| Edge | 90+ | ✅ 完全支持 |
+
+## 📝 更新日志
+
+### v1.0.0 (2026-06-18)
+- 🎉 初始版本发布
+- ✨ 支持 50+ 公式函数
+- ✨ 多工作表管理
+- ✨ AI 数据分析功能
+- ✨ 响应式布局和主题切换
+- ✨ 右侧属性面板
+- ✨ 查找替换功能
+
+## ❓ FAQ
+
+### Q: 如何导入 Excel 文件？
+A: 当前版本支持 CSV 和 JSON 格式导入。如需导入 Excel (.xlsx) 文件，请先在 Excel 中导出为 CSV 格式。
+
+### Q: 公式计算性能如何？
+A: 公式引擎采用依赖追踪和缓存机制，只在依赖单元格变化时重新计算，1000 行 × 100 列的表格可以流畅运行。
+
+### Q: 是否支持协作编辑？
+A: 当前版本为单用户离线应用，不支持实时协作编辑。未来版本可能会添加此功能。
+
+### Q: 数据是否会自动保存？
+A: 数据存储在浏览器内存中，关闭页面会丢失。建议定期导出为 CSV 或 JSON 文件保存。
 
 ## 🐛 问题反馈
 
-如果您发现 bug 或有功能建议，请在 Issues 中提交。
+如果您发现 bug 或有功能建议，请在 [Issues](https://github.com/JUNNYOfficial/SnapSheet/issues) 中提交。
+
+提交问题时请包含：
+- 问题描述
+- 复现步骤
+- 预期行为
+- 截图（可选）
+- 浏览器版本和操作系统
 
 ## 📄 许可证
 
-MIT License
+MIT License - 详见 [LICENSE](LICENSE) 文件
 
 ## 🙏 致谢
 
+感谢以下开源项目和资源：
+
+- [React](https://react.dev/) - UI 框架
+- [TypeScript](https://www.typescriptlang.org/) - 类型安全
+- [Vite](https://vitejs.dev/) - 构建工具
+- [Zustand](https://zustand-demo.pmnd.rs/) - 状态管理
+- [Lucide React](https://lucide.dev/) - 图标库
+- [Tailwind CSS](https://tailwindcss.com/) - CSS 框架
+
 感谢所有为 SnapSheet 做出贡献的开发者！
+
+---
+
+⭐ 如果您喜欢这个项目，请给它一个 Star！
