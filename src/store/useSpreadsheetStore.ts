@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Cell, Sheet, Workbook, Selection, CellStyle, NumberFormat, BorderStyle, MergeRange, ConditionalFormat } from '../types';
+import type { Cell, Sheet, Workbook, Selection, CellStyle, NumberFormat, BorderStyle, MergeRange, ConditionalFormat, ValidationRule } from '../types';
 import { DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT, MIN_ROW_HEIGHT, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../utils/constants';
 import { coordsToCell, cellToCoords, colToLetter, letterToCol } from '../utils/cellRef';
 import { createDefaultFormulaEngine } from '../engine/FormulaEngine';
@@ -55,6 +55,9 @@ interface SpreadsheetState {
   clearConditionalFormats: () => void;
   setCellComment: (row: number, col: number, comment: string) => void;
   deleteCellComment: (row: number, col: number) => void;
+  setCellValidation: (row: number, col: number, rule: ValidationRule) => void;
+  clearCellValidation: (row: number, col: number) => void;
+  validateCellValue: (value: string, rule?: ValidationRule) => string | true;
 
   pasteCells: (text: string, startRow: number, startCol: number) => void;
   copySelection: () => string;
@@ -373,6 +376,17 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       const state = get();
       if (!state.editing) return;
       const { row, col } = state.editing;
+      const sheet = state.getActiveSheet();
+      const ref = coordsToCell(row, col);
+      const cell = sheet.cells.get(ref);
+      const validation = cell?.validation;
+      if (validation) {
+        const result = state.validateCellValue(value, validation);
+        if (result !== true) {
+          window.alert(result);
+          return;
+        }
+      }
       state.setCellValue(row, col, value);
       set({ editing: null, formulaBarValue: '' });
     },
@@ -1013,6 +1027,91 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       cell.comment = undefined;
       pushHistory();
       set({ workbook: { ...get().workbook } });
+    },
+
+    setCellValidation: (row: number, col: number, rule: ValidationRule) => {
+      if (row < 0 || row >= SHEET_ROW_COUNT || col < 0 || col >= SHEET_COL_COUNT) return;
+      const sheet = get().getActiveSheet();
+      const ref = coordsToCell(row, col);
+      let cell = sheet.cells.get(ref);
+      if (!cell) {
+        cell = { value: '' };
+        sheet.cells.set(ref, cell);
+      }
+      cell.validation = rule;
+      pushHistory();
+      set({ workbook: { ...get().workbook } });
+    },
+
+    clearCellValidation: (row: number, col: number) => {
+      if (row < 0 || row >= SHEET_ROW_COUNT || col < 0 || col >= SHEET_COL_COUNT) return;
+      const sheet = get().getActiveSheet();
+      const ref = coordsToCell(row, col);
+      const cell = sheet.cells.get(ref);
+      if (!cell || !cell.validation) return;
+      cell.validation = undefined;
+      pushHistory();
+      set({ workbook: { ...get().workbook } });
+    },
+
+    validateCellValue: (value: string, rule?: ValidationRule) => {
+      if (!rule) return true;
+      if (value === '' && rule.allowBlank !== false) return true;
+
+      if (rule.type === 'number') {
+        const num = parseFloat(value);
+        if (isNaN(num)) return rule.errorMessage || '请输入数字';
+        const v1 = rule.formula1 !== undefined ? parseFloat(rule.formula1) : NaN;
+        const v2 = rule.formula2 !== undefined ? parseFloat(rule.formula2) : NaN;
+        switch (rule.operator) {
+          case 'between':
+            if (!isNaN(v1) && !isNaN(v2) && (num < v1 || num > v2)) {
+              return rule.errorMessage || `数值必须在 ${v1} 和 ${v2} 之间`;
+            }
+            break;
+          case 'greaterThan':
+            if (!isNaN(v1) && num <= v1) return rule.errorMessage || `数值必须大于 ${v1}`;
+            break;
+          case 'lessThan':
+            if (!isNaN(v1) && num >= v1) return rule.errorMessage || `数值必须小于 ${v1}`;
+            break;
+          case 'equal':
+            if (!isNaN(v1) && num !== v1) return rule.errorMessage || `数值必须等于 ${v1}`;
+            break;
+          case 'greaterThanOrEqual':
+            if (!isNaN(v1) && num < v1) return rule.errorMessage || `数值必须大于或等于 ${v1}`;
+            break;
+          case 'lessThanOrEqual':
+            if (!isNaN(v1) && num > v1) return rule.errorMessage || `数值必须小于或等于 ${v1}`;
+            break;
+        }
+      }
+
+      if (rule.type === 'list' && rule.list && rule.list.length > 0) {
+        if (!rule.list.includes(value)) {
+          return rule.errorMessage || `请输入以下值之一：${rule.list.join('、')}`;
+        }
+      }
+
+      if (rule.type === 'textLength' && rule.formula1 !== undefined) {
+        const len = value.length;
+        const target = parseInt(rule.formula1, 10);
+        if (!isNaN(target)) {
+          switch (rule.operator) {
+            case 'equal':
+              if (len !== target) return rule.errorMessage || `文本长度必须等于 ${target}`;
+              break;
+            case 'greaterThan':
+              if (len <= target) return rule.errorMessage || `文本长度必须大于 ${target}`;
+              break;
+            case 'lessThan':
+              if (len >= target) return rule.errorMessage || `文本长度必须小于 ${target}`;
+              break;
+          }
+        }
+      }
+
+      return true;
     },
 
     pasteCells: (text: string, startRow: number, startCol: number) => {

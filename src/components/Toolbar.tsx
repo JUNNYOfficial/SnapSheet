@@ -339,6 +339,71 @@ export default function Toolbar() {
         <button
           onClick={() => {
             const sel = store.getState().selection;
+            for (let r = Math.min(sel.startRow, sel.endRow); r <= Math.max(sel.startRow, sel.endRow); r++) {
+              for (let c = Math.min(sel.startCol, sel.endCol); c <= Math.max(sel.startCol, sel.endCol); c++) {
+                store.getState().setCellValidation(r, c, { type: 'number', operator: 'between', formula1: '0', formula2: '100', errorMessage: '请输入 0 到 100 之间的数字' });
+              }
+            }
+          }}
+          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          title="0-100 数值验证"
+        >
+          0-100
+        </button>
+        <button
+          onClick={() => {
+            const sel = store.getState().selection;
+            for (let r = Math.min(sel.startRow, sel.endRow); r <= Math.max(sel.startRow, sel.endRow); r++) {
+              for (let c = Math.min(sel.startCol, sel.endCol); c <= Math.max(sel.startCol, sel.endCol); c++) {
+                store.getState().setCellValidation(r, c, { type: 'number', operator: 'greaterThan', formula1: '0', errorMessage: '请输入大于 0 的数字' });
+              }
+            }
+          }}
+          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          title="大于 0 验证"
+        >
+          {'>'}0
+        </button>
+        <button
+          onClick={() => {
+            const sel = store.getState().selection;
+            const input = window.prompt('输入下拉选项，用逗号分隔：', '是,否');
+            if (input === null) return;
+            const list = input.split(',').map(s => s.trim()).filter(Boolean);
+            if (list.length === 0) return;
+            for (let r = Math.min(sel.startRow, sel.endRow); r <= Math.max(sel.startRow, sel.endRow); r++) {
+              for (let c = Math.min(sel.startCol, sel.endCol); c <= Math.max(sel.startCol, sel.endCol); c++) {
+                store.getState().setCellValidation(r, c, { type: 'list', list, errorMessage: `请选择：${list.join('、')}` });
+              }
+            }
+          }}
+          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          title="下拉列表验证"
+        >
+          下拉
+        </button>
+        <button
+          onClick={() => {
+            const sel = store.getState().selection;
+            for (let r = Math.min(sel.startRow, sel.endRow); r <= Math.max(sel.startRow, sel.endRow); r++) {
+              for (let c = Math.min(sel.startCol, sel.endCol); c <= Math.max(sel.startCol, sel.endCol); c++) {
+                store.getState().clearCellValidation(r, c);
+              }
+            }
+          }}
+          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          title="清除验证"
+        >
+          清验证
+        </button>
+      </div>
+
+      <div className={dividerBase} />
+
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => {
+            const sel = store.getState().selection;
             const value = window.prompt('高亮大于多少的单元格？', '0');
             if (value === null) return;
             store.getState().addConditionalFormat({

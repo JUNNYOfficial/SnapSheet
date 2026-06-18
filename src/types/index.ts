@@ -33,6 +33,16 @@ export interface ConditionalFormat {
   maxColor?: string;
 }
 
+export interface ValidationRule {
+  type: 'number' | 'list' | 'textLength' | 'custom';
+  operator?: 'between' | 'notBetween' | 'equal' | 'notEqual' | 'greaterThan' | 'lessThan' | 'greaterThanOrEqual' | 'lessThanOrEqual';
+  formula1?: string;
+  formula2?: string;
+  list?: string[];
+  allowBlank?: boolean;
+  errorMessage?: string;
+}
+
 export interface Cell {
   value: string;
   formula?: string;
@@ -40,6 +50,7 @@ export interface Cell {
   style?: CellStyle;
   numberFormat?: NumberFormat;
   comment?: string;
+  validation?: ValidationRule;
 }
 
 export interface MergeRange {
