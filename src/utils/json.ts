@@ -13,6 +13,7 @@ interface SerializableSheet {
   cells: Record<string, SerializableCell>;
   colWidths: Record<number, number>;
   rowHeights: Record<number, number>;
+  mergedCells?: Record<string, { startRow: number; startCol: number; endRow: number; endCol: number }>;
 }
 
 interface SerializableWorkbook {
@@ -33,6 +34,7 @@ export function workbookToJSON(workbook: Workbook): string {
       ),
       colWidths: Object.fromEntries(Array.from(sheet.colWidths.entries())),
       rowHeights: Object.fromEntries(Array.from(sheet.rowHeights.entries())),
+      mergedCells: Object.fromEntries(Array.from(sheet.mergedCells.entries())),
     })),
   };
   return JSON.stringify(serializable, null, 2);
@@ -55,6 +57,9 @@ export function workbookFromJSON(json: string): Workbook {
     frozenRows: (s as SerializableSheet & { frozenRows?: number }).frozenRows || 0,
     frozenCols: (s as SerializableSheet & { frozenCols?: number }).frozenCols || 0,
     conditionalFormats: (s as SerializableSheet & { conditionalFormats?: Sheet['conditionalFormats'] }).conditionalFormats || [],
+    mergedCells: new Map<string, { startRow: number; startCol: number; endRow: number; endCol: number }>(
+      Object.entries(s.mergedCells || {}),
+    ) as Sheet['mergedCells'],
   }));
   return {
     sheets,

@@ -298,6 +298,17 @@ export default function Toolbar() {
       <div className={dividerBase} />
 
       <div className="flex items-center gap-1">
+        <button onClick={() => store.getState().mergeCells()} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="合并单元格">
+          合并
+        </button>
+        <button onClick={() => store.getState().unmergeCells()} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="取消合并">
+          取消合并
+        </button>
+      </div>
+
+      <div className={dividerBase} />
+
+      <div className="flex items-center gap-1">
         <button onClick={() => store.getState().applyStyleToSelection({ bgColor: '#f5f5f5' })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="浅灰背景">
           灰
         </button>

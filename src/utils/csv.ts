@@ -117,5 +117,6 @@ export function cellsFromCSV(rows: string[][], startRow: number, startCol: numbe
     frozenRows: 0,
     frozenCols: 0,
     conditionalFormats: [],
+    mergedCells: new Map(),
   };
 }

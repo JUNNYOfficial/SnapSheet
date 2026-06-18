@@ -38,6 +38,13 @@ export interface Cell {
   numberFormat?: NumberFormat;
 }
 
+export interface MergeRange {
+  startRow: number;
+  startCol: number;
+  endRow: number;
+  endCol: number;
+}
+
 export interface Sheet {
   id: string;
   name: string;
@@ -47,6 +54,7 @@ export interface Sheet {
   frozenRows: number;
   frozenCols: number;
   conditionalFormats: ConditionalFormat[];
+  mergedCells: Map<string, MergeRange>;
 }
 
 export interface Workbook {

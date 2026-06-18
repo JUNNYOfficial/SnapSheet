@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Cell, Sheet, Workbook, Selection, CellStyle, NumberFormat, BorderStyle } from '../types';
+import type { Cell, Sheet, Workbook, Selection, CellStyle, NumberFormat, BorderStyle, MergeRange } from '../types';
 import { DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT, MIN_ROW_HEIGHT, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../utils/constants';
 import { coordsToCell, cellToCoords, colToLetter, letterToCol } from '../utils/cellRef';
 import { createDefaultFormulaEngine } from '../engine/FormulaEngine';
@@ -46,6 +46,10 @@ interface SpreadsheetState {
   sortByColumn: (col: number, direction: 'asc' | 'desc') => void;
   applyNumberFormat: (format: Partial<NumberFormat> | null) => void;
   applyBorderSelection: (side: 'top' | 'bottom' | 'left' | 'right' | 'all' | 'none', style?: BorderStyle) => void;
+  mergeCells: () => void;
+  unmergeCells: () => void;
+  getMergedRange: (row: number, col: number) => MergeRange | null;
+  isCellMerged: (row: number, col: number) => boolean;
 
   pasteCells: (text: string, startRow: number, startCol: number) => void;
   copySelection: () => string;
@@ -68,6 +72,7 @@ function createSheet(name: string, id: string): Sheet {
     frozenRows: 0,
     frozenCols: 0,
     conditionalFormats: [],
+    mergedCells: new Map<string, MergeRange>(),
   };
 }
 
@@ -905,6 +910,63 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       if (!hasChanges) return;
       pushHistory();
       set({ workbook: { ...get().workbook } });
+    },
+
+    mergeCells: () => {
+      const state = get();
+      const sel = state.selection;
+      const sheet = state.getActiveSheet();
+      const minRow = Math.min(sel.startRow, sel.endRow);
+      const maxRow = Math.max(sel.startRow, sel.endRow);
+      const minCol = Math.min(sel.startCol, sel.endCol);
+      const maxCol = Math.max(sel.startCol, sel.endCol);
+      if (minRow === maxRow && minCol === maxCol) return;
+
+      // Unmerge any overlapping ranges first
+      const overlapping: string[] = [];
+      for (const [ref, range] of sheet.mergedCells.entries()) {
+        if (
+          range.startRow <= maxRow &&
+          range.endRow >= minRow &&
+          range.startCol <= maxCol &&
+          range.endCol >= minCol
+        ) {
+          overlapping.push(ref);
+        }
+      }
+      for (const ref of overlapping) sheet.mergedCells.delete(ref);
+
+      const mainRef = coordsToCell(minRow, minCol);
+      sheet.mergedCells.set(mainRef, { startRow: minRow, startCol: minCol, endRow: maxRow, endCol: maxCol });
+      pushHistory();
+      set({ workbook: { ...get().workbook } });
+    },
+
+    unmergeCells: () => {
+      const state = get();
+      const sel = state.selection;
+      const sheet = state.getActiveSheet();
+      const row = Math.min(sel.startRow, sel.endRow);
+      const col = Math.min(sel.startCol, sel.endCol);
+      const ref = coordsToCell(row, col);
+      if (!sheet.mergedCells.has(ref)) return;
+      sheet.mergedCells.delete(ref);
+      pushHistory();
+      set({ workbook: { ...get().workbook } });
+    },
+
+    getMergedRange: (row: number, col: number) => {
+      const sheet = get().getActiveSheet();
+      for (const range of sheet.mergedCells.values()) {
+        if (row >= range.startRow && row <= range.endRow && col >= range.startCol && col <= range.endCol) {
+          return range;
+        }
+      }
+      return null;
+    },
+
+    isCellMerged: (row: number, col: number) => {
+      return get().getMergedRange(row, col) !== null;
     },
 
     pasteCells: (text: string, startRow: number, startCol: number) => {

@@ -15,7 +15,7 @@ import {
   FONT_SIZE,
 } from '../utils/constants';
 import { colToLetter } from '../utils/cellRef';
-import type { Cell, Selection } from '../types';
+import type { Cell, Selection, MergeRange } from '../types';
 
 export interface CanvasRendererOptions {
   canvas: HTMLCanvasElement;
@@ -36,6 +36,7 @@ export interface CanvasRendererOptions {
   onScrollChange: (scrollLeft: number, scrollTop: number) => void;
   onFill: (source: { startRow: number; startCol: number; endRow: number; endCol: number }, target: { startRow: number; startCol: number; endRow: number; endCol: number }) => void;
   onContextMenu: (row: number, col: number, x: number, y: number) => void;
+  getMergedRange: (row: number, col: number) => MergeRange | null;
   maxRows: number;
   maxCols: number;
   selection: Selection;
@@ -205,6 +206,8 @@ export class CanvasRenderer {
     const minCol = Math.min(sel.startCol, sel.endCol);
     const maxCol = Math.max(sel.startCol, sel.endCol);
 
+    const renderedMerges = new Set<string>();
+
     for (const r of visibleRows) {
       for (const c of visibleCols) {
         const cell = this.opts.getCell(r.row, c.col);
@@ -212,14 +215,44 @@ export class CanvasRenderer {
           r.row >= minRow && r.row <= maxRow &&
           c.col >= minCol && c.col <= maxCol;
 
-        if (cell?.style?.bgColor) {
-          ctx.fillStyle = cell.style.bgColor;
+        const merge = this.opts.getMergedRange(r.row, c.col);
+        const isMergeMain = merge && merge.startRow === r.row && merge.startCol === c.col;
+        const isMergedChild = merge && !isMergeMain;
+        const mergeKey = merge ? `${merge.startRow},${merge.startCol}` : `${r.row},${c.col}`;
+
+        if (cell?.style?.bgColor || isSelected) {
+          ctx.fillStyle = isSelected ? SELECTED_BG : cell!.style!.bgColor!;
           ctx.fillRect(c.x, r.y, c.width, r.height);
         }
 
-        if (isSelected) {
-          ctx.fillStyle = SELECTED_BG;
-          ctx.fillRect(c.x, r.y, c.width, r.height);
+        if (isMergedChild) continue;
+
+        const renderX = c.x;
+        const renderY = r.y;
+        let renderWidth = c.width;
+        let renderHeight = r.height;
+
+        if (isMergeMain && !renderedMerges.has(mergeKey)) {
+          renderedMerges.add(mergeKey);
+          let totalWidth = 0;
+          let totalHeight = 0;
+          for (let cc = merge.startCol; cc <= merge.endCol; cc++) {
+            totalWidth += this.opts.getColWidth(cc);
+          }
+          for (let rr = merge.startRow; rr <= merge.endRow; rr++) {
+            totalHeight += this.opts.getRowHeight(rr);
+          }
+          renderWidth = totalWidth;
+          renderHeight = totalHeight;
+
+          if (cell?.style?.bgColor && !isSelected) {
+            ctx.fillStyle = cell.style.bgColor;
+            ctx.fillRect(renderX, renderY, renderWidth, renderHeight);
+          }
+          if (isSelected) {
+            ctx.fillStyle = SELECTED_BG;
+            ctx.fillRect(renderX, renderY, renderWidth, renderHeight);
+          }
         }
 
         if (cell && cell.value) {
@@ -242,27 +275,27 @@ export class CanvasRenderer {
               : 'left';
 
           const textPadding = 6;
-          let textX = c.x + textPadding;
-          if (ctx.textAlign === 'right') textX = c.x + c.width - textPadding;
-          if (ctx.textAlign === 'center') textX = c.x + c.width / 2;
+          let textX = renderX + textPadding;
+          if (ctx.textAlign === 'right') textX = renderX + renderWidth - textPadding;
+          if (ctx.textAlign === 'center') textX = renderX + renderWidth / 2;
 
           const text = formattedDisplay;
-          const maxTextWidth = c.width - textPadding * 2;
+          const maxTextWidth = renderWidth - textPadding * 2;
 
           if (cell.style?.wrap) {
             const lines = this.wrapText(ctx, text, maxTextWidth);
             const lineHeight = 16;
             const totalHeight = lines.length * lineHeight;
-            const startY = r.y + Math.max(textPadding, (r.height - totalHeight) / 2 + lineHeight / 2);
+            const startY = renderY + Math.max(textPadding, (renderHeight - totalHeight) / 2 + lineHeight / 2);
             for (let i = 0; i < lines.length; i++) {
               const y = startY + i * lineHeight;
-              if (y - lineHeight / 2 < r.y + r.height - textPadding && y + lineHeight / 2 > r.y + textPadding) {
+              if (y - lineHeight / 2 < renderY + renderHeight - textPadding && y + lineHeight / 2 > renderY + textPadding) {
                 ctx.fillText(lines[i], textX, y);
               }
             }
           } else {
             const truncated = this.truncateText(ctx, text, maxTextWidth);
-            ctx.fillText(truncated, textX, r.y + r.height / 2);
+            ctx.fillText(truncated, textX, renderY + renderHeight / 2);
           }
         }
       }
