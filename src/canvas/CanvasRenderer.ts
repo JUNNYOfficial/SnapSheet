@@ -310,6 +310,17 @@ export class CanvasRenderer {
             ctx.fillText(truncated, textX, renderY + renderHeight / 2);
           }
         }
+
+        if (cell?.comment) {
+          const markerSize = 6;
+          ctx.fillStyle = '#525252';
+          ctx.beginPath();
+          ctx.moveTo(renderX + renderWidth - markerSize, renderY);
+          ctx.lineTo(renderX + renderWidth, renderY);
+          ctx.lineTo(renderX + renderWidth, renderY + markerSize);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
     }
 

@@ -35,10 +35,11 @@ export interface ConditionalFormat {
 
 export interface Cell {
   value: string;
-  computed?: number | string;
   formula?: string;
+  computed?: number | string;
   style?: CellStyle;
   numberFormat?: NumberFormat;
+  comment?: string;
 }
 
 export interface MergeRange {

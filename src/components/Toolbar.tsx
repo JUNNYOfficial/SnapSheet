@@ -304,6 +304,27 @@ export default function Toolbar() {
         <button onClick={() => store.getState().unmergeCells()} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="取消合并">
           取消合并
         </button>
+        <button
+          onClick={() => {
+            const sel = store.getState().selection;
+            const row = Math.min(sel.startRow, sel.endRow);
+            const col = Math.min(sel.startCol, sel.endCol);
+            const sheet = store.getState().getActiveSheet();
+            const ref = coordsToCell(row, col);
+            const cell = sheet.cells.get(ref);
+            const comment = window.prompt('输入批注内容：', cell?.comment || '');
+            if (comment === null) return;
+            if (comment.trim() === '') {
+              store.getState().deleteCellComment(row, col);
+            } else {
+              store.getState().setCellComment(row, col, comment.trim());
+            }
+          }}
+          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          title="添加/编辑批注"
+        >
+          批注
+        </button>
       </div>
 
       <div className={dividerBase} />

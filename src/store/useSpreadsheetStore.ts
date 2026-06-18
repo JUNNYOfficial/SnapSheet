@@ -53,6 +53,8 @@ interface SpreadsheetState {
 
   addConditionalFormat: (format: ConditionalFormat) => void;
   clearConditionalFormats: () => void;
+  setCellComment: (row: number, col: number, comment: string) => void;
+  deleteCellComment: (row: number, col: number) => void;
 
   pasteCells: (text: string, startRow: number, startCol: number) => void;
   copySelection: () => string;
@@ -983,6 +985,32 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       const sheet = get().getActiveSheet();
       if (sheet.conditionalFormats.length === 0) return;
       sheet.conditionalFormats = [];
+      pushHistory();
+      set({ workbook: { ...get().workbook } });
+    },
+
+    setCellComment: (row: number, col: number, comment: string) => {
+      if (row < 0 || row >= SHEET_ROW_COUNT || col < 0 || col >= SHEET_COL_COUNT) return;
+      const sheet = get().getActiveSheet();
+      const ref = coordsToCell(row, col);
+      let cell = sheet.cells.get(ref);
+      if (!cell) {
+        cell = { value: '' };
+        sheet.cells.set(ref, cell);
+      }
+      if (cell.comment === comment) return;
+      cell.comment = comment;
+      pushHistory();
+      set({ workbook: { ...get().workbook } });
+    },
+
+    deleteCellComment: (row: number, col: number) => {
+      if (row < 0 || row >= SHEET_ROW_COUNT || col < 0 || col >= SHEET_COL_COUNT) return;
+      const sheet = get().getActiveSheet();
+      const ref = coordsToCell(row, col);
+      const cell = sheet.cells.get(ref);
+      if (!cell || !cell.comment) return;
+      cell.comment = undefined;
       pushHistory();
       set({ workbook: { ...get().workbook } });
     },
