@@ -8,19 +8,20 @@ import { FONT_OPTIONS } from '../utils/constants';
 import {
   FileText, Upload, Download, Bold, AlignLeft, AlignCenter, AlignRight,
   Percent, Hash, DollarSign, Calendar, Minus, Plus, Grid3X3, Merge,
-  Split, MessageSquare, CheckCircle, List, Filter, Paintbrush, Eraser,
+  Split, MessageSquare, Eraser,
   ArrowUp, ArrowDown, Undo2, Redo2, Snowflake, Sun, Moon,
-  Search, Wand2, X, ChevronLeft, ChevronRight, Type,
-  Table, FileSpreadsheet, BarChart3, Layers, Eye, Home, Settings,
-  Trash2, SortAsc, SortDesc, Lock, Unlock
+  Search, ChevronLeft, ChevronRight, Type,
+  Table, FileSpreadsheet, BarChart3, Eye, Home, Settings,
+  Trash2, SortAsc, SortDesc, Lock, Unlock, PanelRight
 } from 'lucide-react';
 
 interface ToolbarProps {
   isDark?: boolean;
   onToggleTheme?: () => void;
+  onTogglePanel?: () => void;
 }
 
-type RibbonTab = 'file' | 'home' | 'insert' | 'format' | 'data' | 'view';
+type RibbonTab = 'file' | 'home' | 'insert' | 'view';
 
 interface TooltipButtonProps {
   onClick: () => void;
@@ -76,14 +77,12 @@ function TooltipButton({ onClick, icon, label, title, shortcut, disabled, active
   );
 }
 
-export default function Toolbar({ isDark = false, onToggleTheme }: ToolbarProps) {
+export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }: ToolbarProps) {
   const store = useSpreadsheetStore;
   const selection = useSpreadsheetStore((s) => s.selection);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<RibbonTab>('home');
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [aiResult, setAiResult] = useState('');
   const [collapsed, setCollapsed] = useState(false);
   const canUndo = store.getState().canUndo();
   const canRedo = store.getState().canRedo();
@@ -191,82 +190,10 @@ export default function Toolbar({ isDark = false, onToggleTheme }: ToolbarProps)
   const handleAlignRight = () => store.getState().applyStyleToSelection({ align: 'right' });
   const handleClear = () => store.getState().clearSelection();
 
-  const handleAnalyze = () => {
-    const sel = store.getState().selection;
-    const sheet = store.getState().getActiveSheet();
-    const minRow = Math.min(sel.startRow, sel.endRow);
-    const maxRow = Math.max(sel.startRow, sel.endRow);
-    const minCol = Math.min(sel.startCol, sel.endCol);
-    const maxCol = Math.max(sel.startCol, sel.endCol);
-
-    const nums: number[] = [];
-    const strs: string[] = [];
-    for (let r = minRow; r <= maxRow; r++) {
-      for (let c = minCol; c <= maxCol; c++) {
-        const ref = coordsToCell(r, c);
-        const cell = sheet.cells.get(ref);
-        if (cell) {
-          const val = cell.computed !== undefined ? cell.computed : cell.value;
-          const parsed = typeof val === 'number' ? val : parseFloat(val as string);
-          if (!isNaN(parsed) && String(val).trim() !== '') nums.push(parsed);
-          else if (typeof val === 'string' && val.trim() !== '') strs.push(val);
-        }
-      }
-    }
-
-    let result = '';
-    if (nums.length > 0) {
-      const sum = nums.reduce((a, b) => a + b, 0);
-      const avg = sum / nums.length;
-      const mx = Math.max(...nums);
-      const mn = Math.min(...nums);
-      result += '区域共 ' + (maxRow - minRow + 1) * (maxCol - minCol + 1) + ' 个单元格\n';
-      result += '数值单元格: ' + nums.length + ' 个\n';
-      result += 'SUM = ' + sum.toFixed(2) + '\n';
-      result += 'AVG = ' + avg.toFixed(2) + '\n';
-      result += 'MAX = ' + mx + '\n';
-      result += 'MIN = ' + mn + '\n';
-      if (strs.length > 0) result += '文本单元格: ' + strs.length + ' 个\n';
-      result += '\n建议公式: =SUM(' + coordsToCell(minRow, minCol) + ':' + coordsToCell(maxRow, maxCol) + ')';
-    } else if (strs.length > 0) {
-      result += '区域有 ' + strs.length + ' 个文本单元格\n';
-      result += '前 5 个值: ' + strs.slice(0, 5).join(', ');
-    } else {
-      result = '选中区域无数据';
-    }
-    setAiResult(result);
-  };
-
-  const handleFormulaGenerate = () => {
-    if (!aiPrompt.trim()) return;
-    const sel = store.getState().selection;
-    const ref = coordsToCell(sel.startRow, sel.startCol);
-    const endRef = coordsToCell(sel.endRow, sel.endCol);
-    const range = ref === endRef ? ref : ref + ':' + endRef;
-
-    let formula = '';
-    const p = aiPrompt.toLowerCase();
-    if (p.includes('求和') || p.includes('sum') || p.includes('加')) formula = '=SUM(' + range + ')';
-    else if (p.includes('平均') || p.includes('avg') || p.includes('average')) formula = '=AVG(' + range + ')';
-    else if (p.includes('最大') || p.includes('max')) formula = '=MAX(' + range + ')';
-    else if (p.includes('最小') || p.includes('min')) formula = '=MIN(' + range + ')';
-    else if (p.includes('计数') || p.includes('count')) formula = '=COUNT(' + range + ')';
-
-    if (formula) {
-      store.getState().setCellValue(Math.min(sel.endRow + 1, 999), sel.startCol, formula);
-      setAiResult('已生成公式: ' + formula + ' 写入 ' + coordsToCell(Math.min(sel.endRow + 1, 999), sel.startCol));
-      setAiPrompt('');
-    } else {
-      setAiResult('未能识别请求。请尝试:"求和""平均值""最大值""最小值""计数"等关键词。');
-    }
-  };
-
   const tabs: { id: RibbonTab; label: string; icon: React.ReactNode }[] = [
     { id: 'file', label: '文件', icon: <FileText size={14} /> },
     { id: 'home', label: '开始', icon: <Home size={14} /> },
     { id: 'insert', label: '插入', icon: <Plus size={14} /> },
-    { id: 'format', label: '格式', icon: <Settings size={14} /> },
-    { id: 'data', label: '数据', icon: <BarChart3 size={14} /> },
     { id: 'view', label: '视图', icon: <Eye size={14} /> },
   ];
 
@@ -303,6 +230,14 @@ export default function Toolbar({ isDark = false, onToggleTheme }: ToolbarProps)
           <TooltipButton onClick={handleClear} icon={<Eraser size={16} />} title="清除" />
         </div>
         <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={onTogglePanel}
+            className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-[var(--ss-toolbar-hover)] transition-colors"
+            title="属性面板"
+            style={{ color: 'var(--ss-toolbar-text)' }}
+          >
+            <PanelRight size={14} />
+          </button>
           <button
             onClick={onToggleTheme}
             className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-[var(--ss-toolbar-hover)] transition-colors"
@@ -344,6 +279,14 @@ export default function Toolbar({ isDark = false, onToggleTheme }: ToolbarProps)
           </button>
         ))}
         <div className="ml-auto flex items-center gap-2 pr-2">
+          <button
+            onClick={onTogglePanel}
+            className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-[var(--ss-toolbar-hover)] transition-colors"
+            title="属性面板"
+            style={{ color: 'var(--ss-toolbar-text)' }}
+          >
+            <PanelRight size={14} />
+          </button>
           <button
             onClick={onToggleTheme}
             className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-[var(--ss-toolbar-hover)] transition-colors"
@@ -432,29 +375,13 @@ export default function Toolbar({ isDark = false, onToggleTheme }: ToolbarProps)
             <Group title="数字">
               <TooltipButton onClick={() => store.getState().applyNumberFormat({ type: 'percentage', decimalPlaces: 0 })} icon={<Percent size={16} />} title="百分比" />
               <TooltipButton onClick={() => store.getState().applyNumberFormat({ type: 'number', decimalPlaces: 2 })} icon={<Hash size={16} />} title="数字" />
-              <TooltipButton onClick={() => {
-                const state = store.getState();
-                const sheet = state.getActiveSheet();
-                const ref = coordsToCell(state.selection.startRow, state.selection.startCol);
-                const cell = sheet.cells.get(ref);
-                const dp = cell?.numberFormat?.decimalPlaces ?? 2;
-                store.getState().applyNumberFormat({ type: 'number', decimalPlaces: dp + 1 });
-              }} icon={<span className="text-xs font-mono">.0+</span>} title="增加小数位" />
-              <TooltipButton onClick={() => {
-                const state = store.getState();
-                const sheet = state.getActiveSheet();
-                const ref = coordsToCell(state.selection.startRow, state.selection.startCol);
-                const cell = sheet.cells.get(ref);
-                const dp = cell?.numberFormat?.decimalPlaces ?? 2;
-                store.getState().applyNumberFormat({ type: 'number', decimalPlaces: Math.max(0, dp - 1) });
-              }} icon={<span className="text-xs font-mono">.0-</span>} title="减少小数位" />
               <TooltipButton onClick={() => store.getState().applyNumberFormat({ type: 'currency', decimalPlaces: 2, currencySymbol: '¥' })} icon={<DollarSign size={16} />} title="货币" />
               <TooltipButton onClick={() => store.getState().applyNumberFormat({ type: 'date' })} icon={<Calendar size={16} />} title="日期" />
             </Group>
             <Divider />
             <Group title="清除">
               <TooltipButton onClick={handleClear} icon={<Eraser size={16} />} title="清除内容" />
-              <TooltipButton onClick={() => store.getState().clearFormatSelection()} icon={<Paintbrush size={16} />} title="清除格式" />
+              <TooltipButton onClick={() => store.getState().clearFormatSelection()} icon={<Eraser size={16} />} label="格式" title="清除格式" variant="both" />
             </Group>
           </>
         )}
@@ -497,124 +424,6 @@ export default function Toolbar({ isDark = false, onToggleTheme }: ToolbarProps)
           </>
         )}
 
-        {activeTab === 'format' && (
-          <>
-            <Group title="边框">
-              <TooltipButton onClick={() => store.getState().applyBorderSelection('all')} icon={<Grid3X3 size={16} />} title="全部边框" />
-              <TooltipButton onClick={() => store.getState().applyBorderSelection('top')} icon={<span className="text-xs">上</span>} title="上边框" />
-              <TooltipButton onClick={() => store.getState().applyBorderSelection('bottom')} icon={<span className="text-xs">下</span>} title="下边框" />
-              <TooltipButton onClick={() => store.getState().applyBorderSelection('left')} icon={<span className="text-xs">左</span>} title="左边框" />
-              <TooltipButton onClick={() => store.getState().applyBorderSelection('right')} icon={<span className="text-xs">右</span>} title="右边框" />
-              <TooltipButton onClick={() => store.getState().applyBorderSelection('none')} icon={<X size={16} />} title="清除边框" />
-              <TooltipButton onClick={() => store.getState().applyStyleToSelection({ wrap: true })} icon={<span className="text-xs">换行</span>} title="自动换行" />
-            </Group>
-            <Divider />
-            <Group title="背景">
-              <TooltipButton onClick={() => store.getState().applyStyleToSelection({ bgColor: '#f5f5f5' })} icon={<span className="h-4 w-4 rounded-sm" style={{ background: '#f5f5f5', border: '1px solid var(--ss-input-border)' }} />} title="浅灰" />
-              <TooltipButton onClick={() => store.getState().applyStyleToSelection({ bgColor: '#e5e5e5' })} icon={<span className="h-4 w-4 rounded-sm" style={{ background: '#e5e5e5', border: '1px solid var(--ss-input-border)' }} />} title="中灰" />
-              <TooltipButton onClick={() => store.getState().applyStyleToSelection({ bgColor: '#262626', color: '#ffffff' })} icon={<span className="h-4 w-4 rounded-sm" style={{ background: '#262626', border: '1px solid var(--ss-input-border)' }} />} title="黑底" />
-              <TooltipButton onClick={() => store.getState().applyStyleToSelection({ bgColor: undefined })} icon={<X size={16} />} title="清除背景" />
-            </Group>
-          </>
-        )}
-
-        {activeTab === 'data' && (
-          <>
-            <Group title="验证">
-              <TooltipButton
-                onClick={() => {
-                  const sel = store.getState().selection;
-                  for (let r = Math.min(sel.startRow, sel.endRow); r <= Math.max(sel.startRow, sel.endRow); r++) {
-                    for (let c = Math.min(sel.startCol, sel.endCol); c <= Math.max(sel.startCol, sel.endCol); c++) {
-                      store.getState().setCellValidation(r, c, { type: 'number', operator: 'between', formula1: '0', formula2: '100', errorMessage: '请输入 0 到 100 之间的数字' });
-                    }
-                  }
-                }}
-                icon={<CheckCircle size={16} />}
-                label="0-100"
-                title="0-100 数值验证"
-                variant="both"
-              />
-              <TooltipButton
-                onClick={() => {
-                  const sel = store.getState().selection;
-                  for (let r = Math.min(sel.startRow, sel.endRow); r <= Math.max(sel.startRow, sel.endRow); r++) {
-                    for (let c = Math.min(sel.startCol, sel.endCol); c <= Math.max(sel.startCol, sel.endCol); c++) {
-                      store.getState().setCellValidation(r, c, { type: 'number', operator: 'greaterThan', formula1: '0', errorMessage: '请输入大于 0 的数字' });
-                    }
-                  }
-                }}
-                icon={<CheckCircle size={16} />}
-                label=">0"
-                title="大于 0 验证"
-                variant="both"
-              />
-              <TooltipButton
-                onClick={() => {
-                  const sel = store.getState().selection;
-                  const input = window.prompt('输入下拉选项，用逗号分隔：', '是,否');
-                  if (input === null) return;
-                  const list = input.split(',').map(s => s.trim()).filter(Boolean);
-                  if (list.length === 0) return;
-                  for (let r = Math.min(sel.startRow, sel.endRow); r <= Math.max(sel.startRow, sel.endRow); r++) {
-                    for (let c = Math.min(sel.startCol, sel.endCol); c <= Math.max(sel.startCol, sel.endCol); c++) {
-                      store.getState().setCellValidation(r, c, { type: 'list', list, errorMessage: `请选择：${list.join('、')}` });
-                    }
-                  }
-                }}
-                icon={<List size={16} />}
-                label="下拉"
-                title="下拉列表"
-                variant="both"
-              />
-              <TooltipButton
-                onClick={() => {
-                  const sel = store.getState().selection;
-                  for (let r = Math.min(sel.startRow, sel.endRow); r <= Math.max(sel.startRow, sel.endRow); r++) {
-                    for (let c = Math.min(sel.startCol, sel.endCol); c <= Math.max(sel.startCol, sel.endCol); c++) {
-                      store.getState().clearCellValidation(r, c);
-                    }
-                  }
-                }}
-                icon={<Eraser size={16} />}
-                label="清除"
-                title="清除验证"
-                variant="both"
-              />
-            </Group>
-            <Divider />
-            <Group title="条件格式">
-              <TooltipButton
-                onClick={() => {
-                  const sel = store.getState().selection;
-                  const value = window.prompt('高亮大于多少的单元格？', '0');
-                  if (value === null) return;
-                  store.getState().addConditionalFormat({
-                    range: { startRow: Math.min(sel.startRow, sel.endRow), startCol: Math.min(sel.startCol, sel.endCol), endRow: Math.max(sel.startRow, sel.endRow), endCol: Math.max(sel.startCol, sel.endCol) },
-                    type: 'value',
-                    condition: 'greaterThan',
-                    value: parseFloat(value),
-                    bgColor: '#e5e5e5',
-                  });
-                }}
-                icon={<Filter size={16} />}
-                label="大于"
-                title="高亮大于某值"
-                variant="both"
-              />
-            </Group>
-            <Divider />
-            <Group title="排序">
-              <TooltipButton onClick={() => store.getState().sortByColumn(selection.startCol, 'asc')} icon={<SortAsc size={16} />} title="升序" />
-              <TooltipButton onClick={() => store.getState().sortByColumn(selection.startCol, 'desc')} icon={<SortDesc size={16} />} title="降序" />
-            </Group>
-            <Divider />
-            <Group title="AI分析">
-              <TooltipButton onClick={handleAnalyze} icon={<Wand2 size={16} />} title="数据分析" />
-            </Group>
-          </>
-        )}
-
         {activeTab === 'view' && (
           <>
             <Group title="冻结">
@@ -624,9 +433,9 @@ export default function Toolbar({ isDark = false, onToggleTheme }: ToolbarProps)
               <TooltipButton onClick={() => { store.getState().setFrozenRows(0); store.getState().setFrozenCols(0); }} icon={<Unlock size={16} />} title="取消冻结" />
             </Group>
             <Divider />
-            <Group title="视图">
-              <TooltipButton onClick={() => {}} icon={<Eye size={16} />} label="普通" title="普通视图" variant="both" />
-              <TooltipButton onClick={() => {}} icon={<Layers size={16} />} label="分页" title="分页预览" variant="both" />
+            <Group title="排序">
+              <TooltipButton onClick={() => store.getState().sortByColumn(selection.startCol, 'asc')} icon={<SortAsc size={16} />} title="升序" />
+              <TooltipButton onClick={() => store.getState().sortByColumn(selection.startCol, 'desc')} icon={<SortDesc size={16} />} title="降序" />
             </Group>
           </>
         )}

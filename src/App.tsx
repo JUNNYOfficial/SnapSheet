@@ -4,6 +4,7 @@ import FormulaBar from './components/FormulaBar';
 import Spreadsheet from './components/Spreadsheet';
 import SheetTabs from './components/SheetTabs';
 import FindDialog from './components/FindDialog';
+import PropertyPanel from './components/PropertyPanel';
 import { useSpreadsheetStore } from './store/useSpreadsheetStore';
 import { useTheme } from './hooks/useTheme';
 import { workbookToJSON, workbookFromJSON } from './utils/json';
@@ -12,6 +13,7 @@ const STORAGE_KEY = 'snapsheet_autosave';
 
 export default function App() {
   const [findOpen, setFindOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
   const store = useSpreadsheetStore;
   const { theme, toggleTheme, isDark } = useTheme();
 
@@ -64,7 +66,7 @@ export default function App() {
       </div>
 
       {/* Ribbon 工具栏 */}
-      <Toolbar isDark={isDark} onToggleTheme={toggleTheme} />
+      <Toolbar isDark={isDark} onToggleTheme={toggleTheme} onTogglePanel={() => setPanelOpen(!panelOpen)} />
 
       {/* 公式栏 */}
       <FormulaBar />
@@ -79,6 +81,9 @@ export default function App() {
 
       {/* 查找对话框 */}
       <FindDialog open={findOpen} onClose={() => setFindOpen(false)} />
+
+      {/* 右侧属性面板 */}
+      <PropertyPanel isOpen={panelOpen} onClose={() => setPanelOpen(false)} />
     </div>
   );
 }
