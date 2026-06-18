@@ -9,7 +9,11 @@ import {
 } from '../utils/constants';
 import ContextMenu from './ContextMenu';
 
-export default function Spreadsheet() {
+interface SpreadsheetProps {
+  isDark?: boolean;
+}
+
+export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const rendererRef = useRef<CanvasRenderer | null>(null);
@@ -33,6 +37,7 @@ export default function Spreadsheet() {
 
     const renderer = new CanvasRenderer({
       canvas: canvasRef.current,
+      isDark,
       getCell,
       getColWidth: (col) => store.getState().getColWidth(col),
       getRowHeight: (row) => store.getState().getRowHeight(row),
@@ -79,6 +84,7 @@ export default function Spreadsheet() {
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -104,6 +110,13 @@ export default function Spreadsheet() {
       }, 10);
     }
   }, [editing]);
+
+  useEffect(() => {
+    if (rendererRef.current) {
+      rendererRef.current.setTheme(isDark);
+      rendererRef.current.render();
+    }
+  }, [isDark]);
 
   useEffect(() => {
     if (rendererRef.current) rendererRef.current.render();
@@ -138,7 +151,7 @@ export default function Spreadsheet() {
   };
 
   return (
-    <div className="relative flex-1 overflow-hidden bg-white">
+    <div className="relative flex-1 overflow-hidden" style={{ background: 'var(--ss-bg)' }}>
       <canvas ref={canvasRef} className="w-full h-full cursor-cell" style={{ display: 'block' }} />
       {contextMenu && (
         <ContextMenu
@@ -162,9 +175,12 @@ export default function Spreadsheet() {
         <input
           ref={editInputRef}
           type="text"
-          className="absolute z-10 border-2 border-neutral-800 bg-white px-1.5 outline-none"
+          className="absolute z-10 border-2 px-1.5 outline-none"
           style={{
             ...getEditInputStyle(),
+            borderColor: 'var(--ss-selected-border)',
+            background: 'var(--ss-bg)',
+            color: 'var(--ss-cell-text)',
             fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace',
             fontSize: '13px',
             lineHeight: String(DEFAULT_ROW_HEIGHT) + 'px',

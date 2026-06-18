@@ -80,11 +80,11 @@ export default function FormulaBar() {
   };
 
   return (
-    <div className="relative flex items-center border-b border-neutral-200 bg-white">
-      <div className="flex w-24 items-center justify-center border-r border-neutral-200 px-2 py-2.5" title="当前单元格地址">
-        <span className="text-sm text-neutral-700" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace' }}>{colToLetter(selection.startCol)}{selection.startRow + 1}</span>
+    <div className="relative flex items-center border-b" style={{ borderColor: 'var(--ss-toolbar-border)', background: 'var(--ss-toolbar-bg)' }}>
+      <div className="flex w-24 items-center justify-center border-r px-2 py-2.5" style={{ borderColor: 'var(--ss-toolbar-border)' }} title="当前单元格地址">
+        <span className="text-sm" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace', color: 'var(--ss-toolbar-text)' }}>{colToLetter(selection.startCol)}{selection.startRow + 1}</span>
       </div>
-      <div className="flex items-center border-r border-neutral-200 px-3 py-2 text-sm text-neutral-400" title="函数">
+      <div className="flex items-center border-r px-3 py-2 text-sm" style={{ borderColor: 'var(--ss-toolbar-border)', color: 'var(--ss-header-text)' }} title="函数">
         <span style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, serif', fontStyle: 'italic' }}>fx</span>
       </div>
       <input
@@ -129,12 +129,12 @@ export default function FormulaBar() {
             store.getState().setFormulaBarValue('');
           }
         }}
-        className="flex-1 bg-transparent px-3 py-2.5 text-sm outline-none focus:bg-neutral-100"
-        style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace' }}
+        className="flex-1 px-3 py-2.5 text-sm outline-none"
+        style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace', background: 'var(--ss-toolbar-bg)', color: 'var(--ss-input-text)' }}
         placeholder="输入值或公式，例如 =SUM(A1:A5)"
       />
       {suggestions.length > 0 && (
-        <div className="absolute left-0 top-full z-50 max-h-48 overflow-auto border border-neutral-200 bg-white shadow-md" style={{ minWidth: '160px' }}>
+        <div className="absolute left-0 top-full z-50 max-h-48 overflow-auto border shadow-md" style={{ minWidth: '160px', borderColor: 'var(--ss-panel-border)', background: 'var(--ss-panel-bg)' }}>
           {suggestions.map((fn, idx) => (
             <div
               key={fn}
@@ -142,8 +142,10 @@ export default function FormulaBar() {
                 e.preventDefault();
                 applySuggestion(fn);
               }}
-              className={`cursor-pointer px-3 py-1.5 text-sm ${idx === selectedIndex ? 'bg-neutral-200' : 'hover:bg-neutral-100'}`}
-              style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace' }}
+              className="cursor-pointer px-3 py-1.5 text-sm"
+              style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace', color: 'var(--ss-toolbar-text)', background: idx === selectedIndex ? 'var(--ss-toolbar-hover)' : 'transparent' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--ss-toolbar-hover)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = idx === selectedIndex ? 'var(--ss-toolbar-hover)' : 'transparent'; }}
             >
               {fn}()
             </div>

@@ -30,18 +30,20 @@ export default function SheetTabs() {
   const min = numericValues.length > 0 ? Math.min(...numericValues) : null;
 
   return (
-    <div className="flex items-center border-t border-neutral-200 bg-neutral-50 px-3 py-1.5" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}>
+    <div className="flex items-center border-t px-3 py-1.5" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif', borderColor: 'var(--ss-toolbar-border)', background: 'var(--ss-toolbar-bg)' }}>
       <div className="flex items-center gap-1">
         {workbook.sheets.map((sheet) => (
           <button
             key={sheet.id}
             onClick={() => store.getState().setActiveSheet(sheet.id)}
-            className={
-              'rounded-t px-4 py-1.5 text-sm transition-colors ' +
-              (sheet.id === workbook.activeSheetId
-                ? 'border-t-2 border-neutral-800 bg-white text-neutral-800'
-                : 'text-neutral-600 hover:bg-neutral-100')
-            }
+            className="rounded-t px-4 py-1.5 text-sm transition-colors"
+            style={{
+              color: sheet.id === workbook.activeSheetId ? 'var(--ss-cell-text)' : 'var(--ss-header-text)',
+              background: sheet.id === workbook.activeSheetId ? 'var(--ss-bg)' : 'transparent',
+              borderTop: sheet.id === workbook.activeSheetId ? '2px solid var(--ss-cell-text)' : '2px solid transparent',
+            }}
+            onMouseEnter={(e) => { if (sheet.id !== workbook.activeSheetId) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ss-toolbar-hover)'; }}
+            onMouseLeave={(e) => { if (sheet.id !== workbook.activeSheetId) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
           >
             {sheet.name}
           </button>
@@ -49,8 +51,9 @@ export default function SheetTabs() {
       </div>
       <button
         onClick={() => store.getState().addSheet()}
-        className="ml-2 rounded px-2 py-1 text-lg text-neutral-500 hover:bg-neutral-200"
+        className="ml-2 rounded px-2 py-1 text-lg hover:opacity-80"
         title="新建工作表"
+        style={{ color: 'var(--ss-header-text)' }}
       >
         +
       </button>
@@ -61,13 +64,14 @@ export default function SheetTabs() {
               store.getState().deleteSheet(workbook.activeSheetId);
             }
           }}
-          className="ml-2 rounded px-2 py-1 text-xs text-neutral-500 hover:bg-neutral-200"
+          className="ml-2 rounded px-2 py-1 text-xs hover:opacity-80"
           title="删除当前工作表"
+          style={{ color: 'var(--ss-header-text)' }}
         >
           删除
         </button>
       )}
-      <div className="ml-auto flex items-center gap-4 text-xs text-neutral-500">
+      <div className="ml-auto flex items-center gap-4 text-xs" style={{ color: 'var(--ss-header-text)' }}>
         <span>
           {isRange
             ? `选中: ${maxRow - minRow + 1} 行 × ${maxCol - minCol + 1} 列`

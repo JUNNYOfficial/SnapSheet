@@ -5,6 +5,7 @@ import Spreadsheet from './components/Spreadsheet';
 import SheetTabs from './components/SheetTabs';
 import FindDialog from './components/FindDialog';
 import { useSpreadsheetStore } from './store/useSpreadsheetStore';
+import { useTheme } from './hooks/useTheme';
 import { workbookToJSON, workbookFromJSON } from './utils/json';
 
 const STORAGE_KEY = 'snapsheet_autosave';
@@ -12,6 +13,7 @@ const STORAGE_KEY = 'snapsheet_autosave';
 export default function App() {
   const [findOpen, setFindOpen] = useState(false);
   const store = useSpreadsheetStore;
+  const { theme, toggleTheme, isDark } = useTheme();
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -25,7 +27,7 @@ export default function App() {
         localStorage.removeItem(STORAGE_KEY);
       }
     }
-  }, []);
+  }, [store]);
 
   useEffect(() => {
     const unsubscribe = store.subscribe((state) => {
@@ -33,7 +35,7 @@ export default function App() {
       localStorage.setItem(STORAGE_KEY, json);
     });
     return unsubscribe;
-  }, []);
+  }, [store]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -47,21 +49,21 @@ export default function App() {
   }, []);
 
   return (
-    <div className="relative flex h-screen w-screen flex-col bg-neutral-100" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}>
-      <div className="border-b border-neutral-200 bg-white px-6 py-2.5">
+    <div className={theme + ' relative flex h-screen w-screen flex-col'} style={{ background: 'var(--ss-toolbar-bg)', color: 'var(--ss-toolbar-text)' }}>
+      <div className="border-b px-6 py-2.5" style={{ borderColor: 'var(--ss-toolbar-border)', background: 'var(--ss-toolbar-bg)' }}>
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded border border-neutral-300 bg-neutral-50">
-            <span className="text-sm text-neutral-800" style={{ fontFamily: 'SimHei, 黑体, sans-serif' }}>表</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded border" style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-header-bg)' }}>
+            <span className="text-sm" style={{ color: 'var(--ss-cell-text)', fontFamily: 'SimHei, 黑体, sans-serif' }}>表</span>
           </div>
-          <div className="text-neutral-800">
-            <h1 className="text-lg leading-tight" style={{ fontFamily: 'SimHei, 黑体, sans-serif' }}>SnapSheet</h1>
-            <p className="text-xs text-neutral-500">电子表格 · 公式计算 · 数据分析</p>
+          <div>
+            <h1 className="text-lg leading-tight" style={{ color: 'var(--ss-cell-text)', fontFamily: 'SimHei, 黑体, sans-serif' }}>SnapSheet</h1>
+            <p className="text-xs" style={{ color: 'var(--ss-header-text)' }}>电子表格 · 公式计算 · 数据分析</p>
           </div>
         </div>
       </div>
-      <Toolbar />
+      <Toolbar isDark={isDark} onToggleTheme={toggleTheme} />
       <FormulaBar />
-      <Spreadsheet />
+      <Spreadsheet isDark={isDark} />
       <SheetTabs />
       <FindDialog open={findOpen} onClose={() => setFindOpen(false)} />
     </div>

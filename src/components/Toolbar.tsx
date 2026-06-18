@@ -5,7 +5,12 @@ import { workbookToJSON, workbookFromJSON, downloadFile } from '../utils/json';
 import { colToLetter, coordsToCell } from '../utils/cellRef';
 import { TEMPLATES } from '../templates';
 
-export default function Toolbar() {
+interface ToolbarProps {
+  isDark?: boolean;
+  onToggleTheme?: () => void;
+}
+
+export default function Toolbar({ isDark = false, onToggleTheme }: ToolbarProps) {
   const store = useSpreadsheetStore;
   const selection = useSpreadsheetStore((s) => s.selection);
   const workbook = useSpreadsheetStore((s) => s.workbook);
@@ -194,13 +199,15 @@ export default function Toolbar() {
     }
   };
 
-  const btnBase = 'rounded px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-100 transition-colors';
-  const dividerBase = 'mx-2 h-5 w-px bg-neutral-200';
+  const btnBase = 'rounded px-3 py-1.5 text-sm transition-colors';
+  const dividerBase = 'mx-2 h-5 w-px';
+  const dividerStyle = { background: 'var(--ss-toolbar-border)' };
+  const toolbarBtnStyle = { fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif', color: 'var(--ss-toolbar-text)' };
 
   return (
-    <div className="flex items-center gap-2 border-b border-neutral-200 bg-white px-4 py-2" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}>
+    <div className="flex items-center gap-2 border-b px-4 py-2" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif', borderColor: 'var(--ss-toolbar-border)', background: 'var(--ss-toolbar-bg)' }}>
       <div className="flex items-center gap-1">
-        <button onClick={() => store.getState().newWorkbook()} className={btnBase} title="新建">
+        <button onClick={() => store.getState().newWorkbook()} className={btnBase + ' hover:opacity-80'} title="新建" style={toolbarBtnStyle}>
           新建
         </button>
         <select
@@ -213,8 +220,8 @@ export default function Toolbar() {
               e.target.value = '';
             }
           }}
-          className="rounded border border-neutral-200 bg-white px-2 py-1.5 text-sm text-neutral-700 outline-none hover:bg-neutral-100"
-          style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}
+          className="rounded border px-2 py-1.5 text-sm outline-none"
+          style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)', fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}
         >
           <option value="">模板</option>
           {TEMPLATES.map((t) => (
@@ -224,45 +231,45 @@ export default function Toolbar() {
           ))}
         </select>
         <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
-        <button onClick={() => fileInputRef.current?.click()} className={btnBase} title="导入 CSV">
+        <button onClick={() => fileInputRef.current?.click()} className={btnBase + ' hover:opacity-80'} title="导入 CSV" style={toolbarBtnStyle}>
           导入 CSV
         </button>
         <input ref={jsonInputRef} type="file" accept=".json" className="hidden" onChange={handleImportJSON} />
-        <button onClick={() => jsonInputRef.current?.click()} className={btnBase} title="导入 JSON">
+        <button onClick={() => jsonInputRef.current?.click()} className={btnBase + ' hover:opacity-80'} title="导入 JSON" style={toolbarBtnStyle}>
           导入 JSON
         </button>
-        <button onClick={handleExportCSV} className={btnBase} title="导出 CSV">
+        <button onClick={handleExportCSV} className={btnBase + ' hover:opacity-80'} title="导出 CSV" style={toolbarBtnStyle}>
           导出 CSV
         </button>
-        <button onClick={handleExportJSON} className={btnBase} title="导出 JSON">
+        <button onClick={handleExportJSON} className={btnBase + ' hover:opacity-80'} title="导出 JSON" style={toolbarBtnStyle}>
           导出 JSON
         </button>
       </div>
 
-      <div className={dividerBase} />
+      <div className={dividerBase} style={dividerStyle} />
 
       <div className="flex items-center gap-1">
-        <button onClick={handleBold} className="rounded px-2.5 py-1.5 text-sm text-neutral-700 hover:bg-neutral-100" title="加粗">
+        <button onClick={handleBold} className="rounded px-2.5 py-1.5 text-sm hover:opacity-80" style={toolbarBtnStyle} title="加粗">
           <span style={{ fontWeight: 700 }}>B</span>
         </button>
-        <button onClick={handleAlignLeft} className="rounded px-2.5 py-1.5 text-sm text-neutral-700 hover:bg-neutral-100" title="左对齐">
+        <button onClick={handleAlignLeft} className="rounded px-2.5 py-1.5 text-sm hover:opacity-80" style={toolbarBtnStyle} title="左对齐">
           左
         </button>
-        <button onClick={handleAlignCenter} className="rounded px-2.5 py-1.5 text-sm text-neutral-700 hover:bg-neutral-100" title="居中">
+        <button onClick={handleAlignCenter} className="rounded px-2.5 py-1.5 text-sm hover:opacity-80" style={toolbarBtnStyle} title="居中">
           中
         </button>
-        <button onClick={handleAlignRight} className="rounded px-2.5 py-1.5 text-sm text-neutral-700 hover:bg-neutral-100" title="右对齐">
+        <button onClick={handleAlignRight} className="rounded px-2.5 py-1.5 text-sm hover:opacity-80" style={toolbarBtnStyle} title="右对齐">
           右
         </button>
       </div>
 
-      <div className={dividerBase} />
+      <div className={dividerBase} style={dividerStyle} />
 
       <div className="flex items-center gap-1">
-        <button onClick={() => store.getState().applyNumberFormat({ type: 'percentage', decimalPlaces: 0 })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="百分比">
+        <button onClick={() => store.getState().applyNumberFormat({ type: 'percentage', decimalPlaces: 0 })} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="百分比">
           %
         </button>
-        <button onClick={() => store.getState().applyNumberFormat({ type: 'number', decimalPlaces: 2 })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="数字">
+        <button onClick={() => store.getState().applyNumberFormat({ type: 'number', decimalPlaces: 2 })} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="数字">
           0.00
         </button>
         <button onClick={() => {
@@ -272,7 +279,7 @@ export default function Toolbar() {
           const cell = sheet.cells.get(ref);
           const dp = cell?.numberFormat?.decimalPlaces ?? 2;
           store.getState().applyNumberFormat({ type: 'number', decimalPlaces: dp + 1 });
-        }} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="增加小数位">
+        }} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="增加小数位">
           .0+
         </button>
         <button onClick={() => {
@@ -282,53 +289,53 @@ export default function Toolbar() {
           const cell = sheet.cells.get(ref);
           const dp = cell?.numberFormat?.decimalPlaces ?? 2;
           store.getState().applyNumberFormat({ type: 'number', decimalPlaces: Math.max(0, dp - 1) });
-        }} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="减少小数位">
+        }} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="减少小数位">
           .0-
         </button>
-        <button onClick={() => store.getState().applyNumberFormat(null)} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="常规">
+        <button onClick={() => store.getState().applyNumberFormat(null)} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="常规">
           常规
         </button>
-        <button onClick={() => store.getState().applyNumberFormat({ type: 'currency', decimalPlaces: 2, currencySymbol: '¥' })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="货币">
+        <button onClick={() => store.getState().applyNumberFormat({ type: 'currency', decimalPlaces: 2, currencySymbol: '¥' })} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="货币">
           ¥
         </button>
-        <button onClick={() => store.getState().applyNumberFormat({ type: 'date' })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="日期">
+        <button onClick={() => store.getState().applyNumberFormat({ type: 'date' })} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="日期">
           日期
         </button>
       </div>
 
-      <div className={dividerBase} />
+      <div className={dividerBase} style={dividerStyle} />
 
       <div className="flex items-center gap-1">
-        <button onClick={() => store.getState().applyBorderSelection('all')} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="全部边框">
+        <button onClick={() => store.getState().applyBorderSelection('all')} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="全部边框">
           框
         </button>
-        <button onClick={() => store.getState().applyBorderSelection('top')} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="上边框">
+        <button onClick={() => store.getState().applyBorderSelection('top')} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="上边框">
           上
         </button>
-        <button onClick={() => store.getState().applyBorderSelection('bottom')} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="下边框">
+        <button onClick={() => store.getState().applyBorderSelection('bottom')} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="下边框">
           下
         </button>
-        <button onClick={() => store.getState().applyBorderSelection('left')} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="左边框">
+        <button onClick={() => store.getState().applyBorderSelection('left')} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="左边框">
           左
         </button>
-        <button onClick={() => store.getState().applyBorderSelection('right')} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="右边框">
+        <button onClick={() => store.getState().applyBorderSelection('right')} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="右边框">
           右
         </button>
-        <button onClick={() => store.getState().applyBorderSelection('none')} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="清除边框">
+        <button onClick={() => store.getState().applyBorderSelection('none')} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="清除边框">
           无框
         </button>
-        <button onClick={() => store.getState().applyStyleToSelection({ wrap: true })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="自动换行">
+        <button onClick={() => store.getState().applyStyleToSelection({ wrap: true })} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="自动换行">
           换行
         </button>
       </div>
 
-      <div className={dividerBase} />
+      <div className={dividerBase} style={dividerStyle} />
 
       <div className="flex items-center gap-1">
-        <button onClick={() => store.getState().mergeCells()} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="合并单元格">
+        <button onClick={() => store.getState().mergeCells()} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="合并单元格">
           合并
         </button>
-        <button onClick={() => store.getState().unmergeCells()} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="取消合并">
+        <button onClick={() => store.getState().unmergeCells()} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="取消合并">
           取消合并
         </button>
         <button
@@ -347,14 +354,14 @@ export default function Toolbar() {
               store.getState().setCellComment(row, col, comment.trim());
             }
           }}
-          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle}
           title="添加/编辑批注"
         >
           批注
         </button>
       </div>
 
-      <div className={dividerBase} />
+      <div className={dividerBase} style={dividerStyle} />
 
       <div className="flex items-center gap-1">
         <button
@@ -366,7 +373,7 @@ export default function Toolbar() {
               }
             }
           }}
-          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle}
           title="0-100 数值验证"
         >
           0-100
@@ -380,7 +387,7 @@ export default function Toolbar() {
               }
             }
           }}
-          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle}
           title="大于 0 验证"
         >
           {'>'}0
@@ -398,7 +405,7 @@ export default function Toolbar() {
               }
             }
           }}
-          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle}
           title="下拉列表验证"
         >
           下拉
@@ -412,14 +419,14 @@ export default function Toolbar() {
               }
             }
           }}
-          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle}
           title="清除验证"
         >
           清验证
         </button>
       </div>
 
-      <div className={dividerBase} />
+      <div className={dividerBase} style={dividerStyle} />
 
       <div className="flex items-center gap-1">
         <button
@@ -435,7 +442,7 @@ export default function Toolbar() {
               bgColor: '#e5e5e5',
             });
           }}
-          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle}
           title="高亮大于某值的单元格"
         >
           大于
@@ -453,7 +460,7 @@ export default function Toolbar() {
               bgColor: '#d4d4d4',
             });
           }}
-          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle}
           title="高亮小于某值的单元格"
         >
           小于
@@ -469,121 +476,132 @@ export default function Toolbar() {
               maxColor: '#dcfce7',
             });
           }}
-          className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100"
+          className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle}
           title="颜色刻度"
         >
           色阶
         </button>
-        <button onClick={() => store.getState().clearConditionalFormats()} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="清除条件格式">
+        <button onClick={() => store.getState().clearConditionalFormats()} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="清除条件格式">
           清色阶
         </button>
       </div>
 
-      <div className={dividerBase} />
+      <div className={dividerBase} style={dividerStyle} />
 
       <div className="flex items-center gap-1">
-        <button onClick={() => store.getState().applyStyleToSelection({ bgColor: '#f5f5f5' })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="浅灰背景">
+        <button onClick={() => store.getState().applyStyleToSelection({ bgColor: '#f5f5f5' })} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="浅灰背景">
           灰
         </button>
-        <button onClick={() => store.getState().applyStyleToSelection({ bgColor: '#e5e5e5' })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="中灰背景">
+        <button onClick={() => store.getState().applyStyleToSelection({ bgColor: '#e5e5e5' })} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="中灰背景">
           深灰
         </button>
-        <button onClick={() => store.getState().applyStyleToSelection({ bgColor: '#262626', color: '#ffffff' })} className="rounded px-2 py-1.5 text-xs text-white bg-neutral-800 hover:bg-neutral-700" title="黑底白字">
+        <button onClick={() => store.getState().applyStyleToSelection({ bgColor: '#262626', color: '#ffffff' })} className="rounded px-2 py-1.5 text-xs hover:opacity-90" style={{ ...toolbarBtnStyle, background: 'var(--ss-cell-text)', color: 'var(--ss-bg)' }} title="黑底白字">
           黑
         </button>
-        <button onClick={() => store.getState().applyStyleToSelection({ bgColor: undefined })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="清除背景色">
+        <button onClick={() => store.getState().applyStyleToSelection({ bgColor: undefined })} className="rounded px-2 py-1.5 text-xs hover:opacity-80" style={toolbarBtnStyle} title="清除背景色">
           无
         </button>
       </div>
 
-      <div className={dividerBase} />
+      <div className={dividerBase} style={dividerStyle} />
 
-      <button onClick={handleClear} className={btnBase} title="清除选中区域">
+      <button onClick={handleClear} className={btnBase + ' hover:opacity-80'} title="清除选中区域" style={toolbarBtnStyle}>
         清除
       </button>
-      <button onClick={() => store.getState().clearFormatSelection()} className={btnBase} title="清除选中区域格式">
+      <button onClick={() => store.getState().clearFormatSelection()} className={btnBase + ' hover:opacity-80'} title="清除选中区域格式" style={toolbarBtnStyle}>
         清格式
       </button>
 
-      <div className={dividerBase} />
+      <div className={dividerBase} style={dividerStyle} />
 
-      <button onClick={() => store.getState().insertRow(selection.startRow)} className={btnBase} title="在选中行前插入一行">
+      <button onClick={() => store.getState().insertRow(selection.startRow)} className={btnBase + ' hover:opacity-80'} title="在选中行前插入一行" style={toolbarBtnStyle}>
         插行
       </button>
-      <button onClick={() => store.getState().deleteRow(selection.startRow)} className={btnBase} title="删除选中行">
+      <button onClick={() => store.getState().deleteRow(selection.startRow)} className={btnBase + ' hover:opacity-80'} title="删除选中行" style={toolbarBtnStyle}>
         删行
       </button>
-      <button onClick={() => store.getState().insertCol(selection.startCol)} className={btnBase} title="在选中列前插入一列">
+      <button onClick={() => store.getState().insertCol(selection.startCol)} className={btnBase + ' hover:opacity-80'} title="在选中列前插入一列" style={toolbarBtnStyle}>
         插列
       </button>
-      <button onClick={() => store.getState().deleteCol(selection.startCol)} className={btnBase} title="删除选中列">
+      <button onClick={() => store.getState().deleteCol(selection.startCol)} className={btnBase + ' hover:opacity-80'} title="删除选中列" style={toolbarBtnStyle}>
         删列
       </button>
 
-      <div className={dividerBase} />
+      <div className={dividerBase} style={dividerStyle} />
 
       <button
         onClick={() => store.getState().undo()}
         disabled={!canUndo}
-        className={btnBase + (canUndo ? '' : ' opacity-40 cursor-not-allowed')}
+        className={btnBase + (canUndo ? ' hover:opacity-80' : ' opacity-40 cursor-not-allowed')}
         title="撤销 (Ctrl+Z)"
+        style={toolbarBtnStyle}
       >
         撤销
       </button>
       <button
         onClick={() => store.getState().redo()}
         disabled={!canRedo}
-        className={btnBase + (canRedo ? '' : ' opacity-40 cursor-not-allowed')}
+        className={btnBase + (canRedo ? ' hover:opacity-80' : ' opacity-40 cursor-not-allowed')}
         title="重做 (Ctrl+Y)"
+        style={toolbarBtnStyle}
       >
         重做
       </button>
 
-      <div className={dividerBase} />
+      <div className={dividerBase} style={dividerStyle} />
 
       <div className="flex items-center gap-1">
-        <button onClick={() => store.getState().sortByColumn(selection.startCol, 'asc')} className={btnBase} title="按选中列升序排序">
+        <button onClick={() => store.getState().sortByColumn(selection.startCol, 'asc')} className={btnBase + ' hover:opacity-80'} title="按选中列升序排序" style={toolbarBtnStyle}>
           升序
         </button>
-        <button onClick={() => store.getState().sortByColumn(selection.startCol, 'desc')} className={btnBase} title="按选中列降序排序">
+        <button onClick={() => store.getState().sortByColumn(selection.startCol, 'desc')} className={btnBase + ' hover:opacity-80'} title="按选中列降序排序" style={toolbarBtnStyle}>
           降序
         </button>
       </div>
 
-      <div className={dividerBase} />
+      <div className={dividerBase} style={dividerStyle} />
 
       <div className="flex items-center gap-1">
-        <button onClick={() => { handleAnalyze(); setAiOpen(true); }} className={btnBase} title="AI 分析">
+        <button onClick={() => { handleAnalyze(); setAiOpen(true); }} className={btnBase + ' hover:opacity-80'} title="AI 分析" style={toolbarBtnStyle}>
           分析
         </button>
-        <button onClick={() => setAiOpen(!aiOpen)} className={btnBase} title="AI 生成公式">
+        <button onClick={() => setAiOpen(!aiOpen)} className={btnBase + ' hover:opacity-80'} title="AI 生成公式" style={toolbarBtnStyle}>
           AI 公式
         </button>
       </div>
 
       {aiOpen && (
-        <div className="ml-4 flex items-center gap-2 rounded border border-neutral-300 bg-neutral-50 p-2">
+        <div className="ml-4 flex items-center gap-2 rounded border p-2" style={{ borderColor: 'var(--ss-panel-border)', background: 'var(--ss-panel-bg)' }}>
           <input
             type="text"
             value={aiPrompt}
             onChange={(e) => setAiPrompt(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleFormulaGenerate()}
             placeholder="输入指令: 如 求平均值、求和、最大值..."
-            className="w-64 rounded border border-neutral-300 bg-white px-2 py-1 text-sm outline-none focus:border-neutral-600"
-            style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}
+            className="w-64 rounded border px-2 py-1 text-sm outline-none"
+            style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-input-text)', fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}
           />
-          <button onClick={handleFormulaGenerate} className="rounded bg-neutral-800 px-3 py-1 text-sm text-white hover:bg-neutral-700" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}>
+          <button onClick={handleFormulaGenerate} className="rounded px-3 py-1 text-sm hover:opacity-90" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif', background: 'var(--ss-cell-text)', color: 'var(--ss-bg)' }}>
             生成
           </button>
           {aiResult && (
-            <div className="max-h-32 w-72 overflow-auto whitespace-pre-wrap rounded border border-neutral-200 bg-white p-2 text-xs text-neutral-700" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}>
+            <div className="max-h-32 w-72 overflow-auto whitespace-pre-wrap rounded border p-2 text-xs" style={{ borderColor: 'var(--ss-panel-border)', background: 'var(--ss-bg)', color: 'var(--ss-toolbar-text)', fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}>
               {aiResult}
             </div>
           )}
         </div>
       )}
 
-      <div className="ml-auto flex items-center gap-3 text-xs text-neutral-500" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace' }}>
+      <button
+        onClick={onToggleTheme}
+        className="rounded px-2 py-1 text-lg hover:opacity-80"
+        title={isDark ? '切换到浅色模式' : '切换到深色模式'}
+        style={toolbarBtnStyle}
+      >
+        {isDark ? '☀️' : '🌙'}
+      </button>
+
+      <div className="ml-auto flex items-center gap-3 text-xs" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace', color: 'var(--ss-header-text)' }}>
         <span>
           选中: {colToLetter(selection.startCol)}{selection.startRow + 1}{selection.endRow !== selection.startRow || selection.endCol !== selection.startCol ? ':' + colToLetter(selection.endCol) + (selection.endRow + 1) : ''}
         </span>

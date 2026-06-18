@@ -3,22 +3,17 @@ import {
   DEFAULT_ROW_HEIGHT,
   HEADER_ROW_HEIGHT,
   HEADER_COL_WIDTH,
-  GRID_COLOR,
-  HEADER_BG,
-  HEADER_TEXT,
-  CELL_TEXT,
-  SELECTED_BORDER,
-  SELECTED_BG,
-  ERROR_TEXT,
   HEADER_FONT,
   CELL_FONT,
   FONT_SIZE,
 } from '../utils/constants';
+import { getThemeColors, type ThemeColors } from '../utils/theme';
 import { colToLetter } from '../utils/cellRef';
 import type { Cell, Selection, MergeRange, ConditionalFormat } from '../types';
 
 export interface CanvasRendererOptions {
   canvas: HTMLCanvasElement;
+  isDark?: boolean;
   getCell: (row: number, col: number) => Cell | undefined;
   getColWidth: (col: number) => number;
   getRowHeight: (row: number) => number;
@@ -58,15 +53,21 @@ export class CanvasRenderer {
   private fillHandleDragging = false;
   private fillHandleSource: { startRow: number; startCol: number; endRow: number; endCol: number } | null = null;
   private fillHandleTarget: { row: number; col: number } | null = null;
+  private theme: ThemeColors;
 
   constructor(opts: CanvasRendererOptions) {
     this.opts = opts;
     this.selection = opts.selection;
+    this.theme = getThemeColors(opts.isDark ?? false);
     const ctx = opts.canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas 2D context not available');
     this.ctx = ctx;
     this.resize();
     this.bindEvents();
+  }
+
+  setTheme(isDark: boolean): void {
+    this.theme = getThemeColors(isDark);
   }
 
   resize(): void {
@@ -85,6 +86,10 @@ export class CanvasRenderer {
 
   setSelection(selection: Selection): void {
     this.selection = selection;
+  }
+
+  private themeColor(key: keyof ThemeColors): string {
+    return this.theme[key];
   }
 
   scrollIntoView(row: number, col: number): void {
@@ -204,7 +209,7 @@ export class CanvasRenderer {
     const width = rect.width;
     const height = rect.height;
 
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = this.themeColor('bg');
     ctx.fillRect(0, 0, width, height);
 
     const visibleCols: { col: number; x: number; width: number }[] = [];
@@ -262,7 +267,7 @@ export class CanvasRenderer {
         }
 
         if (isSelected) {
-          ctx.fillStyle = SELECTED_BG;
+          ctx.fillStyle = this.themeColor('selectedBg');
           ctx.fillRect(c.x, r.y, c.width, r.height);
         }
 
@@ -291,7 +296,7 @@ export class CanvasRenderer {
             ctx.fillRect(renderX, renderY, renderWidth, renderHeight);
           }
           if (isSelected) {
-            ctx.fillStyle = SELECTED_BG;
+            ctx.fillStyle = this.themeColor('selectedBg');
             ctx.fillRect(renderX, renderY, renderWidth, renderHeight);
           }
         }
@@ -303,7 +308,7 @@ export class CanvasRenderer {
           const isNumeric = !isError && !isNaN(parseFloat(display)) && !cell.formula;
           const hasExplicitAlign = cell.style?.align !== undefined;
           ctx.font = cell.style?.bold ? 'bold ' + CELL_FONT : CELL_FONT;
-          ctx.fillStyle = isError ? ERROR_TEXT : (cell.style?.color || CELL_TEXT);
+          ctx.fillStyle = isError ? this.themeColor('errorText') : (cell.style?.color || this.themeColor('cellText'));
           ctx.textBaseline = 'middle';
           ctx.textAlign = hasExplicitAlign
             ? cell.style!.align === 'right'
@@ -342,7 +347,7 @@ export class CanvasRenderer {
 
         if (cell?.comment) {
           const markerSize = 6;
-          ctx.fillStyle = '#525252';
+          ctx.fillStyle = this.themeColor('commentMarker');
           ctx.beginPath();
           ctx.moveTo(renderX + renderWidth - markerSize, renderY);
           ctx.lineTo(renderX + renderWidth, renderY);
@@ -353,7 +358,7 @@ export class CanvasRenderer {
       }
     }
 
-    ctx.strokeStyle = GRID_COLOR;
+    ctx.strokeStyle = this.themeColor('grid');
     ctx.lineWidth = 1;
     for (const c of visibleCols) {
       ctx.beginPath();
@@ -422,7 +427,7 @@ export class CanvasRenderer {
 
       if (foundLeft && foundRight && foundTop && foundBottom) {
         ctx.save();
-        ctx.strokeStyle = SELECTED_BORDER;
+        ctx.strokeStyle = this.themeColor('selectedBorder');
         ctx.lineWidth = 2;
         ctx.strokeRect(leftX + 1, topY + 1, selWidth - 2, selHeight - 2);
         ctx.restore();
@@ -430,8 +435,8 @@ export class CanvasRenderer {
         const handleX = leftX + selWidth - 4;
         const handleY = topY + selHeight - 4;
         ctx.save();
-        ctx.fillStyle = '#262626';
-        ctx.strokeStyle = '#ffffff';
+        ctx.fillStyle = this.themeColor('fillHandleBg');
+        ctx.strokeStyle = this.themeColor('fillHandleBorder');
         ctx.lineWidth = 1;
         ctx.fillRect(handleX, handleY, 8, 8);
         ctx.strokeRect(handleX + 0.5, handleY + 0.5, 7, 7);
@@ -463,9 +468,9 @@ export class CanvasRenderer {
           }
           if (fxFound && fyFound && fwFound && fhFound) {
             ctx.save();
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+            ctx.fillStyle = this.themeColor('fillAreaBg');
             ctx.fillRect(fx, fy, fw, fh);
-            ctx.strokeStyle = '#525252';
+            ctx.strokeStyle = this.themeColor('fillAreaBorder');
             ctx.setLineDash([4, 4]);
             ctx.strokeRect(fx + 1, fy + 1, fw - 2, fh - 2);
             ctx.setLineDash([]);
@@ -478,7 +483,7 @@ export class CanvasRenderer {
       const activeRow = visibleRows.find((r) => r.row === sel.startRow);
       if (activeCol && activeRow && (sel.startRow !== sel.endRow || sel.startCol !== sel.endCol)) {
         ctx.save();
-        ctx.strokeStyle = '#525252';
+        ctx.strokeStyle = this.themeColor('fillAreaBorder');
         ctx.lineWidth = 1.5;
         ctx.setLineDash([4, 4]);
         ctx.strokeRect(activeCol.x + 1.5, activeRow.y + 1.5, activeCol.width - 3, activeRow.height - 3);
@@ -588,35 +593,35 @@ export class CanvasRenderer {
   }
 
   private renderCorner(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
-    ctx.fillStyle = HEADER_BG;
+    ctx.fillStyle = this.themeColor('headerBg');
     ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = GRID_COLOR;
+    ctx.strokeStyle = this.themeColor('grid');
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
   }
 
   private renderColumnHeader(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, label: string, highlighted = false): void {
-    ctx.fillStyle = highlighted ? '#d4d4d4' : HEADER_BG;
+    ctx.fillStyle = highlighted ? this.themeColor('headerHighlightBg') : this.themeColor('headerBg');
     ctx.fillRect(x, y, w, h);
     ctx.font = highlighted ? 'bold ' + HEADER_FONT : HEADER_FONT;
-    ctx.fillStyle = highlighted ? '#171717' : HEADER_TEXT;
+    ctx.fillStyle = highlighted ? this.themeColor('headerHighlightText') : this.themeColor('headerText');
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
     ctx.fillText(label, x + w / 2, y + h / 2);
-    ctx.strokeStyle = GRID_COLOR;
+    ctx.strokeStyle = this.themeColor('grid');
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
   }
 
   private renderRowHeader(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, label: string, highlighted = false): void {
-    ctx.fillStyle = highlighted ? '#d4d4d4' : HEADER_BG;
+    ctx.fillStyle = highlighted ? this.themeColor('headerHighlightBg') : this.themeColor('headerBg');
     ctx.fillRect(x, y, w, h);
     ctx.font = highlighted ? 'bold ' + HEADER_FONT : HEADER_FONT;
-    ctx.fillStyle = highlighted ? '#171717' : HEADER_TEXT;
+    ctx.fillStyle = highlighted ? this.themeColor('headerHighlightText') : this.themeColor('headerText');
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
     ctx.fillText(label, x + w / 2, y + h / 2);
-    ctx.strokeStyle = GRID_COLOR;
+    ctx.strokeStyle = this.themeColor('grid');
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
   }
