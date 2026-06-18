@@ -24,6 +24,7 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
   const formulaBarValue = store((s) => s.formulaBarValue);
   const scrollLeft = store((s) => s.scrollLeft);
   const scrollTop = store((s) => s.scrollTop);
+  const workbook = store((s) => s.workbook);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
@@ -71,6 +72,8 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
       onScrollChange: (left, top) => store.getState().setScroll(left, top),
       maxRows: SHEET_ROW_COUNT,
       maxCols: SHEET_COL_COUNT,
+      frozenRows: store.getState().getActiveSheet().frozenRows,
+      frozenCols: store.getState().getActiveSheet().frozenCols,
       selection: store.getState().selection,
     });
 
@@ -117,6 +120,14 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
       rendererRef.current.render();
     }
   }, [isDark]);
+
+  useEffect(() => {
+    if (rendererRef.current) {
+      const sheet = store.getState().getActiveSheet();
+      rendererRef.current.setFrozenPanes(sheet.frozenRows, sheet.frozenCols);
+      rendererRef.current.render();
+    }
+  }, [workbook.activeSheetId, store]);
 
   useEffect(() => {
     if (rendererRef.current) rendererRef.current.render();

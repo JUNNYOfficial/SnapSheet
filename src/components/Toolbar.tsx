@@ -571,6 +571,34 @@ export default function Toolbar({ isDark = false, onToggleTheme }: ToolbarProps)
       <div className={dividerBase} style={dividerStyle} />
 
       <div className="flex items-center gap-1">
+        <button
+          onClick={() => {
+            const sel = store.getState().selection;
+            store.getState().setFrozenRows(sel.startRow);
+            store.getState().setFrozenCols(sel.startCol);
+          }}
+          className={btnBase + ' hover:opacity-80'}
+          title="冻结至当前单元格"
+          style={toolbarBtnStyle}
+        >
+          冻结
+        </button>
+        <button
+          onClick={() => {
+            store.getState().setFrozenRows(0);
+            store.getState().setFrozenCols(0);
+          }}
+          className={btnBase + ' hover:opacity-80'}
+          title="取消冻结"
+          style={toolbarBtnStyle}
+        >
+          取消冻结
+        </button>
+      </div>
+
+      <div className={dividerBase} style={dividerStyle} />
+
+      <div className="flex items-center gap-1">
         <button onClick={() => store.getState().sortByColumn(selection.startCol, 'asc')} className={btnBase + ' hover:opacity-80'} title="按选中列升序排序" style={toolbarBtnStyle}>
           升序
         </button>

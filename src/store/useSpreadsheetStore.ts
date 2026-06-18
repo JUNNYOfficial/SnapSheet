@@ -34,6 +34,9 @@ interface SpreadsheetState {
   getColWidth: (col: number) => number;
   getRowHeight: (row: number) => number;
 
+  setFrozenRows: (rows: number) => void;
+  setFrozenCols: (cols: number) => void;
+
   insertRow: (row: number) => void;
   deleteRow: (row: number) => void;
   insertCol: (col: number) => void;
@@ -524,6 +527,24 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     getRowHeight: (row: number) => {
       const sheet = get().getActiveSheet();
       return sheet.rowHeights.get(row) || DEFAULT_ROW_HEIGHT;
+    },
+
+    setFrozenRows: (rows: number) => {
+      const sheet = get().getActiveSheet();
+      const value = Math.max(0, Math.min(rows, SHEET_ROW_COUNT));
+      if (sheet.frozenRows === value) return;
+      pushHistory();
+      sheet.frozenRows = value;
+      set({ workbook: { ...get().workbook } });
+    },
+
+    setFrozenCols: (cols: number) => {
+      const sheet = get().getActiveSheet();
+      const value = Math.max(0, Math.min(cols, SHEET_COL_COUNT));
+      if (sheet.frozenCols === value) return;
+      pushHistory();
+      sheet.frozenCols = value;
+      set({ workbook: { ...get().workbook } });
     },
 
     insertRow: (row: number) => {
