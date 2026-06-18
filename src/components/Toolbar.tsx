@@ -3,6 +3,7 @@ import { useSpreadsheetStore } from '../store/useSpreadsheetStore';
 import { toCSV } from '../utils/csv';
 import { workbookToJSON, workbookFromJSON, downloadFile } from '../utils/json';
 import { colToLetter, coordsToCell } from '../utils/cellRef';
+import { TEMPLATES } from '../templates';
 
 export default function Toolbar() {
   const store = useSpreadsheetStore;
@@ -202,6 +203,26 @@ export default function Toolbar() {
         <button onClick={() => store.getState().newWorkbook()} className={btnBase} title="新建">
           新建
         </button>
+        <select
+          value=""
+          onChange={(e) => {
+            if (e.target.value) {
+              if (confirm('应用模板会清空当前工作表内容，是否继续？')) {
+                store.getState().applyTemplate(e.target.value);
+              }
+              e.target.value = '';
+            }
+          }}
+          className="rounded border border-neutral-200 bg-white px-2 py-1.5 text-sm text-neutral-700 outline-none hover:bg-neutral-100"
+          style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}
+        >
+          <option value="">模板</option>
+          {TEMPLATES.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
         <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
         <button onClick={() => fileInputRef.current?.click()} className={btnBase} title="导入 CSV">
           导入 CSV

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Cell, Sheet, Workbook, Selection, CellStyle, NumberFormat, BorderStyle, MergeRange, ConditionalFormat, ValidationRule } from '../types';
 import { DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT, MIN_ROW_HEIGHT, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../utils/constants';
 import { coordsToCell, cellToCoords, colToLetter, letterToCol } from '../utils/cellRef';
+import { applyTemplateToSheet } from '../templates';
 import { createDefaultFormulaEngine } from '../engine/FormulaEngine';
 
 interface SpreadsheetState {
@@ -58,6 +59,7 @@ interface SpreadsheetState {
   setCellValidation: (row: number, col: number, rule: ValidationRule) => void;
   clearCellValidation: (row: number, col: number) => void;
   validateCellValue: (value: string, rule?: ValidationRule) => string | true;
+  applyTemplate: (templateId: string) => void;
 
   pasteCells: (text: string, startRow: number, startCol: number) => void;
   copySelection: () => string;
@@ -1112,6 +1114,16 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       }
 
       return true;
+    },
+
+    applyTemplate: (templateId: string) => {
+      const sheet = get().getActiveSheet();
+      applyTemplateToSheet(sheet, templateId);
+      pushHistory();
+      set({
+        workbook: { ...get().workbook },
+        selection: { startRow: 0, startCol: 0, endRow: 0, endCol: 0 },
+      });
     },
 
     pasteCells: (text: string, startRow: number, startCol: number) => {
