@@ -272,6 +272,32 @@ export default function Toolbar() {
       <div className={dividerBase} />
 
       <div className="flex items-center gap-1">
+        <button onClick={() => store.getState().applyBorderSelection('all')} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="全部边框">
+          框
+        </button>
+        <button onClick={() => store.getState().applyBorderSelection('top')} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="上边框">
+          上
+        </button>
+        <button onClick={() => store.getState().applyBorderSelection('bottom')} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="下边框">
+          下
+        </button>
+        <button onClick={() => store.getState().applyBorderSelection('left')} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="左边框">
+          左
+        </button>
+        <button onClick={() => store.getState().applyBorderSelection('right')} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="右边框">
+          右
+        </button>
+        <button onClick={() => store.getState().applyBorderSelection('none')} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="清除边框">
+          无框
+        </button>
+        <button onClick={() => store.getState().applyStyleToSelection({ wrap: true })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="自动换行">
+          换行
+        </button>
+      </div>
+
+      <div className={dividerBase} />
+
+      <div className="flex items-center gap-1">
         <button onClick={() => store.getState().applyStyleToSelection({ bgColor: '#f5f5f5' })} className="rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100" title="浅灰背景">
           灰
         </button>

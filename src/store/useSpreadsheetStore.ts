@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Cell, Sheet, Workbook, Selection, CellStyle, NumberFormat } from '../types';
+import type { Cell, Sheet, Workbook, Selection, CellStyle, NumberFormat, BorderStyle } from '../types';
 import { DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT, MIN_ROW_HEIGHT, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../utils/constants';
 import { coordsToCell, cellToCoords, colToLetter, letterToCol } from '../utils/cellRef';
 import { createDefaultFormulaEngine } from '../engine/FormulaEngine';
@@ -45,6 +45,7 @@ interface SpreadsheetState {
 
   sortByColumn: (col: number, direction: 'asc' | 'desc') => void;
   applyNumberFormat: (format: Partial<NumberFormat> | null) => void;
+  applyBorderSelection: (side: 'top' | 'bottom' | 'left' | 'right' | 'all' | 'none', style?: BorderStyle) => void;
 
   pasteCells: (text: string, startRow: number, startCol: number) => void;
   copySelection: () => string;
@@ -832,6 +833,72 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
           if (JSON.stringify(next) !== JSON.stringify(current)) {
             hasChanges = true;
             cell.numberFormat = next;
+          }
+        }
+      }
+      if (!hasChanges) return;
+      pushHistory();
+      set({ workbook: { ...get().workbook } });
+    },
+
+    applyBorderSelection: (side, style = { style: 'thin', color: '#262626' }) => {
+      const state = get();
+      const sel = state.selection;
+      const sheet = state.getActiveSheet();
+      const minRow = Math.max(0, Math.min(SHEET_ROW_COUNT - 1, Math.min(sel.startRow, sel.endRow)));
+      const maxRow = Math.max(0, Math.min(SHEET_ROW_COUNT - 1, Math.max(sel.startRow, sel.endRow)));
+      const minCol = Math.max(0, Math.min(SHEET_COL_COUNT - 1, Math.min(sel.startCol, sel.endCol)));
+      const maxCol = Math.max(0, Math.min(SHEET_COL_COUNT - 1, Math.max(sel.startCol, sel.endCol)));
+
+      const sides: Array<'borderTop' | 'borderBottom' | 'borderLeft' | 'borderRight'> = [];
+      if (side === 'all') {
+        sides.push('borderTop', 'borderBottom', 'borderLeft', 'borderRight');
+      } else if (side === 'top') {
+        sides.push('borderTop');
+      } else if (side === 'bottom') {
+        sides.push('borderBottom');
+      } else if (side === 'left') {
+        sides.push('borderLeft');
+      } else if (side === 'right') {
+        sides.push('borderRight');
+      }
+
+      let hasChanges = false;
+      for (let r = minRow; r <= maxRow; r++) {
+        for (let c = minCol; c <= maxCol; c++) {
+          const ref = coordsToCell(r, c);
+          let cell = sheet.cells.get(ref);
+          if (!cell && side !== 'none') {
+            cell = { value: '' };
+            sheet.cells.set(ref, cell);
+          }
+          if (!cell) continue;
+          if (!cell.style) cell.style = {};
+
+          if (side === 'none') {
+            if (cell.style.borderTop || cell.style.borderBottom || cell.style.borderLeft || cell.style.borderRight) {
+              hasChanges = true;
+              cell.style.borderTop = undefined;
+              cell.style.borderBottom = undefined;
+              cell.style.borderLeft = undefined;
+              cell.style.borderRight = undefined;
+            }
+            continue;
+          }
+
+          for (const s of sides) {
+            let shouldApply = false;
+            if (s === 'borderTop' && r === minRow) shouldApply = true;
+            if (s === 'borderBottom' && r === maxRow) shouldApply = true;
+            if (s === 'borderLeft' && c === minCol) shouldApply = true;
+            if (s === 'borderRight' && c === maxCol) shouldApply = true;
+            if (shouldApply) {
+              const existing = cell.style[s];
+              if (!existing || existing.style !== style.style || existing.color !== style.color) {
+                hasChanges = true;
+                cell.style[s] = { ...style };
+              }
+            }
           }
         }
       }

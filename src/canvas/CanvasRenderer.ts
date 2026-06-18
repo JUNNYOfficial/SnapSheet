@@ -246,12 +246,24 @@ export class CanvasRenderer {
           if (ctx.textAlign === 'right') textX = c.x + c.width - textPadding;
           if (ctx.textAlign === 'center') textX = c.x + c.width / 2;
 
-          const textY = r.y + r.height / 2;
           const text = formattedDisplay;
           const maxTextWidth = c.width - textPadding * 2;
 
-          const truncated = this.truncateText(ctx, text, maxTextWidth);
-          ctx.fillText(truncated, textX, textY);
+          if (cell.style?.wrap) {
+            const lines = this.wrapText(ctx, text, maxTextWidth);
+            const lineHeight = 16;
+            const totalHeight = lines.length * lineHeight;
+            const startY = r.y + Math.max(textPadding, (r.height - totalHeight) / 2 + lineHeight / 2);
+            for (let i = 0; i < lines.length; i++) {
+              const y = startY + i * lineHeight;
+              if (y - lineHeight / 2 < r.y + r.height - textPadding && y + lineHeight / 2 > r.y + textPadding) {
+                ctx.fillText(lines[i], textX, y);
+              }
+            }
+          } else {
+            const truncated = this.truncateText(ctx, text, maxTextWidth);
+            ctx.fillText(truncated, textX, r.y + r.height / 2);
+          }
         }
       }
     }
@@ -270,6 +282,8 @@ export class CanvasRenderer {
       ctx.lineTo(width, r.y + r.height);
       ctx.stroke();
     }
+
+    this.renderCellBorders(ctx, visibleRows, visibleCols);
 
     this.renderCorner(ctx, 0, 0, HEADER_COL_WIDTH, HEADER_ROW_HEIGHT);
 
@@ -389,6 +403,36 @@ export class CanvasRenderer {
     }
   }
 
+  private renderCellBorders(
+    ctx: CanvasRenderingContext2D,
+    visibleRows: { row: number; y: number; height: number }[],
+    visibleCols: { col: number; x: number; width: number }[]
+  ): void {
+    for (const r of visibleRows) {
+      for (const c of visibleCols) {
+        const cell = this.opts.getCell(r.row, c.col);
+        if (!cell?.style) continue;
+        const borders = [
+          { side: cell.style.borderTop, x: c.x, y: r.y, x2: c.x + c.width, y2: r.y },
+          { side: cell.style.borderBottom, x: c.x, y: r.y + r.height, x2: c.x + c.width, y2: r.y + r.height },
+          { side: cell.style.borderLeft, x: c.x, y: r.y, x2: c.x, y2: r.y + r.height },
+          { side: cell.style.borderRight, x: c.x + c.width, y: r.y, x2: c.x + c.width, y2: r.y + r.height },
+        ];
+        for (const b of borders) {
+          if (!b.side) continue;
+          ctx.save();
+          ctx.strokeStyle = b.side.color;
+          ctx.lineWidth = b.side.style === 'thick' ? 3 : b.side.style === 'medium' ? 2 : 1;
+          ctx.beginPath();
+          ctx.moveTo(b.x + 0.5, b.y + 0.5);
+          ctx.lineTo(b.x2 + 0.5, b.y2 + 0.5);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    }
+  }
+
   private renderCorner(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
     ctx.fillStyle = HEADER_BG;
     ctx.fillRect(x, y, w, h);
@@ -431,6 +475,23 @@ export class CanvasRenderer {
       result = result.slice(0, -1);
     }
     return result + '...';
+  }
+
+  private wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+    if (ctx.measureText(text).width <= maxWidth) return [text];
+    const lines: string[] = [];
+    let current = '';
+    for (const char of text) {
+      const test = current + char;
+      if (ctx.measureText(test).width > maxWidth && current !== '') {
+        lines.push(current);
+        current = char;
+      } else {
+        current = test;
+      }
+    }
+    if (current) lines.push(current);
+    return lines.length === 0 ? [text] : lines;
   }
 
   getCellAtPoint(clientX: number, clientY: number): { row: number; col: number } | null {

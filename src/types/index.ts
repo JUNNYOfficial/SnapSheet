@@ -1,8 +1,18 @@
+export interface BorderStyle {
+  style: 'thin' | 'medium' | 'thick';
+  color: string;
+}
+
 export interface CellStyle {
   bold?: boolean;
   align?: 'left' | 'center' | 'right';
   color?: string;
   bgColor?: string;
+  wrap?: boolean;
+  borderTop?: BorderStyle;
+  borderBottom?: BorderStyle;
+  borderLeft?: BorderStyle;
+  borderRight?: BorderStyle;
 }
 
 export interface NumberFormat {
