@@ -1,5 +1,10 @@
 # SnapSheet
 
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![React](https://img.shields.io/badge/React-18.3.1-61DAFB.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-3178C6.svg)
+![Vite](https://img.shields.io/badge/Vite-6.3.5-646CFF.svg)
+
 一个现代化的电子表格应用，基于 React + TypeScript + Canvas 构建，支持公式计算、多工作表、AI数据分析等功能。
 
 ## ✨ 功能特性
@@ -91,6 +96,13 @@ npm run preview
 3. 输入替换内容（可选）
 4. 使用"上一个"/"下一个"导航，或"替换"/"全部替换"
 
+## 🎯 性能指标
+
+- **表格规模**：支持 1000 行 × 100 列
+- **渲染性能**：60fps 流畅滚动（虚拟滚动优化）
+- **公式计算**：支持 50+ 种函数，自动依赖追踪
+- **内存占用**：轻量级设计，纯前端实现
+
 ## 🛠️ 技术栈
 
 - **前端框架**：React 18
@@ -122,27 +134,86 @@ src/
 └── index.css            # 全局样式
 ```
 
-## 📝 更新日志
+## � 开发指南
 
-### v1.1.0 (2026-06-17)
-- ✨ 添加撤销/重做功能
-- ✨ 添加查找替换功能
-- ✨ 添加行高调整功能
-- ✨ 扩展公式函数库（50+种）
-- ✨ 添加更多统计函数（SUMIF, SUMIFS, AVERAGEIF, MEDIAN, MODE, VAR, STDEV等）
-- ✨ 添加更多逻辑函数（IFERROR, IFNA, SWITCH, CHOOSE, ISNUMBER等）
-- ✨ 添加日期时间函数（DATE, TIME, YEAR, MONTH, DAY, WEEKDAY, DATEDIF等）
-- ✨ 添加文本处理函数（LEFT, RIGHT, MID, SEARCH, FIND, REPLACE, SUBSTITUTE等）
-- ✨ 添加数学函数（ABS, ROUND, EXP, LOG, SIN, COS, TAN等）
+### 代码规范
 
-### v1.0.0 (2026-06-17)
-- 🎉 初始版本发布
-- 基础表格编辑功能
-- 基础公式支持
-- 多工作表支持
-- AI数据分析
-- CSV/JSON导入导出
+```bash
+# 运行 ESLint 检查
+npm run lint
+
+# 运行 TypeScript 类型检查
+npm run check
+```
+
+### 项目架构
+
+SnapSheet 采用分层架构设计：
+
+1. **视图层**：React 组件负责 UI 渲染和用户交互
+2. **状态层**：Zustand 管理应用状态，支持撤销/重做
+3. **渲染层**：Canvas 高性能渲染引擎，支持虚拟滚动
+4. **计算层**：公式引擎支持词法分析、语法解析和依赖追踪
+
+### 添加新公式函数
+
+在 `src/engine/Evaluator.ts` 中添加新的函数实现：
+
+```typescript
+// 示例：添加自定义函数
+private functions: Map<string, Function> = new Map([
+  // ... 现有函数
+  ['CUSTOM', (args: any[]) => {
+    // 实现自定义逻辑
+    return result;
+  }]
+]);
+```
+
+### 扩展单元格样式
+
+在 `src/types/index.ts` 中扩展 `CellStyle` 接口：
+
+```typescript
+interface CellStyle {
+  bold?: boolean;
+  align?: 'left' | 'center' | 'right';
+  // 添加新的样式属性
+  italic?: boolean;
+  color?: string;
+}
+```
+
+## 🤝 贡献指南
+
+欢迎贡献代码！请遵循以下步骤：
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+### 提交规范
+
+遵循 Conventional Commits 规范：
+
+- `feat:` 新功能
+- `fix:` 修复 bug
+- `docs:` 文档更新
+- `style:` 代码格式调整
+- `refactor:` 代码重构
+- `test:` 测试相关
+- `chore:` 构建/工具链相关
+
+## 🐛 问题反馈
+
+如果您发现 bug 或有功能建议，请在 Issues 中提交。
 
 ## 📄 许可证
 
 MIT License
+
+## 🙏 致谢
+
+感谢所有为 SnapSheet 做出贡献的开发者！

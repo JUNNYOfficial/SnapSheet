@@ -17,9 +17,10 @@ export interface CellStyle {
 }
 
 export interface NumberFormat {
-  type: 'general' | 'number' | 'currency' | 'percentage' | 'date' | 'time';
+  type: 'general' | 'number' | 'currency' | 'percentage' | 'date' | 'time' | 'custom';
   decimalPlaces?: number;
   currencySymbol?: string;
+  pattern?: string;
 }
 
 export interface ConditionalFormat {

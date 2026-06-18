@@ -50,21 +50,34 @@ export default function App() {
 
   return (
     <div className={theme + ' relative flex h-screen w-screen flex-col'} style={{ background: 'var(--ss-toolbar-bg)', color: 'var(--ss-toolbar-text)' }}>
-      <div className="border-b px-6 py-2.5" style={{ borderColor: 'var(--ss-toolbar-border)', background: 'var(--ss-toolbar-bg)' }}>
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded border" style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-header-bg)' }}>
+      {/* 标题栏 - 更紧凑 */}
+      <div className="flex items-center justify-between border-b px-4 py-1.5" style={{ borderColor: 'var(--ss-toolbar-border)', background: 'var(--ss-toolbar-bg)' }}>
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded border" style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-header-bg)' }}>
             <span className="text-sm" style={{ color: 'var(--ss-cell-text)', fontFamily: 'SimHei, 黑体, sans-serif' }}>表</span>
           </div>
           <div>
-            <h1 className="text-lg leading-tight" style={{ color: 'var(--ss-cell-text)', fontFamily: 'SimHei, 黑体, sans-serif' }}>SnapSheet</h1>
-            <p className="text-xs" style={{ color: 'var(--ss-header-text)' }}>电子表格 · 公式计算 · 数据分析</p>
+            <h1 className="text-base leading-tight" style={{ color: 'var(--ss-cell-text)', fontFamily: 'SimHei, 黑体, sans-serif' }}>SnapSheet</h1>
           </div>
         </div>
+        <p className="text-xs" style={{ color: 'var(--ss-header-text)' }}>电子表格 · 公式计算 · 数据分析</p>
       </div>
+
+      {/* Ribbon 工具栏 */}
       <Toolbar isDark={isDark} onToggleTheme={toggleTheme} />
+
+      {/* 公式栏 */}
       <FormulaBar />
-      <Spreadsheet isDark={isDark} />
+
+      {/* 主工作区 - 占据剩余所有空间 */}
+      <div className="relative flex-1 overflow-hidden" style={{ background: 'var(--ss-bg)' }}>
+        <Spreadsheet isDark={isDark} />
+      </div>
+
+      {/* 底部工作表标签 */}
       <SheetTabs />
+
+      {/* 查找对话框 */}
       <FindDialog open={findOpen} onClose={() => setFindOpen(false)} />
     </div>
   );

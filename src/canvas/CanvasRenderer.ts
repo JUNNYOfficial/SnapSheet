@@ -9,7 +9,8 @@ import {
 } from '../utils/constants';
 import { getThemeColors, type ThemeColors } from '../utils/theme';
 import { colToLetter } from '../utils/cellRef';
-import type { Cell, Selection, MergeRange, ConditionalFormat } from '../types';
+import { formatNumber } from '../utils/format';
+import type { Cell, Selection, MergeRange, ConditionalFormat, NumberFormat } from '../types';
 
 export interface CanvasRendererOptions {
   canvas: HTMLCanvasElement;
@@ -193,43 +194,8 @@ export class CanvasRenderer {
     return Math.max(0, totalHeight - (rect.height - HEADER_ROW_HEIGHT - frozenHeight));
   }
 
-  private formatCellValue(value: string, format?: { type: string; decimalPlaces?: number; currencySymbol?: string }): string {
-    if (!format || format.type === 'general') return value;
-
-    if (format.type === 'date') {
-      const date = this.parseDate(value);
-      if (date) {
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const d = String(date.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-      }
-      return value;
-    }
-
-    const num = parseFloat(value);
-    if (isNaN(num)) return value;
-    const decimals = format.decimalPlaces ?? 2;
-    if (format.type === 'percentage') return (num * 100).toFixed(decimals) + '%';
-    if (format.type === 'number') return num.toFixed(decimals);
-    if (format.type === 'currency') {
-      const symbol = format.currencySymbol || '¥';
-      return symbol + num.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-    }
-    return value;
-  }
-
-  private parseDate(value: string): Date | null {
-    if (!value) return null;
-    const num = parseFloat(value);
-    if (!isNaN(num) && num > 0 && num < 50000) {
-      // Excel serial date: 1900-01-01 = 1
-      const date = new Date(1900, 0, num - 1);
-      if (!isNaN(date.getTime())) return date;
-    }
-    const parsed = new Date(value);
-    if (!isNaN(parsed.getTime())) return parsed;
-    return null;
+  private formatCellValue(value: string, format?: NumberFormat): string {
+    return formatNumber(value, format);
   }
 
   render(): void {
