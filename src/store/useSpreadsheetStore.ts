@@ -73,6 +73,9 @@ interface SpreadsheetState {
   canRedo: () => boolean;
   loadWorkbook: (workbook: Workbook) => void;
   newWorkbook: () => void;
+  saveWorkbook: (filename?: string) => boolean;
+  loadFromStorage: (filename?: string) => boolean;
+  listSavedWorkbooks: () => { name: string; savedAt?: string }[];
 }
 
 function createSheet(name: string, id: string): Sheet {
@@ -90,6 +93,14 @@ function createSheet(name: string, id: string): Sheet {
 }
 
 function createInitialWorkbook(): Workbook {
+  const sheet1 = createSheet('Sheet1', 'sheet-1');
+  return {
+    sheets: [sheet1],
+    activeSheetId: 'sheet-1',
+  };
+}
+
+function createDefaultWorkbook(): Workbook {
   const sheet1 = createSheet('设计规范', 'sheet-1');
 
   const headerData: Record<string, string> = {
@@ -296,7 +307,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
   };
 
   return {
-    workbook: createInitialWorkbook(),
+    workbook: createDefaultWorkbook(),
     selection: { startRow: 0, startCol: 0, endRow: 0, endCol: 0 },
     editing: null,
     formulaBarValue: '',
@@ -1270,6 +1281,43 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
         editing: null,
         formulaBarValue: '',
       });
+    },
+
+    saveWorkbook: (filename: string = 'snapsheet') => {
+      const state = get();
+      const data = JSON.stringify(state.workbook);
+      localStorage.setItem(filename, data);
+      return true;
+    },
+
+    loadFromStorage: (filename: string = 'snapsheet') => {
+      const data = localStorage.getItem(filename);
+      if (data) {
+        try {
+          const workbook = JSON.parse(data);
+          set({
+            workbook,
+            selection: { startRow: 0, startCol: 0, endRow: 0, endCol: 0 },
+            editing: null,
+            formulaBarValue: '',
+          });
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    },
+
+    listSavedWorkbooks: () => {
+      const keys = Object.keys(localStorage);
+      const workbooks: { name: string; savedAt?: string }[] = [];
+      keys.forEach((key) => {
+        if (key.startsWith('snapsheet') || key.endsWith('.json')) {
+          workbooks.push({ name: key });
+        }
+      });
+      return workbooks;
     },
   };
 });

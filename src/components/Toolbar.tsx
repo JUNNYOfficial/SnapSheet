@@ -13,7 +13,7 @@ import {
   ArrowUp, ArrowDown, Undo2, Redo2, Snowflake, Sun, Moon,
   Search, ChevronLeft, ChevronRight, Type,
   Table, FileSpreadsheet, BarChart3, Eye, Home, Settings,
-  Trash2, SortAsc, SortDesc, Lock, Unlock, PanelRight
+  Trash2, SortAsc, SortDesc, Lock, Unlock, PanelRight, Save, FolderOpen
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -360,6 +360,27 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
           <>
             <Group title="工作簿">
               <TooltipButton onClick={() => store.getState().newWorkbook()} icon={<FileText size={16} />} label="新建" title="新建工作簿" shortcut="Ctrl+N" variant="both" />
+              <TooltipButton onClick={() => {
+                const name = prompt('请输入保存名称:', 'snapsheet');
+                if (name) {
+                  store.getState().saveWorkbook(name);
+                  alert(`工作簿已保存为: ${name}`);
+                }
+              }} icon={<Save size={16} />} label="保存" title="保存工作簿到本地" shortcut="Ctrl+S" variant="both" />
+              <TooltipButton onClick={() => {
+                const saved = store.getState().listSavedWorkbooks();
+                if (saved.length === 0) {
+                  alert('没有已保存的工作簿');
+                  return;
+                }
+                const names = saved.map((w) => w.name).join('\n');
+                const name = prompt(`已保存的工作簿:\n${names}\n\n请输入要打开的名称:`);
+                if (name && store.getState().loadFromStorage(name)) {
+                  alert(`已打开工作簿: ${name}`);
+                } else if (name) {
+                  alert(`未找到工作簿: ${name}`);
+                }
+              }} icon={<FolderOpen size={16} />} label="打开" title="打开已保存的工作簿" variant="both" />
               <select
                 value=""
                 onChange={(e) => {
