@@ -51,7 +51,7 @@ function TooltipButton({ onClick, icon, label, title, shortcut, disabled, active
         disabled={disabled}
         className={`${baseClasses} ${sizeClasses} ${stateClasses}`}
         title={title + (shortcut ? ` (${shortcut})` : '')}
-        style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}
+        style={{  }}
       >
         {icon}
         {label && <span className="text-xs whitespace-nowrap">{label}</span>}
@@ -61,7 +61,6 @@ function TooltipButton({ onClick, icon, label, title, shortcut, disabled, active
         style={{
           background: 'var(--ss-cell-text)',
           color: 'var(--ss-bg)',
-          fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif',
         }}
       >
         {title}
@@ -296,7 +295,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
       <div className="flex items-center gap-1">
         {children}
       </div>
-      <span className="text-[10px] leading-none whitespace-nowrap" style={{ color: 'var(--ss-header-text)', fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}>
+      <span className="text-[10px] leading-none whitespace-nowrap" style={{ color: 'var(--ss-header-text)',  }}>
         {title}
       </span>
     </div>
@@ -362,7 +361,6 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
             onClick={() => setActiveTab(tab.id)}
             className="flex items-center gap-1.5 rounded-t-md px-3 py-1.5 text-sm transition-all duration-150"
             style={{
-              fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif',
               color: activeTab === tab.id ? 'var(--ss-cell-text)' : 'var(--ss-header-text)',
               background: activeTab === tab.id ? 'var(--ss-bg)' : 'transparent',
               borderBottom: activeTab === tab.id ? '2px solid var(--ss-selected-border)' : '2px solid transparent',
@@ -429,7 +427,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
                   }
                 }}
                 className="h-9 rounded-md border px-2 py-1 text-xs outline-none transition-colors hover:border-[var(--ss-cell-text)]"
-                style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)', fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}
+                style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)',  }}
                 title="应用模板"
               >
                 <option value="">模板</option>
@@ -476,7 +474,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
                   }
                 }}
                 className="h-9 rounded-md border px-2 py-1 text-xs outline-none"
-                style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)', fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}
+                style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)',  }}
                 title="字体"
               >
                 <option value="">字体</option>
@@ -493,7 +491,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
                   }
                 }}
                 className="h-9 w-14 rounded-md border px-1 py-1 text-xs outline-none text-center"
-                style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)', fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}
+                style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)',  }}
                 title="字号"
               >
                 <option value="">字号</option>

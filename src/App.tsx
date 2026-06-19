@@ -24,7 +24,6 @@ export default function App() {
         const workbook = workbookFromJSON(saved);
         if (workbook.sheets.length > 0) {
           const firstSheet = workbook.sheets[0];
-          // 自动清除旧示例数据
           if (firstSheet?.name === '设计规范') {
             localStorage.removeItem(STORAGE_KEY);
             return;
@@ -66,18 +65,18 @@ export default function App() {
   }, []);
 
   return (
-    <div className={theme + ' relative flex h-screen w-screen flex-col'} style={{ background: 'var(--ss-toolbar-bg)', color: 'var(--ss-toolbar-text)' }}>
-      {/* 标题栏 - 更紧凑 */}
-      <div className="flex items-center justify-between border-b px-4 py-1.5" style={{ borderColor: 'var(--ss-toolbar-border)', background: 'var(--ss-toolbar-bg)' }}>
+    <div className={theme + ' relative flex h-screen w-screen flex-col'} style={{ background: 'var(--ss-toolbar-bg)', color: 'var(--ss-text-secondary)' }}>
+      {/* 标题栏 */}
+      <div className="flex items-center justify-between border-b px-4 py-1.5" style={{ borderColor: 'var(--ss-border)', background: 'var(--ss-toolbar-bg)' }}>
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded border" style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-header-bg)' }}>
-            <span className="text-sm" style={{ color: 'var(--ss-cell-text)', fontFamily: 'SimHei, 黑体, sans-serif' }}>表</span>
+          <div className="flex h-7 w-7 items-center justify-center rounded border" style={{ borderColor: 'var(--ss-border-strong)', background: 'var(--ss-header-bg)' }}>
+            <span className="text-sm font-medium" style={{ color: 'var(--ss-text-primary)' }}>表</span>
           </div>
           <div>
-            <h1 className="text-base leading-tight" style={{ color: 'var(--ss-cell-text)', fontFamily: 'SimHei, 黑体, sans-serif' }}>SnapSheet</h1>
+            <h1 className="text-base font-semibold leading-tight" style={{ color: 'var(--ss-text-primary)' }}>SnapSheet</h1>
           </div>
         </div>
-        <p className="text-xs" style={{ color: 'var(--ss-header-text)' }}>电子表格 · 公式计算 · 数据分析</p>
+        <p className="text-xs" style={{ color: 'var(--ss-text-tertiary)' }}>电子表格 · 公式计算 · 数据分析</p>
       </div>
 
       {/* Ribbon 工具栏 */}
@@ -86,7 +85,7 @@ export default function App() {
       {/* 公式栏 */}
       <FormulaBar />
 
-      {/* 主工作区 - 占据剩余所有空间 */}
+      {/* 主工作区 */}
       <div className="relative flex-1 overflow-hidden" style={{ background: 'var(--ss-bg)' }}>
         <Spreadsheet isDark={isDark} />
       </div>

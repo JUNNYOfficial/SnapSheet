@@ -119,7 +119,7 @@ export default function FindDialog({ open, onClose }: FindDialogProps) {
     <div
       className="absolute right-4 top-20 z-50 w-80 rounded-xl border p-4 shadow-2xl transition-all duration-200"
       style={{
-        fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif',
+
         borderColor: 'var(--ss-panel-border)',
         background: 'var(--ss-panel-bg)',
       }}

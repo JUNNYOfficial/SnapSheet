@@ -123,7 +123,7 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
       style={{
         color: disabled ? 'var(--ss-header-text)' : active ? 'var(--ss-cell-text)' : 'var(--ss-toolbar-text)',
         background: disabled ? 'transparent' : active ? 'var(--ss-selected-bg)' : 'var(--ss-input-bg)',
-        fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif',
+        
         boxShadow: active ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
       }}
       onMouseEnter={(e) => { if (!disabled && !active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ss-toolbar-hover)'; }}
@@ -153,7 +153,7 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
         }}
       >
         <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: 'var(--ss-toolbar-border)' }}>
-          <span className="text-sm font-semibold" style={{ color: 'var(--ss-cell-text)', fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}>
+          <span className="text-sm font-semibold" style={{ color: 'var(--ss-cell-text)' }}>
             属性面板
           </span>
           <button
@@ -173,7 +173,7 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
               className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-xs relative transition-colors"
               style={{
                 color: activeTab === tab.id ? 'var(--ss-cell-text)' : 'var(--ss-header-text)',
-                fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif',
+                
               }}
             >
               {tab.icon}
@@ -402,7 +402,7 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
                     borderColor: 'var(--ss-input-border)',
                     background: 'var(--ss-input-bg)',
                     color: 'var(--ss-input-text)',
-                    fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif',
+                    
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -418,7 +418,7 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
 
               {aiResult && (
                 <Section title="结果">
-                  <div className="p-3 rounded-md text-xs whitespace-pre-wrap" style={{ background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)', fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace' }}>
+                  <div className="p-3 rounded-md text-xs whitespace-pre-wrap" style={{ background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)',  }}>
                     {aiResult}
                   </div>
                 </Section>

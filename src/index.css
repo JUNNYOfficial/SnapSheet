@@ -2,76 +2,146 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   SnapSheet Design System v1.0
+   颜色变量命名规范：语义化 + 层级后缀
+   所有组件必须使用以下变量，禁止硬编码颜色
+   ============================================================ */
+
 :root {
+  /* ---------- 基础背景 ---------- */
   --ss-bg: #ffffff;
-  --ss-grid: #d9d9d9;
-  --ss-header-bg: #f5f5f5;
-  --ss-header-text: #525252;
-  --ss-cell-text: #171717;
-  --ss-selected-border: #262626;
+  --ss-toolbar-bg: #fafafa;
+  --ss-header-bg: #f0f0f0;
+  --ss-panel-bg: #ffffff;
+  --ss-input-bg: #ffffff;
+
+  /* ---------- 文字层级 ---------- */
+  --ss-text-primary: #171717;
+  --ss-text-secondary: #525252;
+  --ss-text-tertiary: #a3a3a3;
+  --ss-text-disabled: #d4d4d4;
+
+  /* ---------- 边框与分割线 ---------- */
+  --ss-border: #e5e5e5;
+  --ss-border-light: #f0f0f0;
+  --ss-border-strong: #d4d4d4;
+
+  /* ---------- 交互状态 ---------- */
+  --ss-hover-bg: #f5f5f5;
   --ss-selected-bg: rgba(0, 0, 0, 0.06);
-  --ss-error-text: #404040;
-  --ss-header-highlight-bg: #d4d4d4;
+  --ss-selected-border: #262626;
+  --ss-focus-ring: #262626;
+
+  /* ---------- 表格专用 ---------- */
+  --ss-grid: #e5e5e5;
+  --ss-cell-text: #171717;
+  --ss-header-text: #525252;
+  --ss-header-highlight-bg: #e5e5e5;
   --ss-header-highlight-text: #171717;
-  --ss-comment-marker: #525252;
+
+  /* ---------- 功能色 ---------- */
+  --ss-error: #dc2626;
+  --ss-error-bg: #fef2f2;
+  --ss-success: #16a34a;
+  --ss-warning: #ca8a04;
+  --ss-info: #2563eb;
+
+  /* ---------- 特殊元素 ---------- */
   --ss-fill-handle-bg: #262626;
   --ss-fill-handle-border: #ffffff;
   --ss-fill-area-bg: rgba(0, 0, 0, 0.04);
   --ss-fill-area-border: #525252;
+  --ss-comment-marker: #525252;
 
-  --ss-toolbar-bg: #ffffff;
-  --ss-toolbar-border: #e5e5e5;
-  --ss-toolbar-text: #404040;
-  --ss-toolbar-hover: #f5f5f5;
-  --ss-input-border: #d4d4d4;
-  --ss-input-bg: #ffffff;
-  --ss-input-text: #171717;
-  --ss-panel-bg: #ffffff;
-  --ss-panel-border: #e5e5e5;
+  /* ---------- 滚动条 ---------- */
   --ss-scrollbar-track: #f5f5f5;
   --ss-scrollbar-thumb: #d4d4d4;
   --ss-scrollbar-thumb-hover: #a3a3a3;
+
+  /* ---------- 兼容性旧变量（逐步废弃）---------- */
+  --ss-toolbar-border: var(--ss-border);
+  --ss-toolbar-text: var(--ss-text-secondary);
+  --ss-toolbar-hover: var(--ss-hover-bg);
+  --ss-input-border: var(--ss-border-strong);
+  --ss-input-text: var(--ss-text-primary);
+  --ss-panel-border: var(--ss-border);
+  --ss-error-text: var(--ss-text-secondary);
 }
 
 .dark {
+  /* ---------- 基础背景 ---------- */
   --ss-bg: #0a0a0a;
-  --ss-grid: #404040;
-  --ss-header-bg: #262626;
-  --ss-header-text: #a3a3a3;
-  --ss-cell-text: #e5e5e5;
-  --ss-selected-border: #e5e5e5;
+  --ss-toolbar-bg: #141414;
+  --ss-header-bg: #1f1f1f;
+  --ss-panel-bg: #141414;
+  --ss-input-bg: #1f1f1f;
+
+  /* ---------- 文字层级 ---------- */
+  --ss-text-primary: #e5e5e5;
+  --ss-text-secondary: #a3a3a3;
+  --ss-text-tertiary: #737373;
+  --ss-text-disabled: #525252;
+
+  /* ---------- 边框与分割线 ---------- */
+  --ss-border: #333333;
+  --ss-border-light: #1f1f1f;
+  --ss-border-strong: #525252;
+
+  /* ---------- 交互状态 ---------- */
+  --ss-hover-bg: #262626;
   --ss-selected-bg: rgba(255, 255, 255, 0.08);
-  --ss-error-text: #a3a3a3;
-  --ss-header-highlight-bg: #404040;
+  --ss-selected-border: #e5e5e5;
+  --ss-focus-ring: #e5e5e5;
+
+  /* ---------- 表格专用 ---------- */
+  --ss-grid: #333333;
+  --ss-cell-text: #e5e5e5;
+  --ss-header-text: #a3a3a3;
+  --ss-header-highlight-bg: #333333;
   --ss-header-highlight-text: #e5e5e5;
-  --ss-comment-marker: #a3a3a3;
+
+  /* ---------- 功能色 ---------- */
+  --ss-error: #ef4444;
+  --ss-error-bg: #450a0a;
+  --ss-success: #22c55e;
+  --ss-warning: #eab308;
+  --ss-info: #3b82f6;
+
+  /* ---------- 特殊元素 ---------- */
   --ss-fill-handle-bg: #e5e5e5;
   --ss-fill-handle-border: #171717;
   --ss-fill-area-bg: rgba(255, 255, 255, 0.06);
   --ss-fill-area-border: #a3a3a3;
+  --ss-comment-marker: #a3a3a3;
 
-  --ss-toolbar-bg: #171717;
-  --ss-toolbar-border: #404040;
-  --ss-toolbar-text: #d4d4d4;
-  --ss-toolbar-hover: #262626;
-  --ss-input-border: #525252;
-  --ss-input-bg: #262626;
-  --ss-input-text: #e5e5e5;
-  --ss-panel-bg: #171717;
-  --ss-panel-border: #404040;
-  --ss-scrollbar-track: #262626;
+  /* ---------- 滚动条 ---------- */
+  --ss-scrollbar-track: #1f1f1f;
   --ss-scrollbar-thumb: #525252;
   --ss-scrollbar-thumb-hover: #737373;
+
+  /* ---------- 兼容性旧变量 ---------- */
+  --ss-toolbar-border: var(--ss-border);
+  --ss-toolbar-text: var(--ss-text-secondary);
+  --ss-toolbar-hover: var(--ss-hover-bg);
+  --ss-input-border: var(--ss-border-strong);
+  --ss-input-text: var(--ss-text-primary);
+  --ss-panel-border: var(--ss-border);
+  --ss-error-text: var(--ss-text-secondary);
 }
+
+/* ============================================================
+   全局基础样式
+   ============================================================ */
 
 html, body {
   margin: 0;
   padding: 0;
-  font-family: 'SimSun', '宋体', 'SimHei', '黑体', 'Songti SC', 'STSong', system-ui, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-weight: 400;
-  color: var(--ss-cell-text);
+  color: var(--ss-text-primary);
   background: var(--ss-bg);
 }
 
@@ -79,6 +149,7 @@ html, body {
   box-sizing: border-box;
 }
 
+/* ---------- 滚动条 ---------- */
 ::-webkit-scrollbar {
   width: 12px;
   height: 12px;
@@ -96,4 +167,21 @@ html, body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--ss-scrollbar-thumb-hover);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ss-scrollbar-thumb) var(--ss-scrollbar-track);
+}
+
+/* ---------- 选中文本 ---------- */
+::selection {
+  background: var(--ss-selected-bg);
+  color: var(--ss-text-primary);
+}
+
+/* ---------- 输入框占位符 ---------- */
+::placeholder {
+  color: var(--ss-text-tertiary);
 }

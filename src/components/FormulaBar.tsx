@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSpreadsheetStore } from '../store/useSpreadsheetStore';
 import { colToLetter, coordsToCell } from '../utils/cellRef';
+import { FONT_FAMILY_MONO } from '../utils/constants';
 import { FunctionSquare, X } from 'lucide-react';
 
 const FUNCTIONS = [
@@ -99,7 +100,7 @@ export default function FormulaBar() {
       >
         <span
           className="text-xs font-medium tabular-nums"
-          style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace', color: 'var(--ss-cell-text)' }}
+          style={{ fontFamily: FONT_FAMILY_MONO, color: 'var(--ss-cell-text)' }}
         >
           {colToLetter(selection.startCol)}{selection.startRow + 1}
         </span>
@@ -160,7 +161,7 @@ export default function FormulaBar() {
             }
           }}
           className="w-full px-3 py-2 text-sm outline-none"
-          style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace', background: 'transparent', color: 'var(--ss-input-text)' }}
+          style={{ fontFamily: FONT_FAMILY_MONO, background: 'transparent', color: 'var(--ss-input-text)' }}
           placeholder="输入值或公式，例如 =SUM(A1:A5)"
         />
 
@@ -182,7 +183,7 @@ export default function FormulaBar() {
                 }}
                 className="cursor-pointer px-3 py-1.5 text-sm transition-colors"
                 style={{
-                  fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace',
+                  fontFamily: FONT_FAMILY_MONO,
                   color: 'var(--ss-toolbar-text)',
                   background: idx === selectedIndex ? 'var(--ss-toolbar-hover)' : 'transparent',
                 }}

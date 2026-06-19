@@ -194,7 +194,7 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
             borderColor: 'var(--ss-selected-border)',
             background: 'var(--ss-bg)',
             color: 'var(--ss-cell-text)',
-            fontFamily: getEditCell()?.style?.fontFamily || 'SimSun, 宋体, SimHei, 黑体, monospace',
+            fontFamily: getEditCell()?.style?.fontFamily || 'monospace',
             fontSize: '13px',
             lineHeight: String(DEFAULT_ROW_HEIGHT) + 'px',
           }}

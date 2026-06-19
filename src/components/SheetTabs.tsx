@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSpreadsheetStore, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../store/useSpreadsheetStore';
 import { colToLetter, coordsToCell } from '../utils/cellRef';
+import { FONT_FAMILY_MONO } from '../utils/constants';
 import { Plus, Trash2, FileSpreadsheet, BarChart3, Hash, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function SheetTabs() {
@@ -34,7 +35,7 @@ export default function SheetTabs() {
 
   return (
     <div className="flex flex-col border-t" style={{ borderColor: 'var(--ss-toolbar-border)', background: 'var(--ss-toolbar-bg)' }}>
-      <div className="flex items-center justify-between px-3 py-1 text-xs" style={{ fontFamily: 'SimSun, 宋体, SimHei, 黑体, monospace', color: 'var(--ss-header-text)', borderBottom: '1px solid var(--ss-toolbar-border)' }}>
+      <div className="flex items-center justify-between px-3 py-1 text-xs" style={{ fontFamily: FONT_FAMILY_MONO, color: 'var(--ss-header-text)', borderBottom: '1px solid var(--ss-toolbar-border)' }}>
         <div className="flex items-center gap-3 overflow-hidden">
           <span className="flex items-center gap-1 shrink-0">
             <BarChart3 size={12} />
@@ -79,7 +80,7 @@ export default function SheetTabs() {
             onClick={() => store.getState().setActiveSheet(sheet.id)}
             className="flex items-center gap-1.5 rounded-t px-3 py-1.5 text-xs transition-colors shrink-0"
             style={{
-              fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif',
+              
               color: sheet.id === workbook.activeSheetId ? 'var(--ss-cell-text)' : 'var(--ss-header-text)',
               background: sheet.id === workbook.activeSheetId ? 'var(--ss-bg)' : 'transparent',
               borderTop: sheet.id === workbook.activeSheetId ? '2px solid var(--ss-cell-text)' : '2px solid transparent',
