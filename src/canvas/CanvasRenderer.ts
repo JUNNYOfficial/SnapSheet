@@ -506,141 +506,110 @@ export class CanvasRenderer {
     const frozenRows = this.opts.frozenRows ?? 0;
     const frozenCols = this.opts.frozenCols ?? 0;
 
-    let leftX = 0, topY = 0, selWidth = 0, selHeight = 0;
-    let foundLeft = false, foundTop = false, foundRight = false, foundBottom = false;
-
-    let curX = HEADER_COL_WIDTH;
-    if (frozenCols === 0) {
-      curX -= this.scrollLeft;
+    let leftX = HEADER_COL_WIDTH;
+    for (let c = 0; c < minCol && c < this.opts.maxCols; c++) {
+      leftX += this.opts.getColWidth(c);
     }
-    for (let c = 0; c <= maxCol && c < this.opts.maxCols; c++) {
-      const cw = this.opts.getColWidth(c);
-      if (c === minCol) {
-        leftX = curX;
-        foundLeft = true;
-      }
-      if (c === maxCol) {
-        selWidth = curX + cw - leftX;
-        foundRight = true;
-        break;
-      }
-      curX += cw;
-      if (c === frozenCols - 1) {
-        curX -= this.scrollLeft;
-      }
+    if (minCol >= frozenCols) {
+      leftX -= this.scrollLeft;
     }
 
-    let curY = HEADER_ROW_HEIGHT;
-    if (frozenRows === 0) {
-      curY -= this.scrollTop;
-    }
-    for (let r = 0; r <= maxRow && r < this.opts.maxRows; r++) {
-      const rh = this.opts.getRowHeight(r);
-      if (r === minRow) {
-        topY = curY;
-        foundTop = true;
-      }
-      if (r === maxRow) {
-        selHeight = curY + rh - topY;
-        foundBottom = true;
-        break;
-      }
-      curY += rh;
-      if (r === frozenRows - 1) {
-        curY -= this.scrollTop;
-      }
+    let rightX = leftX;
+    for (let c = minCol; c <= maxCol && c < this.opts.maxCols; c++) {
+      rightX += this.opts.getColWidth(c);
     }
 
-    if (foundLeft && foundRight && foundTop && foundBottom) {
+    let topY = HEADER_ROW_HEIGHT;
+    for (let r = 0; r < minRow && r < this.opts.maxRows; r++) {
+      topY += this.opts.getRowHeight(r);
+    }
+    if (minRow >= frozenRows) {
+      topY -= this.scrollTop;
+    }
+
+    let bottomY = topY;
+    for (let r = minRow; r <= maxRow && r < this.opts.maxRows; r++) {
+      bottomY += this.opts.getRowHeight(r);
+    }
+
+    const selWidth = rightX - leftX;
+    const selHeight = bottomY - topY;
+
+    ctx.save();
+    ctx.strokeStyle = this.themeColor('selectedBorder');
+    ctx.lineWidth = 2;
+    ctx.strokeRect(leftX + 1, topY + 1, selWidth - 2, selHeight - 2);
+    ctx.restore();
+
+    const handleX = leftX + selWidth - 4;
+    const handleY = topY + selHeight - 4;
+    ctx.save();
+    ctx.fillStyle = this.themeColor('fillHandleBg');
+    ctx.strokeStyle = this.themeColor('fillHandleBorder');
+    ctx.lineWidth = 1;
+    ctx.fillRect(handleX, handleY, 8, 8);
+    ctx.strokeRect(handleX + 0.5, handleY + 0.5, 7, 7);
+    ctx.restore();
+
+    if (this.fillHandleDragging && this.fillHandleTarget) {
+      const tRow = this.fillHandleTarget.row;
+      const tCol = this.fillHandleTarget.col;
+      const fMinRow = Math.min(sel.startRow, sel.endRow, tRow);
+      const fMaxRow = Math.max(sel.startRow, sel.endRow, tRow);
+      const fMinCol = Math.min(sel.startCol, sel.endCol, tCol);
+      const fMaxCol = Math.max(sel.startCol, sel.endCol, tCol);
+
+      let fx = HEADER_COL_WIDTH;
+      for (let c = 0; c < fMinCol && c < this.opts.maxCols; c++) {
+        fx += this.opts.getColWidth(c);
+      }
+      if (fMinCol >= frozenCols) fx -= this.scrollLeft;
+
+      let fy = HEADER_ROW_HEIGHT;
+      for (let r = 0; r < fMinRow && r < this.opts.maxRows; r++) {
+        fy += this.opts.getRowHeight(r);
+      }
+      if (fMinRow >= frozenRows) fy -= this.scrollTop;
+
+      let fw = 0;
+      for (let c = fMinCol; c <= fMaxCol && c < this.opts.maxCols; c++) {
+        fw += this.opts.getColWidth(c);
+      }
+
+      let fh = 0;
+      for (let r = fMinRow; r <= fMaxRow && r < this.opts.maxRows; r++) {
+        fh += this.opts.getRowHeight(r);
+      }
+
       ctx.save();
-      ctx.strokeStyle = this.themeColor('selectedBorder');
-      ctx.lineWidth = 2;
-      ctx.strokeRect(leftX + 1, topY + 1, selWidth - 2, selHeight - 2);
+      ctx.fillStyle = this.themeColor('fillAreaBg');
+      ctx.fillRect(fx, fy, fw, fh);
+      ctx.strokeStyle = this.themeColor('fillAreaBorder');
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(fx + 1, fy + 1, fw - 2, fh - 2);
+      ctx.setLineDash([]);
       ctx.restore();
+    }
 
-      const handleX = leftX + selWidth - 4;
-      const handleY = topY + selHeight - 4;
-      ctx.save();
-      ctx.fillStyle = this.themeColor('fillHandleBg');
-      ctx.strokeStyle = this.themeColor('fillHandleBorder');
-      ctx.lineWidth = 1;
-      ctx.fillRect(handleX, handleY, 8, 8);
-      ctx.strokeRect(handleX + 0.5, handleY + 0.5, 7, 7);
-      ctx.restore();
-
-      if (this.fillHandleDragging && this.fillHandleTarget) {
-        const tRow = this.fillHandleTarget.row;
-        const tCol = this.fillHandleTarget.col;
-        const fMinRow = Math.min(sel.startRow, sel.endRow, tRow);
-        const fMaxRow = Math.max(sel.startRow, sel.endRow, tRow);
-        const fMinCol = Math.min(sel.startCol, sel.endCol, tCol);
-        const fMaxCol = Math.max(sel.startCol, sel.endCol, tCol);
-
-        let fx = leftX, fy = topY, fw = selWidth, fh = selHeight;
-        let fxFound = false, fyFound = false, fwFound = false, fhFound = false;
-        let cx = HEADER_COL_WIDTH;
-        if (frozenCols === 0) {
-          cx -= this.scrollLeft;
-        }
-        for (let c = 0; c <= fMaxCol && c < this.opts.maxCols; c++) {
-          const cw = this.opts.getColWidth(c);
-          if (c === fMinCol) { fx = cx; fxFound = true; }
-          if (c === fMaxCol) { fw = cx + cw - fx; fwFound = true; break; }
-          cx += cw;
-          if (c === frozenCols - 1) cx -= this.scrollLeft;
-        }
-        let cy = HEADER_ROW_HEIGHT;
-        if (frozenRows === 0) {
-          cy -= this.scrollTop;
-        }
-        for (let r = 0; r <= fMaxRow && r < this.opts.maxRows; r++) {
-          const rh = this.opts.getRowHeight(r);
-          if (r === fMinRow) { fy = cy; fyFound = true; }
-          if (r === fMaxRow) { fh = cy + rh - fy; fhFound = true; break; }
-          cy += rh;
-          if (r === frozenRows - 1) cy -= this.scrollTop;
-        }
-        if (fxFound && fyFound && fwFound && fhFound) {
-          ctx.save();
-          ctx.fillStyle = this.themeColor('fillAreaBg');
-          ctx.fillRect(fx, fy, fw, fh);
-          ctx.strokeStyle = this.themeColor('fillAreaBorder');
-          ctx.setLineDash([4, 4]);
-          ctx.strokeRect(fx + 1, fy + 1, fw - 2, fh - 2);
-          ctx.setLineDash([]);
-          ctx.restore();
-        }
+    if (sel.startRow !== sel.endRow || sel.startCol !== sel.endCol) {
+      let activeColX = HEADER_COL_WIDTH;
+      for (let c = 0; c < sel.startCol && c < this.opts.maxCols; c++) {
+        activeColX += this.opts.getColWidth(c);
       }
-    }
+      if (sel.startCol >= frozenCols) activeColX -= this.scrollLeft;
 
-    // Active cell dashed border (for range selections)
-    let activeColX = HEADER_COL_WIDTH;
-    if (frozenCols === 0 && sel.startCol > 0) {
-      activeColX -= this.scrollLeft;
-    }
-    for (let c = 0; c <= sel.startCol && c < this.opts.maxCols; c++) {
-      if (c === sel.startCol) break;
-      activeColX += this.opts.getColWidth(c);
-      if (c === frozenCols - 1) activeColX -= this.scrollLeft;
-    }
-    let activeRowY = HEADER_ROW_HEIGHT;
-    if (frozenRows === 0 && sel.startRow > 0) {
-      activeRowY -= this.scrollTop;
-    }
-    for (let r = 0; r <= sel.startRow && r < this.opts.maxRows; r++) {
-      if (r === sel.startRow) break;
-      activeRowY += this.opts.getRowHeight(r);
-      if (r === frozenRows - 1) activeRowY -= this.scrollTop;
-    }
+      let activeRowY = HEADER_ROW_HEIGHT;
+      for (let r = 0; r < sel.startRow && r < this.opts.maxRows; r++) {
+        activeRowY += this.opts.getRowHeight(r);
+      }
+      if (sel.startRow >= frozenRows) activeRowY -= this.scrollTop;
 
-    const activeCol = this.findColAtX(activeColX, sel.startCol);
-    const activeRow = this.findRowAtY(activeRowY, sel.startRow);
-    if (activeCol && activeRow && (sel.startRow !== sel.endRow || sel.startCol !== sel.endCol)) {
       ctx.save();
       ctx.strokeStyle = this.themeColor('fillAreaBorder');
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 4]);
-      ctx.strokeRect(activeCol.x + 1.5, activeRow.y + 1.5, activeCol.width - 3, activeRow.height - 3);
+      ctx.strokeRect(activeColX + 1.5, activeRowY + 1.5, 
+        this.opts.getColWidth(sel.startCol) - 3, this.opts.getRowHeight(sel.startRow) - 3);
       ctx.setLineDash([]);
       ctx.restore();
     }

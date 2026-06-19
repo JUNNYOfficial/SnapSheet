@@ -100,7 +100,6 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
   useEffect(() => {
     if (rendererRef.current) {
       rendererRef.current.setSelection(selection);
-      rendererRef.current.scrollIntoView(selection.startRow, selection.startCol);
       rendererRef.current.render();
     }
   }, [selection]);
