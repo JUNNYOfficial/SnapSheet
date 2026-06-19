@@ -23,7 +23,10 @@ export default function App() {
       try {
         const workbook = workbookFromJSON(saved);
         if (workbook.sheets.length > 0) {
-          store.getState().loadWorkbook(workbook);
+          const firstSheet = workbook.sheets[0];
+          if (firstSheet && firstSheet.cells && firstSheet.cells.size > 0) {
+            store.getState().loadWorkbook(workbook);
+          }
         }
       } catch {
         localStorage.removeItem(STORAGE_KEY);
