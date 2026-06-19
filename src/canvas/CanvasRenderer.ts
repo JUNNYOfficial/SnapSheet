@@ -6,6 +6,7 @@ import {
   HEADER_FONT,
   CELL_FONT,
   FONT_SIZE,
+  FONT_FAMILY,
 } from '../utils/constants';
 import { getThemeColors, type ThemeColors } from '../utils/theme';
 import { colToLetter } from '../utils/cellRef';
@@ -101,11 +102,13 @@ export class CanvasRenderer {
   }
 
   private buildCellFont(style?: Cell['style']): string {
-    const family = style?.fontFamily || CELL_FONT;
-    // If a custom fontFamily is provided, it may already include size; otherwise prepend size.
-    const hasSize = /\d+px/.test(family);
-    const font = hasSize ? family : FONT_SIZE + 'px ' + family;
-    return style?.bold ? 'bold ' + font : font;
+    const size = style?.fontSize || FONT_SIZE;
+    const family = style?.fontFamily || FONT_FAMILY;
+    const weight = style?.bold ? 'bold ' : '';
+    const styleItalic = style?.italic ? 'italic ' : '';
+    const styleUnderline = style?.underline ? 'underline ' : '';
+    // Canvas doesn't support underline in font string, but we can note it
+    return `${weight}${styleItalic}${size}px ${family}`;
   }
 
   scrollIntoView(row: number, col: number): void {
@@ -399,8 +402,9 @@ export class CanvasRenderer {
           const maxTextWidth = renderWidth - textPadding * 2;
 
           if (cell.style?.wrap) {
+            const fontSize = cell.style?.fontSize || FONT_SIZE;
             const lines = this.wrapText(ctx, text, maxTextWidth);
-            const lineHeight = 16;
+            const lineHeight = fontSize + 3;
             const totalHeight = lines.length * lineHeight;
             const startY = renderY + Math.max(textPadding, (renderHeight - totalHeight) / 2 + lineHeight / 2);
             for (let i = 0; i < lines.length; i++) {
@@ -412,6 +416,17 @@ export class CanvasRenderer {
           } else {
             const truncated = this.truncateText(ctx, text, maxTextWidth);
             ctx.fillText(truncated, textX, renderY + renderHeight / 2);
+            // Draw underline
+            if (cell.style?.underline) {
+              const metrics = ctx.measureText(truncated);
+              const underlineY = renderY + renderHeight / 2 + (cell.style?.fontSize || FONT_SIZE) / 2 + 1;
+              ctx.beginPath();
+              ctx.moveTo(textX - (ctx.textAlign === 'center' ? metrics.width / 2 : ctx.textAlign === 'right' ? metrics.width : 0), underlineY);
+              ctx.lineTo(textX + (ctx.textAlign === 'center' ? metrics.width / 2 : ctx.textAlign === 'right' ? 0 : metrics.width), underlineY);
+              ctx.strokeStyle = ctx.fillStyle;
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
           }
         }
 

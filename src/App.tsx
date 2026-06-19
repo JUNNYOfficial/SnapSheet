@@ -22,8 +22,12 @@ export default function App() {
     if (saved) {
       try {
         const workbook = workbookFromJSON(saved);
-        if (workbook.sheets.length > 0) {
+        // 检查是否有有效数据（至少有一个单元格）
+        if (workbook.sheets.length > 0 && workbook.sheets[0].cells.size > 0) {
           store.getState().loadWorkbook(workbook);
+        } else {
+          // 如果保存的数据是空的，清除它并使用默认数据
+          localStorage.removeItem(STORAGE_KEY);
         }
       } catch {
         localStorage.removeItem(STORAGE_KEY);

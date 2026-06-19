@@ -5,9 +5,9 @@ import { workbookToJSON, workbookFromJSON, downloadFile } from '../utils/json';
 import { exportToExcel, importFromExcel } from '../utils/excel';
 import { coordsToCell } from '../utils/cellRef';
 import { TEMPLATES } from '../templates';
-import { FONT_OPTIONS } from '../utils/constants';
+import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from '../utils/constants';
 import {
-  FileText, Upload, Download, Bold, AlignLeft, AlignCenter, AlignRight,
+  FileText, Upload, Download, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
   Percent, Hash, DollarSign, Calendar, Minus, Plus, Grid3X3, Merge,
   Split, MessageSquare, Eraser,
   ArrowUp, ArrowDown, Undo2, Redo2, Snowflake, Sun, Moon,
@@ -242,6 +242,50 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
     store.getState().applyStyleToSelection({ bold: !firstBold });
   };
 
+  const handleItalic = () => {
+    const sel = store.getState().selection;
+    const sheet = store.getState().getActiveSheet();
+    const minRow = Math.min(sel.startRow, sel.endRow);
+    const maxRow = Math.max(sel.startRow, sel.endRow);
+    const minCol = Math.min(sel.startCol, sel.endCol);
+    const maxCol = Math.max(sel.startCol, sel.endCol);
+    let firstItalic = false;
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        const ref = coordsToCell(r, c);
+        const cell = sheet.cells.get(ref);
+        if (cell) {
+          firstItalic = cell.style?.italic || false;
+          break;
+        }
+      }
+      if (sheet.cells.size > 0) break;
+    }
+    store.getState().applyStyleToSelection({ italic: !firstItalic });
+  };
+
+  const handleUnderline = () => {
+    const sel = store.getState().selection;
+    const sheet = store.getState().getActiveSheet();
+    const minRow = Math.min(sel.startRow, sel.endRow);
+    const maxRow = Math.max(sel.startRow, sel.endRow);
+    const minCol = Math.min(sel.startCol, sel.endCol);
+    const maxCol = Math.max(sel.startCol, sel.endCol);
+    let firstUnderline = false;
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        const ref = coordsToCell(r, c);
+        const cell = sheet.cells.get(ref);
+        if (cell) {
+          firstUnderline = cell.style?.underline || false;
+          break;
+        }
+      }
+      if (sheet.cells.size > 0) break;
+    }
+    store.getState().applyStyleToSelection({ underline: !firstUnderline });
+  };
+
   const handleAlignLeft = () => store.getState().applyStyleToSelection({ align: 'left' });
   const handleAlignCenter = () => store.getState().applyStyleToSelection({ align: 'center' });
   const handleAlignRight = () => store.getState().applyStyleToSelection({ align: 'right' });
@@ -428,6 +472,8 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
             <Divider />
             <Group title="字体">
               <TooltipButton onClick={handleBold} icon={<Bold size={16} />} title="加粗" shortcut="Ctrl+B" />
+              <TooltipButton onClick={handleItalic} icon={<Italic size={16} />} title="斜体" shortcut="Ctrl+I" />
+              <TooltipButton onClick={handleUnderline} icon={<Underline size={16} />} title="下划线" shortcut="Ctrl+U" />
               <select
                 value=""
                 onChange={(e) => {
@@ -445,6 +491,32 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
                   <option key={f.label} value={f.value} style={{ fontFamily: f.value }}>{f.label}</option>
                 ))}
               </select>
+              <select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) {
+                    store.getState().applyStyleToSelection({ fontSize: parseInt(e.target.value, 10) });
+                    e.target.value = '';
+                  }
+                }}
+                className="h-9 w-14 rounded-md border px-1 py-1 text-xs outline-none text-center"
+                style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)', fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif' }}
+                title="字号"
+              >
+                <option value="">字号</option>
+                {FONT_SIZE_OPTIONS.map((f) => (
+                  <option key={f.value} value={f.value}>{f.label}</option>
+                ))}
+              </select>
+              <input
+                type="color"
+                title="文字颜色"
+                onChange={(e) => {
+                  store.getState().applyStyleToSelection({ color: e.target.value });
+                }}
+                className="h-9 w-9 rounded-md border cursor-pointer"
+                style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', padding: '2px' }}
+              />
             </Group>
             <Divider />
             <Group title="对齐">

@@ -19,7 +19,25 @@ export class Parser {
   }
 
   private parseExpression(): ASTNode {
-    return this.parseTerm();
+    return this.parseComparison();
+  }
+
+  private parseComparison(): ASTNode {
+    let left = this.parseTerm();
+    while (
+      this.current().type === 'GT' ||
+      this.current().type === 'LT' ||
+      this.current().type === 'GTE' ||
+      this.current().type === 'LTE' ||
+      this.current().type === 'EQ' ||
+      this.current().type === 'NEQ'
+    ) {
+      const op = this.current().value as '>' | '<' | '>=' | '<=' | '=' | '<>';
+      this.pos++;
+      const right = this.parseTerm();
+      left = { type: 'comparison', op, left, right };
+    }
+    return left;
   }
 
   private parseTerm(): ASTNode {
@@ -35,8 +53,12 @@ export class Parser {
 
   private parseFactor(): ASTNode {
     let left = this.parsePrimary();
-    while (this.current().type === 'MULTIPLY' || this.current().type === 'DIVIDE') {
-      const op = this.current().type === 'MULTIPLY' ? '*' : '/';
+    while (
+      this.current().type === 'MULTIPLY' ||
+      this.current().type === 'DIVIDE' ||
+      this.current().type === 'AMPERSAND'
+    ) {
+      const op = this.current().type === 'MULTIPLY' ? '*' : this.current().type === 'DIVIDE' ? '/' : '&';
       this.pos++;
       const right = this.parsePrimary();
       left = { type: 'binary', op, left, right };

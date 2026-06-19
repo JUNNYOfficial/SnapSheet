@@ -40,6 +40,10 @@ export class Lexer {
       this.pos++;
       return { type: 'DIVIDE', value: '/' };
     }
+    if (ch === '&') {
+      this.pos++;
+      return { type: 'AMPERSAND', value: '&' };
+    }
     if (ch === '(') {
       this.pos++;
       return { type: 'LPAREN', value: '(' };
@@ -51,6 +55,30 @@ export class Lexer {
     if (ch === ',') {
       this.pos++;
       return { type: 'COMMA', value: ',' };
+    }
+    if (ch === '=') {
+      this.pos++;
+      return { type: 'EQ', value: '=' };
+    }
+    if (ch === '>') {
+      if (this.pos + 1 < this.input.length && this.input[this.pos + 1] === '=') {
+        this.pos += 2;
+        return { type: 'GTE', value: '>=' };
+      }
+      this.pos++;
+      return { type: 'GT', value: '>' };
+    }
+    if (ch === '<') {
+      if (this.pos + 1 < this.input.length && this.input[this.pos + 1] === '=') {
+        this.pos += 2;
+        return { type: 'LTE', value: '<=' };
+      }
+      if (this.pos + 1 < this.input.length && this.input[this.pos + 1] === '>') {
+        this.pos += 2;
+        return { type: 'NEQ', value: '<>' };
+      }
+      this.pos++;
+      return { type: 'LT', value: '<' };
     }
     if (ch === '"' || ch === "'") {
       return this.readString(ch);

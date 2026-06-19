@@ -5,10 +5,13 @@ export interface BorderStyle {
 
 export interface CellStyle {
   bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
   align?: 'left' | 'center' | 'right';
   color?: string;
   bgColor?: string;
   fontFamily?: string;
+  fontSize?: number;
   wrap?: boolean;
   borderTop?: BorderStyle;
   borderBottom?: BorderStyle;
@@ -107,6 +110,12 @@ export type TokenType =
   | 'RPAREN'
   | 'COMMA'
   | 'EQ'
+  | 'GT'
+  | 'LT'
+  | 'GTE'
+  | 'LTE'
+  | 'NEQ'
+  | 'AMPERSAND'
   | 'EOF';
 
 export interface Token {
@@ -120,4 +129,5 @@ export type ASTNode =
   | { type: 'cell'; ref: string }
   | { type: 'range'; start: string; end: string }
   | { type: 'function'; name: string; args: ASTNode[] }
-  | { type: 'binary'; op: '+' | '-' | '*' | '/'; left: ASTNode; right: ASTNode };
+  | { type: 'binary'; op: '+' | '-' | '*' | '/' | '&'; left: ASTNode; right: ASTNode }
+  | { type: 'comparison'; op: '>' | '<' | '>=' | '<=' | '=' | '<>'; left: ASTNode; right: ASTNode };
