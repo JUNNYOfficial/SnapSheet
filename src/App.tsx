@@ -24,6 +24,11 @@ export default function App() {
         const workbook = workbookFromJSON(saved);
         if (workbook.sheets.length > 0) {
           const firstSheet = workbook.sheets[0];
+          // 自动清除旧示例数据
+          if (firstSheet?.name === '设计规范') {
+            localStorage.removeItem(STORAGE_KEY);
+            return;
+          }
           if (firstSheet && firstSheet.cells && firstSheet.cells.size > 0) {
             store.getState().loadWorkbook(workbook);
           }

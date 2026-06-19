@@ -510,6 +510,9 @@ export class CanvasRenderer {
     let foundLeft = false, foundTop = false, foundRight = false, foundBottom = false;
 
     let curX = HEADER_COL_WIDTH;
+    if (frozenCols === 0) {
+      curX -= this.scrollLeft;
+    }
     for (let c = 0; c <= maxCol && c < this.opts.maxCols; c++) {
       const cw = this.opts.getColWidth(c);
       if (c === minCol) {
@@ -528,6 +531,9 @@ export class CanvasRenderer {
     }
 
     let curY = HEADER_ROW_HEIGHT;
+    if (frozenRows === 0) {
+      curY -= this.scrollTop;
+    }
     for (let r = 0; r <= maxRow && r < this.opts.maxRows; r++) {
       const rh = this.opts.getRowHeight(r);
       if (r === minRow) {
@@ -573,6 +579,9 @@ export class CanvasRenderer {
         let fx = leftX, fy = topY, fw = selWidth, fh = selHeight;
         let fxFound = false, fyFound = false, fwFound = false, fhFound = false;
         let cx = HEADER_COL_WIDTH;
+        if (frozenCols === 0) {
+          cx -= this.scrollLeft;
+        }
         for (let c = 0; c <= fMaxCol && c < this.opts.maxCols; c++) {
           const cw = this.opts.getColWidth(c);
           if (c === fMinCol) { fx = cx; fxFound = true; }
@@ -581,6 +590,9 @@ export class CanvasRenderer {
           if (c === frozenCols - 1) cx -= this.scrollLeft;
         }
         let cy = HEADER_ROW_HEIGHT;
+        if (frozenRows === 0) {
+          cy -= this.scrollTop;
+        }
         for (let r = 0; r <= fMaxRow && r < this.opts.maxRows; r++) {
           const rh = this.opts.getRowHeight(r);
           if (r === fMinRow) { fy = cy; fyFound = true; }
@@ -603,12 +615,18 @@ export class CanvasRenderer {
 
     // Active cell dashed border (for range selections)
     let activeColX = HEADER_COL_WIDTH;
+    if (frozenCols === 0 && sel.startCol > 0) {
+      activeColX -= this.scrollLeft;
+    }
     for (let c = 0; c <= sel.startCol && c < this.opts.maxCols; c++) {
       if (c === sel.startCol) break;
       activeColX += this.opts.getColWidth(c);
       if (c === frozenCols - 1) activeColX -= this.scrollLeft;
     }
     let activeRowY = HEADER_ROW_HEIGHT;
+    if (frozenRows === 0 && sel.startRow > 0) {
+      activeRowY -= this.scrollTop;
+    }
     for (let r = 0; r <= sel.startRow && r < this.opts.maxRows; r++) {
       if (r === sel.startRow) break;
       activeRowY += this.opts.getRowHeight(r);
@@ -629,35 +647,13 @@ export class CanvasRenderer {
   }
 
   private findColAtX(x: number, col: number): { col: number; x: number; width: number } | null {
-    const frozenCols = this.opts.frozenCols ?? 0;
-    const isFrozen = col < frozenCols;
-    const startCol = isFrozen ? 0 : frozenCols;
-    let cx = HEADER_COL_WIDTH;
-    for (let c = startCol; c <= col && c < this.opts.maxCols; c++) {
-      const cw = this.opts.getColWidth(c);
-      if (c === col) {
-        return { col: c, x: cx, width: cw };
-      }
-      cx += cw;
-      if (c === frozenCols - 1) cx -= this.scrollLeft;
-    }
-    return null;
+    if (col < 0 || col >= this.opts.maxCols) return null;
+    return { col, x, width: this.opts.getColWidth(col) };
   }
 
   private findRowAtY(y: number, row: number): { row: number; y: number; height: number } | null {
-    const frozenRows = this.opts.frozenRows ?? 0;
-    const isFrozen = row < frozenRows;
-    const startRow = isFrozen ? 0 : frozenRows;
-    let cy = HEADER_ROW_HEIGHT;
-    for (let r = startRow; r <= row && r < this.opts.maxRows; r++) {
-      const rh = this.opts.getRowHeight(r);
-      if (r === row) {
-        return { row: r, y: cy, height: rh };
-      }
-      cy += rh;
-      if (r === frozenRows - 1) cy -= this.scrollTop;
-    }
-    return null;
+    if (row < 0 || row >= this.opts.maxRows) return null;
+    return { row, y, height: this.opts.getRowHeight(row) };
   }
 
   private getConditionalBgColor(row: number, col: number, cell: Cell | undefined): string | null {
