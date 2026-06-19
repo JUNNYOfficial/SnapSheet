@@ -40,11 +40,18 @@ export default function App() {
   }, [store]);
 
   useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
     const unsubscribe = store.subscribe((state) => {
-      const json = workbookToJSON(state.workbook);
-      localStorage.setItem(STORAGE_KEY, json);
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        const json = workbookToJSON(state.workbook);
+        localStorage.setItem(STORAGE_KEY, json);
+      }, 500);
     });
-    return unsubscribe;
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      unsubscribe();
+    };
   }, [store]);
 
   useEffect(() => {

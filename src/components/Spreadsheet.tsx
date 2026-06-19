@@ -129,10 +129,6 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
     }
   }, [workbook.activeSheetId, store]);
 
-  useEffect(() => {
-    if (rendererRef.current) rendererRef.current.render();
-  });
-
   const getEditCell = () => {
     if (!editing) return undefined;
     const sheet = store.getState().getActiveSheet();

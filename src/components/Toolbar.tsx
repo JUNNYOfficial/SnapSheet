@@ -36,8 +36,6 @@ interface TooltipButtonProps {
 }
 
 function TooltipButton({ onClick, icon, label, title, shortcut, disabled, active, variant = 'icon' }: TooltipButtonProps) {
-  const [showTip, setShowTip] = useState(false);
-
   const baseClasses = 'relative inline-flex items-center justify-center rounded-md transition-all duration-150 ease-out';
   const sizeClasses = variant === 'icon' ? 'h-9 w-9' : variant === 'both' ? 'h-9 px-3 gap-1' : 'h-9 px-3.5';
   const stateClasses = disabled
@@ -47,10 +45,7 @@ function TooltipButton({ onClick, icon, label, title, shortcut, disabled, active
     : 'hover:bg-[var(--ss-toolbar-hover)] hover:text-[var(--ss-cell-text)] text-[var(--ss-toolbar-text)]';
 
   return (
-    <div className="relative inline-flex"
-      onMouseEnter={() => setShowTip(true)}
-      onMouseLeave={() => setShowTip(false)}
-    >
+    <div className="relative group inline-flex">
       <button
         onClick={onClick}
         disabled={disabled}
@@ -61,19 +56,17 @@ function TooltipButton({ onClick, icon, label, title, shortcut, disabled, active
         {icon}
         {label && <span className="text-xs whitespace-nowrap">{label}</span>}
       </button>
-      {showTip && (
-        <div
-          className="absolute left-1/2 top-full z-[100] mt-1 -translate-x-1/2 whitespace-nowrap rounded-md px-2.5 py-1 text-xs shadow-lg"
-          style={{
-            background: 'var(--ss-cell-text)',
-            color: 'var(--ss-bg)',
-            fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif',
-          }}
-        >
-          {title}
-          {shortcut && <span className="ml-1.5 opacity-70">({shortcut})</span>}
-        </div>
-      )}
+      <div
+        className="absolute left-1/2 top-full z-[100] mt-1 -translate-x-1/2 whitespace-nowrap rounded-md px-2.5 py-1 text-xs shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-150"
+        style={{
+          background: 'var(--ss-cell-text)',
+          color: 'var(--ss-bg)',
+          fontFamily: 'SimSun, 宋体, SimHei, 黑体, sans-serif',
+        }}
+      >
+        {title}
+        {shortcut && <span className="ml-1.5 opacity-70">({shortcut})</span>}
+      </div>
     </div>
   );
 }
