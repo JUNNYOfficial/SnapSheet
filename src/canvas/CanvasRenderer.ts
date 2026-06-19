@@ -495,6 +495,40 @@ export class CanvasRenderer {
     }
   }
 
+  private getCellPosition(row: number, col: number, frozenRows: number, frozenCols: number): { x: number; y: number } {
+    let x = HEADER_COL_WIDTH;
+    for (let c = 0; c < col && c < this.opts.maxCols; c++) {
+      x += this.opts.getColWidth(c);
+    }
+    if (col >= frozenCols) {
+      x -= this.scrollLeft;
+    }
+
+    let y = HEADER_ROW_HEIGHT;
+    for (let r = 0; r < row && r < this.opts.maxRows; r++) {
+      y += this.opts.getRowHeight(r);
+    }
+    if (row >= frozenRows) {
+      y -= this.scrollTop;
+    }
+
+    return { x, y };
+  }
+
+  private getRangeSize(startRow: number, endRow: number, startCol: number, endCol: number): { width: number; height: number } {
+    let width = 0;
+    for (let c = startCol; c <= endCol && c < this.opts.maxCols; c++) {
+      width += this.opts.getColWidth(c);
+    }
+
+    let height = 0;
+    for (let r = startRow; r <= endRow && r < this.opts.maxRows; r++) {
+      height += this.opts.getRowHeight(r);
+    }
+
+    return { width, height };
+  }
+
   private renderSelectionOverlay(
     ctx: CanvasRenderingContext2D,
     sel: Selection
@@ -506,34 +540,8 @@ export class CanvasRenderer {
     const frozenRows = this.opts.frozenRows ?? 0;
     const frozenCols = this.opts.frozenCols ?? 0;
 
-    let leftX = HEADER_COL_WIDTH;
-    for (let c = 0; c < minCol && c < this.opts.maxCols; c++) {
-      leftX += this.opts.getColWidth(c);
-    }
-    if (minCol >= frozenCols) {
-      leftX -= this.scrollLeft;
-    }
-
-    let rightX = leftX;
-    for (let c = minCol; c <= maxCol && c < this.opts.maxCols; c++) {
-      rightX += this.opts.getColWidth(c);
-    }
-
-    let topY = HEADER_ROW_HEIGHT;
-    for (let r = 0; r < minRow && r < this.opts.maxRows; r++) {
-      topY += this.opts.getRowHeight(r);
-    }
-    if (minRow >= frozenRows) {
-      topY -= this.scrollTop;
-    }
-
-    let bottomY = topY;
-    for (let r = minRow; r <= maxRow && r < this.opts.maxRows; r++) {
-      bottomY += this.opts.getRowHeight(r);
-    }
-
-    const selWidth = rightX - leftX;
-    const selHeight = bottomY - topY;
+    const { x: leftX, y: topY } = this.getCellPosition(minRow, minCol, frozenRows, frozenCols);
+    const { width: selWidth, height: selHeight } = this.getRangeSize(minRow, maxRow, minCol, maxCol);
 
     ctx.save();
     ctx.strokeStyle = this.themeColor('selectedBorder');
@@ -559,27 +567,8 @@ export class CanvasRenderer {
       const fMinCol = Math.min(sel.startCol, sel.endCol, tCol);
       const fMaxCol = Math.max(sel.startCol, sel.endCol, tCol);
 
-      let fx = HEADER_COL_WIDTH;
-      for (let c = 0; c < fMinCol && c < this.opts.maxCols; c++) {
-        fx += this.opts.getColWidth(c);
-      }
-      if (fMinCol >= frozenCols) fx -= this.scrollLeft;
-
-      let fy = HEADER_ROW_HEIGHT;
-      for (let r = 0; r < fMinRow && r < this.opts.maxRows; r++) {
-        fy += this.opts.getRowHeight(r);
-      }
-      if (fMinRow >= frozenRows) fy -= this.scrollTop;
-
-      let fw = 0;
-      for (let c = fMinCol; c <= fMaxCol && c < this.opts.maxCols; c++) {
-        fw += this.opts.getColWidth(c);
-      }
-
-      let fh = 0;
-      for (let r = fMinRow; r <= fMaxRow && r < this.opts.maxRows; r++) {
-        fh += this.opts.getRowHeight(r);
-      }
+      const { x: fx, y: fy } = this.getCellPosition(fMinRow, fMinCol, frozenRows, frozenCols);
+      const { width: fw, height: fh } = this.getRangeSize(fMinRow, fMaxRow, fMinCol, fMaxCol);
 
       ctx.save();
       ctx.fillStyle = this.themeColor('fillAreaBg');
@@ -592,17 +581,7 @@ export class CanvasRenderer {
     }
 
     if (sel.startRow !== sel.endRow || sel.startCol !== sel.endCol) {
-      let activeColX = HEADER_COL_WIDTH;
-      for (let c = 0; c < sel.startCol && c < this.opts.maxCols; c++) {
-        activeColX += this.opts.getColWidth(c);
-      }
-      if (sel.startCol >= frozenCols) activeColX -= this.scrollLeft;
-
-      let activeRowY = HEADER_ROW_HEIGHT;
-      for (let r = 0; r < sel.startRow && r < this.opts.maxRows; r++) {
-        activeRowY += this.opts.getRowHeight(r);
-      }
-      if (sel.startRow >= frozenRows) activeRowY -= this.scrollTop;
+      const { x: activeColX, y: activeRowY } = this.getCellPosition(sel.startRow, sel.startCol, frozenRows, frozenCols);
 
       ctx.save();
       ctx.strokeStyle = this.themeColor('fillAreaBorder');

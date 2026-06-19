@@ -8,12 +8,16 @@ import PropertyPanel from './components/PropertyPanel';
 import { useSpreadsheetStore } from './store/useSpreadsheetStore';
 import { useTheme } from './hooks/useTheme';
 import { workbookToJSON, workbookFromJSON } from './utils/json';
+import { Save, CheckCircle } from 'lucide-react';
 
 const STORAGE_KEY = 'snapsheet_autosave';
+
+type SaveStatus = 'saved' | 'saving' | 'unsaved';
 
 export default function App() {
   const [findOpen, setFindOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const store = useSpreadsheetStore;
   const { theme, toggleTheme, isDark } = useTheme();
 
@@ -41,11 +45,14 @@ export default function App() {
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const unsubscribe = store.subscribe((state) => {
+      setSaveStatus('unsaved');
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
+        setSaveStatus('saving');
         const json = workbookToJSON(state.workbook);
         localStorage.setItem(STORAGE_KEY, json);
-      }, 500);
+        setSaveStatus('saved');
+      }, 800);
     });
     return () => {
       if (timeout) clearTimeout(timeout);
@@ -59,10 +66,16 @@ export default function App() {
         e.preventDefault();
         setFindOpen((prev) => !prev);
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        const json = workbookToJSON(store.getState().workbook);
+        localStorage.setItem(STORAGE_KEY, json);
+        setSaveStatus('saved');
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [store]);
 
   return (
     <div className={theme + ' relative flex h-screen w-screen flex-col'} style={{ background: 'var(--ss-toolbar-bg)', color: 'var(--ss-text-secondary)' }}>
@@ -76,7 +89,19 @@ export default function App() {
             <h1 className="text-base font-semibold leading-tight" style={{ color: 'var(--ss-text-primary)' }}>SnapSheet</h1>
           </div>
         </div>
-        <p className="text-xs" style={{ color: 'var(--ss-text-tertiary)' }}>电子表格 · 公式计算 · 数据分析</p>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            {saveStatus === 'saving' && <Save size={12} className="animate-pulse" style={{ color: 'var(--ss-info)' }} />}
+            {saveStatus === 'saved' && <CheckCircle size={12} style={{ color: 'var(--ss-success)' }} />}
+            <span className="text-xs" style={{ 
+              color: saveStatus === 'saving' ? 'var(--ss-info)' : 
+                     saveStatus === 'saved' ? 'var(--ss-success)' : 'var(--ss-text-tertiary)' 
+            }}>
+              {saveStatus === 'saving' ? '保存中...' : saveStatus === 'saved' ? '已保存' : '未保存'}
+            </span>
+          </div>
+          <p className="text-xs" style={{ color: 'var(--ss-text-tertiary)' }}>电子表格 · 公式计算 · 数据分析</p>
+        </div>
       </div>
 
       {/* Ribbon 工具栏 */}
