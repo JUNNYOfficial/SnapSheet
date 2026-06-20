@@ -37,7 +37,7 @@ interface TooltipButtonProps {
 
 function TooltipButton({ onClick, icon, label, title, shortcut, disabled, active, variant = 'icon' }: TooltipButtonProps) {
   const baseClasses = 'relative inline-flex items-center justify-center rounded-md transition-all duration-150 ease-out';
-  const sizeClasses = variant === 'icon' ? 'h-9 w-9' : variant === 'both' ? 'h-9 px-3 gap-1' : 'h-9 px-3.5';
+  const sizeClasses = variant === 'icon' ? 'h-8 w-8' : variant === 'both' ? 'h-8 px-2.5 gap-1' : 'h-8 px-3';
   const stateClasses = disabled
     ? 'opacity-40 cursor-not-allowed'
     : active
@@ -291,18 +291,18 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   ];
 
   const Group = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="flex flex-col items-center gap-1 px-2 py-1.5 rounded-md hover:bg-[var(--ss-toolbar-hover)]/50 transition-colors">
+    <div className="flex flex-col items-center gap-1 px-2 py-1.5 rounded-md transition-colors">
       <div className="flex items-center gap-1">
         {children}
       </div>
-      <span className="text-[10px] leading-none whitespace-nowrap" style={{ color: 'var(--ss-header-text)',  }}>
+      <span className="text-[10px] leading-none whitespace-nowrap font-medium tracking-wide" style={{ color: 'var(--ss-text-tertiary)' }}>
         {title}
       </span>
     </div>
   );
 
   const Divider = () => (
-    <div className="m-1 h-6 w-px" style={{ background: 'var(--ss-toolbar-border)' }} />
+    <div className="mx-1 h-8 w-px rounded-full" style={{ background: 'var(--ss-border-strong)' }} />
   );
 
   if (collapsed) {
@@ -390,7 +390,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-2 py-2" style={{ background: 'var(--ss-bg)' }}>
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-1 px-3 py-2.5 border-t" style={{ background: 'var(--ss-toolbar-bg)', borderColor: 'var(--ss-border-light)' }}>
         {activeTab === 'file' && (
           <>
             <Group title="工作簿">
@@ -426,8 +426,8 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
                     e.target.value = '';
                   }
                 }}
-                className="h-9 rounded-md border px-2 py-1 text-xs outline-none transition-colors hover:border-[var(--ss-cell-text)]"
-                style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)',  }}
+                className="h-8 rounded-md border px-2 py-1 text-xs outline-none transition-colors focus:border-[var(--ss-focus-ring)] cursor-pointer"
+                style={{ borderColor: 'var(--ss-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)' }}
                 title="应用模板"
               >
                 <option value="">模板</option>
@@ -473,8 +473,8 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
                     e.target.value = '';
                   }
                 }}
-                className="h-9 rounded-md border px-2 py-1 text-xs outline-none"
-                style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)',  }}
+                className="h-8 rounded-md border px-2 py-1 text-xs outline-none transition-colors focus:border-[var(--ss-focus-ring)] cursor-pointer"
+                style={{ borderColor: 'var(--ss-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)' }}
                 title="字体"
               >
                 <option value="">字体</option>
@@ -490,8 +490,8 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
                     e.target.value = '';
                   }
                 }}
-                className="h-9 w-14 rounded-md border px-1 py-1 text-xs outline-none text-center"
-                style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)',  }}
+                className="h-8 w-14 rounded-md border px-1 py-1 text-xs outline-none text-center transition-colors focus:border-[var(--ss-focus-ring)] cursor-pointer"
+                style={{ borderColor: 'var(--ss-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)' }}
                 title="字号"
               >
                 <option value="">字号</option>
@@ -502,11 +502,12 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
               <input
                 type="color"
                 title="文字颜色"
+                defaultValue="#171717"
                 onChange={(e) => {
                   store.getState().applyStyleToSelection({ color: e.target.value });
                 }}
-                className="h-9 w-9 rounded-md border cursor-pointer"
-                style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', padding: '2px' }}
+                className="h-8 w-8 rounded-md border cursor-pointer"
+                style={{ borderColor: 'var(--ss-border)', background: 'var(--ss-input-bg)', padding: '2px' }}
               />
             </Group>
             <Divider />
