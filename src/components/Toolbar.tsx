@@ -7,14 +7,15 @@ import { coordsToCell } from '../utils/cellRef';
 import { TEMPLATES } from '../templates';
 import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from '../utils/constants';
 import {
-  FileText, Upload, Download, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
-  Percent, Hash, DollarSign, Calendar, Minus, Plus, Grid3X3, Merge,
-  Split, MessageSquare, Eraser,
-  ArrowUp, ArrowDown, Undo2, Redo2, Snowflake, Sun, Moon,
-  Search, ChevronLeft, ChevronRight, Type,
-  Table, FileSpreadsheet, BarChart3, Eye, Home, Settings,
-  Trash2, SortAsc, SortDesc, Lock, Unlock, PanelRight, Save, FolderOpen
-} from 'lucide-react';
+  DocumentTextIcon, ArrowUpTrayIcon, ArrowDownTrayIcon, BoldIcon, ItalicIcon, UnderlineIcon,
+  Bars3BottomLeftIcon, Bars3Icon, Bars3BottomRightIcon,
+  ReceiptPercentIcon, HashtagIcon, CurrencyDollarIcon, CalendarIcon, MinusIcon, PlusIcon, Squares2X2Icon, ArrowsPointingInIcon,
+  ArrowsPointingOutIcon, ChatBubbleBottomCenterTextIcon, BackspaceIcon,
+  ArrowUpIcon, ArrowDownIcon, ArrowUturnLeftIcon, ArrowUturnRightIcon, SunIcon, MoonIcon,
+  MagnifyingGlassIcon, ChevronLeftIcon, ChevronRightIcon, Bars3CenterLeftIcon,
+  TableCellsIcon, DocumentChartBarIcon, ChartBarIcon, EyeIcon, HomeIcon, Cog6ToothIcon,
+  TrashIcon, BarsArrowUpIcon, BarsArrowDownIcon, LockClosedIcon, LockOpenIcon, RectangleGroupIcon, DocumentArrowDownIcon, FolderOpenIcon, ViewColumnsIcon
+} from '@heroicons/react/24/outline';
 
 interface ToolbarProps {
   isDark?: boolean;
@@ -284,10 +285,10 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   const handleClear = () => store.getState().clearSelection();
 
   const tabs: { id: RibbonTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'file', label: '文件', icon: <FileText size={14} /> },
-    { id: 'home', label: '开始', icon: <Home size={14} /> },
-    { id: 'insert', label: '插入', icon: <Plus size={14} /> },
-    { id: 'view', label: '视图', icon: <Eye size={14} /> },
+    { id: 'file', label: '文件', icon: <DocumentTextIcon className="h-3.5 w-3.5" /> },
+    { id: 'home', label: '开始', icon: <HomeIcon className="h-3.5 w-3.5" /> },
+    { id: 'insert', label: '插入', icon: <PlusIcon className="h-3.5 w-3.5" /> },
+    { id: 'view', label: '视图', icon: <EyeIcon className="h-3.5 w-3.5" /> },
   ];
 
   const Group = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -314,13 +315,13 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
           style={{ color: 'var(--ss-toolbar-text)' }}
           title="展开工具栏"
         >
-          <ChevronRight size={16} />
+          <ChevronRightIcon className="h-4 w-4" />
         </button>
         <div className="ml-2 flex items-center gap-1.5">
-          <TooltipButton onClick={() => store.getState().undo()} icon={<Undo2 size={16} />} title="撤销" shortcut="Ctrl+Z" disabled={!canUndo} />
-          <TooltipButton onClick={() => store.getState().redo()} icon={<Redo2 size={16} />} title="重做" shortcut="Ctrl+Y" disabled={!canRedo} />
-          <TooltipButton onClick={handleBold} icon={<Bold size={16} />} title="加粗" shortcut="Ctrl+B" />
-          <TooltipButton onClick={handleClear} icon={<Eraser size={16} />} title="清除" />
+          <TooltipButton onClick={() => store.getState().undo()} icon={<ArrowUturnLeftIcon className="h-4 w-4" />} title="撤销" shortcut="Ctrl+Z" disabled={!canUndo} />
+          <TooltipButton onClick={() => store.getState().redo()} icon={<ArrowUturnRightIcon className="h-4 w-4" />} title="重做" shortcut="Ctrl+Y" disabled={!canRedo} />
+          <TooltipButton onClick={handleBold} icon={<BoldIcon className="h-4 w-4" />} title="加粗" shortcut="Ctrl+B" />
+          <TooltipButton onClick={handleClear} icon={<BackspaceIcon className="h-4 w-4" />} title="清除" />
         </div>
         <div className="ml-auto flex items-center gap-1">
           <button
@@ -329,7 +330,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
             title="属性面板"
             style={{ color: 'var(--ss-toolbar-text)' }}
           >
-            <PanelRight size={14} />
+            <ViewColumnsIcon className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={onToggleTheme}
@@ -337,7 +338,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
             title={isDark ? '浅色模式' : '深色模式'}
             style={{ color: 'var(--ss-toolbar-text)' }}
           >
-            {isDark ? <Sun size={14} /> : <Moon size={14} />}
+            {isDark ? <SunIcon className="h-3.5 w-3.5" /> : <MoonIcon className="h-3.5 w-3.5" />}
           </button>
         </div>
       </div>
@@ -353,7 +354,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
           style={{ color: 'var(--ss-header-text)' }}
           title="折叠工具栏"
         >
-          <ChevronLeft size={14} />
+          <ChevronLeftIcon className="h-3.5 w-3.5" />
         </button>
         {tabs.map((tab) => (
           <button
@@ -377,7 +378,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
             title="属性面板"
             style={{ color: 'var(--ss-toolbar-text)' }}
           >
-            <PanelRight size={14} />
+            <ViewColumnsIcon className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={onToggleTheme}
@@ -385,7 +386,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
             title={isDark ? '浅色模式' : '深色模式'}
             style={{ color: 'var(--ss-toolbar-text)' }}
           >
-            {isDark ? <Sun size={14} /> : <Moon size={14} />}
+            {isDark ? <SunIcon className="h-3.5 w-3.5" /> : <MoonIcon className="h-3.5 w-3.5" />}
           </button>
         </div>
       </div>
@@ -394,14 +395,14 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
         {activeTab === 'file' && (
           <>
             <Group title="工作簿">
-              <TooltipButton onClick={() => store.getState().newWorkbook()} icon={<FileText size={16} />} label="新建" title="新建工作簿" shortcut="Ctrl+N" variant="both" />
+              <TooltipButton onClick={() => store.getState().newWorkbook()} icon={<DocumentTextIcon className="h-4 w-4" />} label="新建" title="新建工作簿" shortcut="Ctrl+N" variant="both" />
               <TooltipButton onClick={() => {
                 const name = prompt('请输入保存名称:', 'snapsheet');
                 if (name) {
                   store.getState().saveWorkbook(name);
                   alert(`工作簿已保存为: ${name}`);
                 }
-              }} icon={<Save size={16} />} label="保存" title="保存工作簿到本地" shortcut="Ctrl+S" variant="both" />
+              }} icon={<DocumentArrowDownIcon className="h-4 w-4" />} label="保存" title="保存工作簿到本地" shortcut="Ctrl+S" variant="both" />
               <TooltipButton onClick={() => {
                 const saved = store.getState().listSavedWorkbooks();
                 if (saved.length === 0) {
@@ -415,7 +416,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
                 } else if (name) {
                   alert(`未找到工作簿: ${name}`);
                 }
-              }} icon={<FolderOpen size={16} />} label="打开" title="打开已保存的工作簿" variant="both" />
+              }} icon={<FolderOpenIcon className="h-4 w-4" />} label="打开" title="打开已保存的工作簿" variant="both" />
               <select
                 value=""
                 onChange={(e) => {
@@ -439,17 +440,17 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
             <Divider />
             <Group title="导入">
               <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
-              <TooltipButton onClick={() => fileInputRef.current?.click()} icon={<Upload size={16} />} label="CSV" title="导入 CSV" variant="both" />
+              <TooltipButton onClick={() => fileInputRef.current?.click()} icon={<ArrowUpTrayIcon className="h-4 w-4" />} label="CSV" title="导入 CSV" variant="both" />
               <input ref={jsonInputRef} type="file" accept=".json" className="hidden" onChange={handleImportJSON} />
-              <TooltipButton onClick={() => jsonInputRef.current?.click()} icon={<Upload size={16} />} label="JSON" title="导入 JSON" variant="both" />
+              <TooltipButton onClick={() => jsonInputRef.current?.click()} icon={<ArrowUpTrayIcon className="h-4 w-4" />} label="JSON" title="导入 JSON" variant="both" />
               <input ref={excelInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
-              <TooltipButton onClick={() => excelInputRef.current?.click()} icon={<Upload size={16} />} label="Excel" title="导入 Excel (.xlsx/.xls)" variant="both" />
+              <TooltipButton onClick={() => excelInputRef.current?.click()} icon={<ArrowUpTrayIcon className="h-4 w-4" />} label="Excel" title="导入 Excel (.xlsx/.xls)" variant="both" />
             </Group>
             <Divider />
             <Group title="导出">
-              <TooltipButton onClick={handleExportCSV} icon={<Download size={16} />} label="CSV" title="导出 CSV" variant="both" />
-              <TooltipButton onClick={handleExportJSON} icon={<Download size={16} />} label="JSON" title="导出 JSON" variant="both" />
-              <TooltipButton onClick={handleExportExcel} icon={<Download size={16} />} label="Excel" title="导出 Excel (.xlsx)" variant="both" />
+              <TooltipButton onClick={handleExportCSV} icon={<ArrowDownTrayIcon className="h-4 w-4" />} label="CSV" title="导出 CSV" variant="both" />
+              <TooltipButton onClick={handleExportJSON} icon={<ArrowDownTrayIcon className="h-4 w-4" />} label="JSON" title="导出 JSON" variant="both" />
+              <TooltipButton onClick={handleExportExcel} icon={<ArrowDownTrayIcon className="h-4 w-4" />} label="Excel" title="导出 Excel (.xlsx)" variant="both" />
             </Group>
           </>
         )}
@@ -457,14 +458,14 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
         {activeTab === 'home' && (
           <>
             <Group title="编辑">
-              <TooltipButton onClick={() => store.getState().undo()} icon={<Undo2 size={16} />} title="撤销" shortcut="Ctrl+Z" disabled={!canUndo} />
-              <TooltipButton onClick={() => store.getState().redo()} icon={<Redo2 size={16} />} title="重做" shortcut="Ctrl+Y" disabled={!canRedo} />
+              <TooltipButton onClick={() => store.getState().undo()} icon={<ArrowUturnLeftIcon className="h-4 w-4" />} title="撤销" shortcut="Ctrl+Z" disabled={!canUndo} />
+              <TooltipButton onClick={() => store.getState().redo()} icon={<ArrowUturnRightIcon className="h-4 w-4" />} title="重做" shortcut="Ctrl+Y" disabled={!canRedo} />
             </Group>
             <Divider />
             <Group title="字体">
-              <TooltipButton onClick={handleBold} icon={<Bold size={16} />} title="加粗" shortcut="Ctrl+B" />
-              <TooltipButton onClick={handleItalic} icon={<Italic size={16} />} title="斜体" shortcut="Ctrl+I" />
-              <TooltipButton onClick={handleUnderline} icon={<Underline size={16} />} title="下划线" shortcut="Ctrl+U" />
+              <TooltipButton onClick={handleBold} icon={<BoldIcon className="h-4 w-4" />} title="加粗" shortcut="Ctrl+B" />
+              <TooltipButton onClick={handleItalic} icon={<ItalicIcon className="h-4 w-4" />} title="斜体" shortcut="Ctrl+I" />
+              <TooltipButton onClick={handleUnderline} icon={<UnderlineIcon className="h-4 w-4" />} title="下划线" shortcut="Ctrl+U" />
               <select
                 value=""
                 onChange={(e) => {
@@ -512,21 +513,21 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
             </Group>
             <Divider />
             <Group title="对齐">
-              <TooltipButton onClick={handleAlignLeft} icon={<AlignLeft size={16} />} title="左对齐" />
-              <TooltipButton onClick={handleAlignCenter} icon={<AlignCenter size={16} />} title="居中" />
-              <TooltipButton onClick={handleAlignRight} icon={<AlignRight size={16} />} title="右对齐" />
+              <TooltipButton onClick={handleAlignLeft} icon={<Bars3BottomLeftIcon className="h-4 w-4" />} title="左对齐" />
+              <TooltipButton onClick={handleAlignCenter} icon={<Bars3Icon className="h-4 w-4" />} title="居中" />
+              <TooltipButton onClick={handleAlignRight} icon={<Bars3BottomRightIcon className="h-4 w-4" />} title="右对齐" />
             </Group>
             <Divider />
             <Group title="数字">
-              <TooltipButton onClick={() => store.getState().applyNumberFormat({ type: 'percentage', decimalPlaces: 0 })} icon={<Percent size={16} />} title="百分比" />
-              <TooltipButton onClick={() => store.getState().applyNumberFormat({ type: 'number', decimalPlaces: 2 })} icon={<Hash size={16} />} title="数字" />
-              <TooltipButton onClick={() => store.getState().applyNumberFormat({ type: 'currency', decimalPlaces: 2, currencySymbol: '¥' })} icon={<DollarSign size={16} />} title="货币" />
-              <TooltipButton onClick={() => store.getState().applyNumberFormat({ type: 'date' })} icon={<Calendar size={16} />} title="日期" />
+              <TooltipButton onClick={() => store.getState().applyNumberFormat({ type: 'percentage', decimalPlaces: 0 })} icon={<ReceiptPercentIcon className="h-4 w-4" />} title="百分比" />
+              <TooltipButton onClick={() => store.getState().applyNumberFormat({ type: 'number', decimalPlaces: 2 })} icon={<HashtagIcon className="h-4 w-4" />} title="数字" />
+              <TooltipButton onClick={() => store.getState().applyNumberFormat({ type: 'currency', decimalPlaces: 2, currencySymbol: '¥' })} icon={<CurrencyDollarIcon className="h-4 w-4" />} title="货币" />
+              <TooltipButton onClick={() => store.getState().applyNumberFormat({ type: 'date' })} icon={<CalendarIcon className="h-4 w-4" />} title="日期" />
             </Group>
             <Divider />
             <Group title="清除">
-              <TooltipButton onClick={handleClear} icon={<Eraser size={16} />} title="清除内容" />
-              <TooltipButton onClick={() => store.getState().clearFormatSelection()} icon={<Eraser size={16} />} label="格式" title="清除格式" variant="both" />
+              <TooltipButton onClick={handleClear} icon={<BackspaceIcon className="h-4 w-4" />} title="清除内容" />
+              <TooltipButton onClick={() => store.getState().clearFormatSelection()} icon={<BackspaceIcon className="h-4 w-4" />} label="格式" title="清除格式" variant="both" />
             </Group>
           </>
         )}
@@ -534,8 +535,8 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
         {activeTab === 'insert' && (
           <>
             <Group title="单元格">
-              <TooltipButton onClick={() => store.getState().mergeCells()} icon={<Merge size={16} />} title="合并" />
-              <TooltipButton onClick={() => store.getState().unmergeCells()} icon={<Split size={16} />} title="拆分" />
+              <TooltipButton onClick={() => store.getState().mergeCells()} icon={<ArrowsPointingInIcon className="h-4 w-4" />} title="合并" />
+              <TooltipButton onClick={() => store.getState().unmergeCells()} icon={<ArrowsPointingOutIcon className="h-4 w-4" />} title="拆分" />
             </Group>
             <Divider />
             <Group title="批注">
@@ -555,16 +556,16 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
                     store.getState().setCellComment(row, col, comment.trim());
                   }
                 }}
-                icon={<MessageSquare size={16} />}
+                icon={<ChatBubbleBottomCenterTextIcon className="h-4 w-4" />}
                 title="批注"
               />
             </Group>
             <Divider />
             <Group title="行列">
-              <TooltipButton onClick={() => store.getState().insertRow(selection.startRow)} icon={<Plus size={16} />} title="插行" />
-              <TooltipButton onClick={() => store.getState().deleteRow(selection.startRow)} icon={<Minus size={16} />} title="删行" />
-              <TooltipButton onClick={() => store.getState().insertCol(selection.startCol)} icon={<Plus size={16} />} title="插列" />
-              <TooltipButton onClick={() => store.getState().deleteCol(selection.startCol)} icon={<Minus size={16} />} title="删列" />
+              <TooltipButton onClick={() => store.getState().insertRow(selection.startRow)} icon={<PlusIcon className="h-4 w-4" />} title="插行" />
+              <TooltipButton onClick={() => store.getState().deleteRow(selection.startRow)} icon={<MinusIcon className="h-4 w-4" />} title="删行" />
+              <TooltipButton onClick={() => store.getState().insertCol(selection.startCol)} icon={<PlusIcon className="h-4 w-4" />} title="插列" />
+              <TooltipButton onClick={() => store.getState().deleteCol(selection.startCol)} icon={<MinusIcon className="h-4 w-4" />} title="删列" />
             </Group>
           </>
         )}
@@ -572,15 +573,15 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
         {activeTab === 'view' && (
           <>
             <Group title="冻结">
-              <TooltipButton onClick={() => { store.getState().setFrozenRows(1); store.getState().setFrozenCols(1); }} icon={<Lock size={16} />} title="冻结首行首列" />
-              <TooltipButton onClick={() => { store.getState().setFrozenRows(1); store.getState().setFrozenCols(0); }} icon={<Lock size={16} />} label="首行" title="冻结首行" variant="both" />
-              <TooltipButton onClick={() => { store.getState().setFrozenRows(0); store.getState().setFrozenCols(1); }} icon={<Lock size={16} />} label="首列" title="冻结首列" variant="both" />
-              <TooltipButton onClick={() => { store.getState().setFrozenRows(0); store.getState().setFrozenCols(0); }} icon={<Unlock size={16} />} title="取消冻结" />
+              <TooltipButton onClick={() => { store.getState().setFrozenRows(1); store.getState().setFrozenCols(1); }} icon={<LockClosedIcon className="h-4 w-4" />} title="冻结首行首列" />
+              <TooltipButton onClick={() => { store.getState().setFrozenRows(1); store.getState().setFrozenCols(0); }} icon={<LockClosedIcon className="h-4 w-4" />} label="首行" title="冻结首行" variant="both" />
+              <TooltipButton onClick={() => { store.getState().setFrozenRows(0); store.getState().setFrozenCols(1); }} icon={<LockClosedIcon className="h-4 w-4" />} label="首列" title="冻结首列" variant="both" />
+              <TooltipButton onClick={() => { store.getState().setFrozenRows(0); store.getState().setFrozenCols(0); }} icon={<LockOpenIcon className="h-4 w-4" />} title="取消冻结" />
             </Group>
             <Divider />
             <Group title="排序">
-              <TooltipButton onClick={() => store.getState().sortByColumn(selection.startCol, 'asc')} icon={<SortAsc size={16} />} title="升序" />
-              <TooltipButton onClick={() => store.getState().sortByColumn(selection.startCol, 'desc')} icon={<SortDesc size={16} />} title="降序" />
+              <TooltipButton onClick={() => store.getState().sortByColumn(selection.startCol, 'asc')} icon={<BarsArrowUpIcon className="h-4 w-4" />} title="升序" />
+              <TooltipButton onClick={() => store.getState().sortByColumn(selection.startCol, 'desc')} icon={<BarsArrowDownIcon className="h-4 w-4" />} title="降序" />
             </Group>
           </>
         )}
