@@ -1,32 +1,9 @@
 import type { Cell } from '../types';
 import { getCellsInRange } from '../utils/cellRef';
-
-const SNAPLANG_PATH = '../../snaplang-v1.0.0/dist';
-
-let snaplangModule: {
-  Lexer: any;
-  Parser: any;
-  Evaluator: any;
-  run: (source: string) => { success: boolean; result: any; error?: string };
-  createEnvironment: any;
-  defineVariable: any;
-  getVariable: any;
-  setVariable: any;
-  isTruthy: any;
-  stringify: any;
-  makeNativeFunction: any;
-} | null = null;
+import * as snaplangModule from './snaplang-wrapper';
 
 function loadSnaplang() {
-  if (!snaplangModule) {
-    try {
-      snaplangModule = require(SNAPLANG_PATH);
-    } catch (e) {
-      console.error('Failed to load SnapLang module:', e);
-      throw new Error('SnapLang v1.0.0 module not found. Please ensure snaplang-v1.0.0/dist exists.');
-    }
-  }
-  return snaplangModule!;
+  return snaplangModule;
 }
 
 export interface FormulaContext {
