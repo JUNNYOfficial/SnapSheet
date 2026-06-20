@@ -1,6 +1,5 @@
-import { Parser } from './Parser';
-import { Evaluator, collectDependencies } from './Evaluator';
-import type { ASTNode, Cell } from '../types';
+import { SnapLangFormulaEngine } from '../snaplang/adapter';
+import type { Cell } from '../types';
 
 export class DependencyGraph {
   private dependents: Map<string, Set<string>> = new Map();
@@ -104,38 +103,20 @@ export interface FormulaEngineContext {
 export class FormulaEngine {
   private ctx: FormulaEngineContext;
   private graph: DependencyGraph;
-  private cache: Map<string, ASTNode> = new Map();
+  private snaplangEngine: SnapLangFormulaEngine;
 
   constructor(ctx: FormulaEngineContext, graph: DependencyGraph) {
     this.ctx = ctx;
     this.graph = graph;
-  }
-
-  parse(formula: string): ASTNode | null {
-    try {
-      const parser = new Parser(formula);
-      return parser.parse();
-    } catch {
-      return null;
-    }
+    this.snaplangEngine = new SnapLangFormulaEngine(ctx);
   }
 
   evaluate(ref: string, formula: string): number | string {
-    const ast = this.parse(formula);
-    if (!ast) return '#VALUE!';
-
-    const deps = collectDependencies(ast);
+    const deps = this.snaplangEngine.collectDependencies(formula);
     this.graph.setDependencies(ref, deps);
-    this.cache.set(ref, ast);
 
-    const evaluator = new Evaluator({
-      getCell: (r: string) => this.ctx.getCell(r),
-    });
-    try {
-      return evaluator.evaluate(ast);
-    } catch {
-      return '#ERROR!';
-    }
+    const result = this.snaplangEngine.evaluate(formula);
+    return result;
   }
 
   recalculate(changedRef: string): Map<string, number | string> {
