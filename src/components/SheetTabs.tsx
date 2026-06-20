@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useSpreadsheetStore, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../store/useSpreadsheetStore';
 import { colToLetter, coordsToCell } from '../utils/cellRef';
 import { FONT_FAMILY_MONO } from '../utils/constants';
-import { Plus, Trash2, FileSpreadsheet, BarChart3, Hash, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, FileSpreadsheet, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function SheetTabs() {
   const store = useSpreadsheetStore;
@@ -24,7 +24,7 @@ export default function SheetTabs() {
         const cell = sheet.cells.get(coordsToCell(r, c));
         const v = cell?.computed !== undefined && cell?.formula ? cell.computed : cell?.value;
         const n = typeof v === 'number' ? v : parseFloat(v as string);
-        if (!isNaN(n)) numericValues.push(n);
+        if (!isNaN(n) && String(v).trim() !== '') numericValues.push(n);
       }
     }
   }
@@ -34,24 +34,24 @@ export default function SheetTabs() {
   const min = numericValues.length > 0 ? Math.min(...numericValues) : null;
 
   return (
-    <div className="flex flex-col border-t" style={{ borderColor: 'var(--ss-toolbar-border)', background: 'var(--ss-toolbar-bg)' }}>
-      <div className="flex items-center justify-between px-3 py-1 text-xs" style={{ fontFamily: FONT_FAMILY_MONO, color: 'var(--ss-header-text)', borderBottom: '1px solid var(--ss-toolbar-border)' }}>
+    <div className="flex flex-col border-t" style={{ borderColor: 'var(--ss-border)', background: 'var(--ss-toolbar-bg)' }}>
+      {/* 状态栏 */}
+      <div className="flex items-center justify-between px-3 py-1 text-xs" style={{ fontFamily: FONT_FAMILY_MONO, color: 'var(--ss-text-secondary)', borderBottom: '1px solid var(--ss-border-light)' }}>
         <div className="flex items-center gap-3 overflow-hidden">
-          <span className="flex items-center gap-1 shrink-0">
-            <BarChart3 size={12} />
+          <span className="shrink-0" style={{ color: 'var(--ss-text-primary)' }}>
             {isRange
-              ? `选中: ${maxRow - minRow + 1}×${maxCol - minCol + 1}`
-              : `单元格: ${colToLetter(selection.startCol)}${selection.startRow + 1}`}
+              ? `${colToLetter(minCol)}${minRow + 1}:${colToLetter(maxCol)}${maxRow + 1}`
+              : `${colToLetter(selection.startCol)}${selection.startRow + 1}`}
           </span>
           {numericValues.length > 0 && (
             <>
-              <span className="flex items-center gap-1 shrink-0"><Hash size={12} />求和: {sum.toLocaleString()}</span>
-              <span className="shrink-0">平均: {avg.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+              <span className="shrink-0">Σ {sum.toLocaleString()}</span>
+              <span className="shrink-0">μ {avg.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
               {statsExpanded && (
                 <>
-                  <span className="shrink-0">计数: {numericValues.length}</span>
-                  <span className="shrink-0">最大: {max?.toLocaleString()}</span>
-                  <span className="shrink-0">最小: {min?.toLocaleString()}</span>
+                  <span className="shrink-0">n {numericValues.length}</span>
+                  <span className="shrink-0">↑ {max?.toLocaleString()}</span>
+                  <span className="shrink-0">↓ {min?.toLocaleString()}</span>
                 </>
               )}
             </>
@@ -61,31 +61,32 @@ export default function SheetTabs() {
           {numericValues.length > 0 && (
             <button
               onClick={() => setStatsExpanded(!statsExpanded)}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-[var(--ss-toolbar-hover)] transition-colors"
+              className="flex items-center gap-1 rounded px-1.5 py-0.5 transition-colors"
               title={statsExpanded ? '收起统计' : '展开统计'}
-              style={{ color: 'var(--ss-header-text)' }}
+              style={{ color: 'var(--ss-text-secondary)' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ss-hover-bg)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
             >
               {statsExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-              <span className="hidden sm:inline">更多</span>
             </button>
           )}
-          <span className="text-[10px] opacity-70">共 {SHEET_ROW_COUNT}×{SHEET_COL_COUNT}</span>
+          <span className="text-[10px]" style={{ color: 'var(--ss-text-tertiary)' }}>{SHEET_ROW_COUNT} × {SHEET_COL_COUNT}</span>
         </div>
       </div>
 
-      <div className="flex items-center gap-1 px-2 py-1 overflow-x-auto">
+      {/* 工作表标签 */}
+      <div className="flex items-center gap-0.5 px-2 py-1 overflow-x-auto">
         {workbook.sheets.map((sheet) => (
           <button
             key={sheet.id}
             onClick={() => store.getState().setActiveSheet(sheet.id)}
             className="flex items-center gap-1.5 rounded-t px-3 py-1.5 text-xs transition-colors shrink-0"
             style={{
-              
-              color: sheet.id === workbook.activeSheetId ? 'var(--ss-cell-text)' : 'var(--ss-header-text)',
+              color: sheet.id === workbook.activeSheetId ? 'var(--ss-text-primary)' : 'var(--ss-text-secondary)',
               background: sheet.id === workbook.activeSheetId ? 'var(--ss-bg)' : 'transparent',
-              borderTop: sheet.id === workbook.activeSheetId ? '2px solid var(--ss-cell-text)' : '2px solid transparent',
+              borderTop: sheet.id === workbook.activeSheetId ? '2px solid var(--ss-selected-border)' : '2px solid transparent',
             }}
-            onMouseEnter={(e) => { if (sheet.id !== workbook.activeSheetId) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ss-toolbar-hover)'; }}
+            onMouseEnter={(e) => { if (sheet.id !== workbook.activeSheetId) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ss-hover-bg)'; }}
             onMouseLeave={(e) => { if (sheet.id !== workbook.activeSheetId) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
           >
             <FileSpreadsheet size={12} />
@@ -94,29 +95,28 @@ export default function SheetTabs() {
         ))}
         <button
           onClick={() => store.getState().addSheet()}
-          className="flex items-center gap-1 rounded px-2 py-1.5 text-xs hover:opacity-80 shrink-0"
+          className="flex items-center gap-1 rounded px-2 py-1.5 text-xs transition-colors"
           title="新建工作表"
-          style={{ color: 'var(--ss-header-text)' }}
+          style={{ color: 'var(--ss-text-secondary)' }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ss-hover-bg)'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
         >
           <Plus size={14} />
         </button>
         {workbook.sheets.length > 1 && (
           <button
             onClick={() => {
-              if (confirm('确定要删除当前工作表吗?')) {
-                store.getState().deleteSheet(workbook.activeSheetId);
-              }
+              if (confirm('确定要删除当前工作表吗?')) store.getState().deleteSheet(workbook.activeSheetId);
             }}
-            className="flex items-center gap-1 rounded px-2 py-1.5 text-xs hover:opacity-80 shrink-0"
+            className="flex items-center gap-1 rounded px-2 py-1.5 text-xs transition-colors"
             title="删除当前工作表"
-            style={{ color: 'var(--ss-header-text)' }}
+            style={{ color: 'var(--ss-text-secondary)' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ss-error-bg)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--ss-error)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--ss-text-secondary)'; }}
           >
             <Trash2 size={14} />
           </button>
         )}
-        <div className="ml-auto flex items-center gap-2 text-xs shrink-0" style={{ color: 'var(--ss-header-text)' }}>
-          <span>{workbook.sheets.length} 个工作表</span>
-        </div>
       </div>
     </div>
   );

@@ -78,29 +78,26 @@ export default function App() {
   }, [store]);
 
   return (
-    <div className={theme + ' relative flex h-screen w-screen flex-col'} style={{ background: 'var(--ss-toolbar-bg)', color: 'var(--ss-text-secondary)' }}>
+    <div className={theme + ' relative flex h-screen w-screen flex-col overflow-hidden'} style={{ background: 'var(--ss-toolbar-bg)', color: 'var(--ss-text-secondary)' }}>
       {/* 标题栏 */}
-      <div className="flex items-center justify-between border-b px-4 py-1.5" style={{ borderColor: 'var(--ss-border)', background: 'var(--ss-toolbar-bg)' }}>
+      <div className="flex items-center justify-between border-b px-3 py-1.5" style={{ borderColor: 'var(--ss-border)', background: 'var(--ss-toolbar-bg)' }}>
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded border" style={{ borderColor: 'var(--ss-border-strong)', background: 'var(--ss-header-bg)' }}>
-            <span className="text-sm font-medium" style={{ color: 'var(--ss-text-primary)' }}>表</span>
+          <div
+            className="flex h-6 w-6 items-center justify-center rounded"
+            style={{ borderColor: 'var(--ss-border-strong)', background: 'var(--ss-header-bg)', border: '1px solid var(--ss-border-strong)' }}
+          >
+            <span className="text-xs font-semibold" style={{ color: 'var(--ss-text-primary)' }}>S</span>
           </div>
-          <div>
-            <h1 className="text-base font-semibold leading-tight" style={{ color: 'var(--ss-text-primary)' }}>SnapSheet</h1>
-          </div>
+          <h1 className="text-sm font-semibold" style={{ color: 'var(--ss-text-primary)' }}>SnapSheet</h1>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
             {saveStatus === 'saving' && <Save size={12} className="animate-pulse" style={{ color: 'var(--ss-info)' }} />}
             {saveStatus === 'saved' && <CheckCircle size={12} style={{ color: 'var(--ss-success)' }} />}
-            <span className="text-xs" style={{ 
-              color: saveStatus === 'saving' ? 'var(--ss-info)' : 
-                     saveStatus === 'saved' ? 'var(--ss-success)' : 'var(--ss-text-tertiary)' 
-            }}>
+            <span className="text-xs" style={{ color: saveStatus === 'saving' ? 'var(--ss-info)' : saveStatus === 'saved' ? 'var(--ss-success)' : 'var(--ss-text-tertiary)' }}>
               {saveStatus === 'saving' ? '保存中...' : saveStatus === 'saved' ? '已保存' : '未保存'}
             </span>
           </div>
-          <p className="text-xs" style={{ color: 'var(--ss-text-tertiary)' }}>电子表格 · 公式计算 · 数据分析</p>
         </div>
       </div>
 
