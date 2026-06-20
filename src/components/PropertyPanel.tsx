@@ -121,13 +121,12 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
       disabled={disabled}
       className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-all duration-150"
       style={{
-        color: disabled ? 'var(--ss-header-text)' : active ? 'var(--ss-cell-text)' : 'var(--ss-toolbar-text)',
-        background: disabled ? 'transparent' : active ? 'var(--ss-selected-bg)' : 'var(--ss-input-bg)',
-        
-        boxShadow: active ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+        color: disabled ? 'var(--ss-header-text)' : active ? 'var(--ss-text-primary)' : 'var(--ss-text-secondary)',
+        background: disabled ? 'transparent' : active ? 'var(--ss-selected-bg)' : 'var(--ss-panel-bg)',
+        boxShadow: active ? '0 1px 2px var(--ss-backdrop-bg)' : 'none',
       }}
-      onMouseEnter={(e) => { if (!disabled && !active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ss-toolbar-hover)'; }}
-      onMouseLeave={(e) => { if (!disabled && !active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ss-input-bg)'; }}
+      onMouseEnter={(e) => { if (!disabled && !active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ss-hover-bg)'; }}
+      onMouseLeave={(e) => { if (!disabled && !active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ss-panel-bg)'; }}
     >
       <span className="flex-shrink-0">{icon}</span>
       <span className="flex-1 text-left whitespace-nowrap">{label}</span>
@@ -139,41 +138,40 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/20 z-40 transition-opacity duration-300"
-        style={{ opacity: isOpen ? 1 : 0, pointerEvents: isOpen ? 'auto' : 'none' }}
+        className="fixed inset-0 z-40 transition-opacity duration-300"
+        style={{ background: 'var(--ss-backdrop-bg)', opacity: isOpen ? 1 : 0, pointerEvents: isOpen ? 'auto' : 'none' }}
         onClick={onClose}
       />
       <div
         className="fixed top-0 right-0 bottom-0 w-72 border-l z-50 flex flex-col shadow-xl"
         style={{
-          borderColor: 'var(--ss-toolbar-border)',
+          borderColor: 'var(--ss-border)',
           background: 'var(--ss-toolbar-bg)',
           transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: 'var(--ss-toolbar-border)' }}>
-          <span className="text-sm font-semibold" style={{ color: 'var(--ss-cell-text)' }}>
+        <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: 'var(--ss-border)' }}>
+          <span className="text-sm font-semibold" style={{ color: 'var(--ss-text-primary)' }}>
             属性面板
           </span>
           <button
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-[var(--ss-toolbar-hover)] transition-colors"
+            className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-[var(--ss-hover-bg)] transition-colors"
             style={{ color: 'var(--ss-header-text)' }}
           >
             <X size={16} />
           </button>
         </div>
 
-        <div className="flex border-b" style={{ borderColor: 'var(--ss-toolbar-border)' }}>
+        <div className="flex border-b" style={{ borderColor: 'var(--ss-border)' }}>
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-xs relative transition-colors"
+              className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-xs relative transition-colors hover:bg-[var(--ss-hover-bg)]"
               style={{
-                color: activeTab === tab.id ? 'var(--ss-cell-text)' : 'var(--ss-header-text)',
-                
+                color: activeTab === tab.id ? 'var(--ss-text-primary)' : 'var(--ss-header-text)',
               }}
             >
               {tab.icon}
@@ -237,9 +235,9 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
               </Section>
 
               <Section title="背景色">
-                <PanelButton onClick={() => store.getState().applyStyleToSelection({ bgColor: '#f5f5f5' })} icon={<span className="w-3 h-3 rounded-sm border" style={{ background: '#f5f5f5', borderColor: 'var(--ss-input-border)' }} />} label="浅灰" />
-                <PanelButton onClick={() => store.getState().applyStyleToSelection({ bgColor: '#e5e5e5' })} icon={<span className="w-3 h-3 rounded-sm border" style={{ background: '#e5e5e5', borderColor: 'var(--ss-input-border)' }} />} label="中灰" />
-                <PanelButton onClick={() => store.getState().applyStyleToSelection({ bgColor: '#262626', color: '#ffffff' })} icon={<span className="w-3 h-3 rounded-sm border" style={{ background: '#262626', borderColor: 'var(--ss-input-border)' }} />} label="黑底白字" />
+                <PanelButton onClick={() => store.getState().applyStyleToSelection({ bgColor: '#f5f5f5' })} icon={<span className="w-3 h-3 rounded-sm border" style={{ background: '#f5f5f5', borderColor: 'var(--ss-border-strong)' }} />} label="浅灰" />
+                <PanelButton onClick={() => store.getState().applyStyleToSelection({ bgColor: '#e5e5e5' })} icon={<span className="w-3 h-3 rounded-sm border" style={{ background: '#e5e5e5', borderColor: 'var(--ss-border-strong)' }} />} label="中灰" />
+                <PanelButton onClick={() => store.getState().applyStyleToSelection({ bgColor: '#262626', color: '#ffffff' })} icon={<span className="w-3 h-3 rounded-sm border" style={{ background: '#262626', borderColor: 'var(--ss-border-strong)' }} />} label="黑底白字" />
                 <PanelButton onClick={() => store.getState().applyStyleToSelection({ bgColor: undefined })} icon={<X size={14} />} label="清除背景" />
               </Section>
 
@@ -399,10 +397,9 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
                   placeholder="输入需求，如：求和、平均值..."
                   className="w-full px-3 py-2 rounded-md border text-sm outline-none mb-2 transition-colors"
                   style={{
-                    borderColor: 'var(--ss-input-border)',
+                    borderColor: 'var(--ss-border-strong)',
                     background: 'var(--ss-input-bg)',
-                    color: 'var(--ss-input-text)',
-                    
+                    color: 'var(--ss-text-primary)',
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -411,14 +408,14 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
                     }
                   }}
                   onFocus={(e) => (e.currentTarget as HTMLInputElement).style.borderColor = 'var(--ss-selected-border)'}
-                  onBlur={(e) => (e.currentTarget as HTMLInputElement).style.borderColor = 'var(--ss-input-border)'}
+                  onBlur={(e) => (e.currentTarget as HTMLInputElement).style.borderColor = 'var(--ss-border-strong)'}
                 />
                 <PanelButton onClick={handleFormulaGenerate} icon={<Wand2 size={14} />} label="生成公式" />
               </Section>
 
               {aiResult && (
                 <Section title="结果">
-                  <div className="p-3 rounded-md text-xs whitespace-pre-wrap" style={{ background: 'var(--ss-input-bg)', color: 'var(--ss-toolbar-text)',  }}>
+                  <div className="p-3 rounded-md text-xs whitespace-pre-wrap" style={{ background: 'var(--ss-input-bg)', color: 'var(--ss-text-secondary)' }}>
                     {aiResult}
                   </div>
                 </Section>

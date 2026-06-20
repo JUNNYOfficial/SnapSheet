@@ -53,7 +53,7 @@ function ToolbarButton({ onClick, icon, label, title, shortcut, disabled, active
       </button>
       <div
         className="absolute left-1/2 top-full z-[100] mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md px-2 py-1 text-xs opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150"
-        style={{ background: 'var(--ss-text-primary)', color: 'var(--ss-bg)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+        style={{ background: 'var(--ss-text-primary)', color: 'var(--ss-bg)', boxShadow: '0 4px 12px var(--ss-backdrop-bg)' }}
       >
         {title}
         {shortcut && <span className="ml-1 opacity-70">({shortcut})</span>}

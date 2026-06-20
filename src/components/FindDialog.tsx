@@ -119,20 +119,19 @@ export default function FindDialog({ open, onClose }: FindDialogProps) {
     <div
       className="absolute right-4 top-20 z-50 w-80 rounded-xl border p-4 shadow-2xl transition-all duration-200"
       style={{
-
-        borderColor: 'var(--ss-panel-border)',
+        borderColor: 'var(--ss-border)',
         background: 'var(--ss-panel-bg)',
       }}
     >
       {/* 标题栏 */}
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Search size={16} style={{ color: 'var(--ss-cell-text)' }} />
-          <span className="text-sm font-medium" style={{ color: 'var(--ss-cell-text)' }}>查找和替换</span>
+          <Search size={16} style={{ color: 'var(--ss-text-primary)' }} />
+          <span className="text-sm font-medium" style={{ color: 'var(--ss-text-primary)' }}>查找和替换</span>
         </div>
         <button
           onClick={onClose}
-          className="flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-[var(--ss-toolbar-hover)]"
+          className="flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-[var(--ss-hover-bg)]"
           style={{ color: 'var(--ss-header-text)' }}
         >
           <X size={14} />
@@ -153,8 +152,8 @@ export default function FindDialog({ open, onClose }: FindDialogProps) {
               else if (e.key === 'Escape') onClose();
             }}
             placeholder="查找内容"
-            className="w-full rounded-lg border py-2 pl-8 pr-3 text-sm outline-none transition-colors focus:border-[var(--ss-cell-text)]"
-            style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-input-text)' }}
+            className="w-full rounded-lg border py-2 pl-8 pr-3 text-sm outline-none transition-colors focus:border-[var(--ss-text-primary)]"
+            style={{ borderColor: 'var(--ss-border-strong)', background: 'var(--ss-input-bg)', color: 'var(--ss-text-primary)' }}
           />
         </div>
       </div>
@@ -169,8 +168,8 @@ export default function FindDialog({ open, onClose }: FindDialogProps) {
             onChange={(e) => setReplaceText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleReplace(); }}
             placeholder="替换为"
-            className="w-full rounded-lg border py-2 pl-8 pr-3 text-sm outline-none transition-colors focus:border-[var(--ss-cell-text)]"
-            style={{ borderColor: 'var(--ss-input-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-input-text)' }}
+            className="w-full rounded-lg border py-2 pl-8 pr-3 text-sm outline-none transition-colors focus:border-[var(--ss-text-primary)]"
+            style={{ borderColor: 'var(--ss-border-strong)', background: 'var(--ss-input-bg)', color: 'var(--ss-text-primary)' }}
           />
         </div>
       </div>
@@ -179,29 +178,29 @@ export default function FindDialog({ open, onClose }: FindDialogProps) {
       <div className="mb-2 flex flex-wrap gap-1.5">
         <button
           onClick={() => findNext(-1)}
-          className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs transition-colors hover:bg-[var(--ss-toolbar-hover)]"
-          style={{ borderColor: 'var(--ss-input-border)', color: 'var(--ss-toolbar-text)' }}
+          className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs transition-colors hover:bg-[var(--ss-hover-bg)]"
+          style={{ borderColor: 'var(--ss-border-strong)', color: 'var(--ss-text-secondary)' }}
         >
           <ChevronLeft size={12} /> 上一个
         </button>
         <button
           onClick={() => findNext(1)}
           className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs transition-opacity hover:opacity-90"
-          style={{ background: 'var(--ss-cell-text)', color: 'var(--ss-bg)' }}
+          style={{ background: 'var(--ss-text-primary)', color: 'var(--ss-bg)' }}
         >
           下一个 <ChevronRight size={12} />
         </button>
         <button
           onClick={handleReplace}
-          className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs transition-colors hover:bg-[var(--ss-toolbar-hover)]"
-          style={{ borderColor: 'var(--ss-input-border)', color: 'var(--ss-toolbar-text)' }}
+          className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs transition-colors hover:bg-[var(--ss-hover-bg)]"
+          style={{ borderColor: 'var(--ss-border-strong)', color: 'var(--ss-text-secondary)' }}
         >
           替换
         </button>
         <button
           onClick={handleReplaceAll}
-          className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs transition-colors hover:bg-[var(--ss-toolbar-hover)]"
-          style={{ borderColor: 'var(--ss-input-border)', color: 'var(--ss-toolbar-text)' }}
+          className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs transition-colors hover:bg-[var(--ss-hover-bg)]"
+          style={{ borderColor: 'var(--ss-border-strong)', color: 'var(--ss-text-secondary)' }}
         >
           全部替换
         </button>

@@ -192,7 +192,7 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
             ...getEditInputStyle(),
             borderColor: 'var(--ss-selected-border)',
             background: 'var(--ss-bg)',
-            color: 'var(--ss-cell-text)',
+            color: 'var(--ss-text-primary)',
             fontFamily: getEditCell()?.style?.fontFamily || 'monospace',
             fontSize: '13px',
             lineHeight: String(DEFAULT_ROW_HEIGHT) + 'px',

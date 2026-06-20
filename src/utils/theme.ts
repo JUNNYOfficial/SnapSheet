@@ -36,8 +36,8 @@ const LIGHT: ThemeColors = {
 
 const DARK: ThemeColors = {
   bg: '#0a0a0a',
-  grid: '#333333',
-  headerBg: '#1f1f1f',
+  grid: '#3d3d3d',
+  headerBg: '#1a1a1a',
   headerText: '#a3a3a3',
   cellText: '#e5e5e5',
   selectedBorder: '#e5e5e5',

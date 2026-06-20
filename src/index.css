@@ -53,6 +53,7 @@
   --ss-fill-area-bg: rgba(0, 0, 0, 0.04);
   --ss-fill-area-border: #525252;
   --ss-comment-marker: #525252;
+  --ss-backdrop-bg: rgba(0, 0, 0, 0.2);
 
   /* ---------- 滚动条 ---------- */
   --ss-scrollbar-track: #f5f5f5;
@@ -73,19 +74,19 @@
   /* ---------- 基础背景 ---------- */
   --ss-bg: #0a0a0a;
   --ss-toolbar-bg: #141414;
-  --ss-header-bg: #1f1f1f;
+  --ss-header-bg: #1a1a1a;
   --ss-panel-bg: #141414;
-  --ss-input-bg: #1f1f1f;
+  --ss-input-bg: #1a1a1a;
 
   /* ---------- 文字层级 ---------- */
   --ss-text-primary: #e5e5e5;
   --ss-text-secondary: #a3a3a3;
-  --ss-text-tertiary: #737373;
+  --ss-text-tertiary: #808080;
   --ss-text-disabled: #525252;
 
   /* ---------- 边框与分割线 ---------- */
   --ss-border: #333333;
-  --ss-border-light: #1f1f1f;
+  --ss-border-light: #262626;
   --ss-border-strong: #525252;
 
   /* ---------- 交互状态 ---------- */
@@ -95,7 +96,7 @@
   --ss-focus-ring: #e5e5e5;
 
   /* ---------- 表格专用 ---------- */
-  --ss-grid: #333333;
+  --ss-grid: #3d3d3d;
   --ss-cell-text: #e5e5e5;
   --ss-header-text: #a3a3a3;
   --ss-header-highlight-bg: #333333;
@@ -114,6 +115,7 @@
   --ss-fill-area-bg: rgba(255, 255, 255, 0.06);
   --ss-fill-area-border: #a3a3a3;
   --ss-comment-marker: #a3a3a3;
+  --ss-backdrop-bg: rgba(0, 0, 0, 0.5);
 
   /* ---------- 滚动条 ---------- */
   --ss-scrollbar-track: #1f1f1f;
@@ -184,6 +186,12 @@ html, body {
 /* ---------- 输入框占位符 ---------- */
 ::placeholder {
   color: var(--ss-text-tertiary);
+}
+
+/* ---------- 下拉选项 ---------- */
+select option {
+  background: var(--ss-input-bg);
+  color: var(--ss-text-primary);
 }
 
 /* ---------- SVG 图标修复 ---------- */
