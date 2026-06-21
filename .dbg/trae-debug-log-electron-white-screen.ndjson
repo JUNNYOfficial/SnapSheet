@@ -30,3 +30,11 @@
 {"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037533162}
 {"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037533164}
 {"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037533165}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"A","location":"electron/main.ts","msg":"[DEBUG] createWindow called","ts":1782038628459}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"A","location":"electron/main.ts","msg":"[DEBUG] loading renderer","data":{"loadTarget":"/Applications/SnapSheet.app/Contents/Resources/app.asar/dist/index.html","preload":"/Applications/SnapSheet.app/Contents/Resources/app.asar/dist-electron/preload.js"},"ts":1782038628500}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"B","location":"electron/preload.cjs","msg":"[DEBUG] preload script executed","ts":1782038628606}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/main.tsx","msg":"[DEBUG] main.tsx executed","data":{"electronAPI":true},"ts":1782038628623}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"A","location":"electron/main.ts","msg":"[DEBUG] renderer did-finish-load","ts":1782038628624}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782038628624}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782038635986}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782038636789}
