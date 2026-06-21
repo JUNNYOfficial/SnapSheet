@@ -61,11 +61,13 @@ export function exportToExcel(workbook: Workbook, filename: string = 'snapsheet.
   URL.revokeObjectURL(url);
 }
 
+export type ImportedCell = { row: number; col: number; value: string | null; formula?: string };
+
 export function importFromExcel(file: File): Promise<{
   name: string;
   sheets: {
     name: string;
-    data: { row: number; col: number; value: any; formula?: string }[];
+    data: ImportedCell[];
   }[];
 }> {
   return new Promise((resolve, reject) => {
@@ -94,7 +96,7 @@ export function importFromExcel(file: File): Promise<{
 
         const sheets: {
           name: string;
-          data: { row: number; col: number; value: any; formula?: string }[];
+          data: ImportedCell[];
         }[] = [];
 
         wb.SheetNames.forEach((sheetName) => {
@@ -106,13 +108,13 @@ export function importFromExcel(file: File): Promise<{
           // 使用 sheet_to_json 进行转换，设置 defval: null 处理空单元格
           const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false }) as (string | number | null | Date)[][];
 
-          const cells: { row: number; col: number; value: any; formula?: string }[] = [];
+          const cells: ImportedCell[] = [];
 
           json.forEach((row, rowIndex) => {
             if (!row) return;
             row.forEach((cell, colIndex) => {
               // 处理日期对象
-              let value: any = cell;
+              let value: string | null = null;
               if (cell instanceof Date) {
                 value = cell.toISOString().slice(0, 10);
               } else if (cell !== null && cell !== undefined) {

@@ -58,6 +58,9 @@ export class CanvasRenderer {
   private fillHandleSource: { startRow: number; startCol: number; endRow: number; endCol: number } | null = null;
   private fillHandleTarget: { row: number; col: number } | null = null;
   private theme: ThemeColors;
+  private _pendingRender = false;
+  private _renderFrame: number | null = null;
+  private _textMetricsCache = new Map<string, TextMetrics>();
 
   constructor(opts: CanvasRendererOptions) {
     this.opts = opts;
@@ -106,8 +109,7 @@ export class CanvasRenderer {
     const family = style?.fontFamily || FONT_FAMILY;
     const weight = style?.bold ? 'bold ' : '';
     const styleItalic = style?.italic ? 'italic ' : '';
-    const styleUnderline = style?.underline ? 'underline ' : '';
-    // Canvas doesn't support underline in font string, but we can note it
+    // Canvas font string doesn't support underline; underline is drawn separately if needed
     return `${weight}${styleItalic}${size}px ${family}`;
   }
 
@@ -202,6 +204,18 @@ export class CanvasRenderer {
   }
 
   render(): void {
+    this._pendingRender = true;
+    if (this._renderFrame !== null) return;
+    this._renderFrame = requestAnimationFrame(() => {
+      this._renderFrame = null;
+      if (this._pendingRender) {
+        this._pendingRender = false;
+        this._renderNow();
+      }
+    });
+  }
+
+  private _renderNow(): void {
     const ctx = this.ctx;
     const canvas = this.opts.canvas;
     const rect = canvas.getBoundingClientRect();
@@ -737,23 +751,33 @@ export class CanvasRenderer {
     ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
   }
 
+  private measureText(ctx: CanvasRenderingContext2D, text: string): TextMetrics {
+    const key = ctx.font + '|' + text;
+    let metrics = this._textMetricsCache.get(key);
+    if (!metrics) {
+      metrics = ctx.measureText(text);
+      this._textMetricsCache.set(key, metrics);
+    }
+    return metrics;
+  }
+
   private truncateText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
-    const metrics = ctx.measureText(text);
+    const metrics = this.measureText(ctx, text);
     if (metrics.width <= maxWidth) return text;
     let result = text;
-    while (result.length > 0 && ctx.measureText(result + '...').width > maxWidth) {
+    while (result.length > 0 && this.measureText(ctx, result + '...').width > maxWidth) {
       result = result.slice(0, -1);
     }
     return result + '...';
   }
 
   private wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-    if (ctx.measureText(text).width <= maxWidth) return [text];
+    if (this.measureText(ctx, text).width <= maxWidth) return [text];
     const lines: string[] = [];
     let current = '';
     for (const char of text) {
       const test = current + char;
-      if (ctx.measureText(test).width > maxWidth && current !== '') {
+      if (this.measureText(ctx, test).width > maxWidth && current !== '') {
         lines.push(current);
         current = char;
       } else {
@@ -1212,11 +1236,19 @@ export class CanvasRenderer {
         changed = true;
         e.preventDefault();
       } else if (e.key === 'Tab') {
-        col = Math.min(this.opts.maxCols - 1, col + 1);
+        if (e.shiftKey) {
+          col = Math.max(0, col - 1);
+        } else {
+          col = Math.min(this.opts.maxCols - 1, col + 1);
+        }
         changed = true;
         e.preventDefault();
       } else if (e.key === 'Enter') {
-        row = Math.min(this.opts.maxRows - 1, row + 1);
+        if (e.shiftKey) {
+          row = Math.max(0, row - 1);
+        } else {
+          row = Math.min(this.opts.maxRows - 1, row + 1);
+        }
         changed = true;
         e.preventDefault();
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -1244,8 +1276,18 @@ export class CanvasRenderer {
       if (changed) {
         col = Math.max(0, Math.min(this.opts.maxCols - 1, col));
         row = Math.max(0, Math.min(this.opts.maxRows - 1, row));
-        this.opts.onSelect(row, col);
-        this.opts.onSelection({ startRow: row, startCol: col, endRow: row, endCol: col });
+        if (e.shiftKey) {
+          // 扩展选择范围，保持 active cell 不变
+          this.opts.onSelection({
+            startRow: sel.startRow,
+            startCol: sel.startCol,
+            endRow: row,
+            endCol: col,
+          });
+        } else {
+          this.opts.onSelect(row, col);
+          this.opts.onSelection({ startRow: row, startCol: col, endRow: row, endCol: col });
+        }
       }
     });
   }

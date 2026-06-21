@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSpreadsheetStore } from '../store/useSpreadsheetStore';
+import { useSpreadsheetStore, SHEET_ROW_COUNT } from '../store/useSpreadsheetStore';
 import { colToLetter, coordsToCell } from '../utils/cellRef';
 import { FONT_FAMILY_MONO } from '../utils/constants';
 import { FunctionSquare } from 'lucide-react';
@@ -109,8 +109,16 @@ export default function FormulaBar() {
               if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); applySuggestion(suggestions[selectedIndex]); return; }
               if (e.key === 'Escape') { setSuggestions([]); return; }
             }
-            if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
-            else if (e.key === 'Escape') {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              const delta = e.shiftKey ? -1 : 1;
+              (e.target as HTMLInputElement).blur();
+              const sel = store.getState().selection;
+              const newRow = sel.startRow + delta;
+              if (newRow >= 0 && newRow < SHEET_ROW_COUNT) {
+                store.getState().setSelection({ startRow: newRow, startCol: sel.startCol, endRow: newRow, endCol: sel.startCol });
+              }
+            } else if (e.key === 'Escape') {
               e.preventDefault();
               store.getState().setEditing(0, null);
               store.getState().setFormulaBarValue('');

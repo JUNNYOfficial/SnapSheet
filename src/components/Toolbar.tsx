@@ -4,13 +4,13 @@ import { toCSV } from '../utils/csv';
 import { workbookToJSON, workbookFromJSON, downloadFile } from '../utils/json';
 import { exportToExcel, importFromExcel } from '../utils/excel';
 import { coordsToCell } from '../utils/cellRef';
-import { TEMPLATES } from '../templates';
+
 import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from '../utils/constants';
 import {
   FileText, Upload, Download, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
-  Percent, Hash, DollarSign, Calendar, Minus, Plus, Grid3X3, Merge, Split,
-  MessageSquare, Eraser, Undo2, Redo2, Sun, Moon, Search, ChevronLeft, ChevronRight,
-  Table, FileSpreadsheet, BarChart3, Eye, Home, Settings, Trash2, SortAsc, SortDesc,
+  Percent, Hash, DollarSign, Calendar, Minus, Plus, Merge, Split,
+  MessageSquare, Eraser, Undo2, Redo2, Sun, Moon, ChevronLeft, ChevronRight,
+  Eye, Home, SortAsc, SortDesc,
   Lock, Unlock, PanelRight, Save, FolderOpen
 } from 'lucide-react';
 
@@ -49,7 +49,7 @@ function ToolbarButton({ onClick, icon, label, title, shortcut, disabled, active
         ].join(' ')}
       >
         {icon}
-        {label && <span className="text-xs whitespace-nowrap">{label}</span>}
+        {label && <span className="text-xs whitespace-nowrap hidden sm:inline">{label}</span>}
       </button>
       <div
         className="absolute left-1/2 top-full z-[100] mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md px-2 py-1 text-xs opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150"
@@ -66,7 +66,7 @@ function ToolbarGroup({ title, children }: { title: string; children: React.Reac
   return (
     <div className="flex flex-col items-center gap-1 px-2 py-1">
       <div className="flex items-center gap-0.5">{children}</div>
-      <span className="text-[10px] leading-none whitespace-nowrap font-medium" style={{ color: 'var(--ss-text-tertiary)' }}>
+      <span className="text-[10px] leading-none whitespace-nowrap font-medium hidden sm:block" style={{ color: 'var(--ss-text-tertiary)' }}>
         {title}
       </span>
     </div>
@@ -123,7 +123,6 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
         cells.push(field);
         return cells;
       });
-      const sheet = store.getState().getActiveSheet();
       for (let r = 0; r < rows.length; r++) {
         for (let c = 0; c < rows[r].length; c++) {
           const value = rows[r][c];

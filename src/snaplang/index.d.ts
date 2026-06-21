@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 declare module 'snaplang-v1.0.0' {
   export interface Token {
     type: TokenType;

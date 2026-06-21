@@ -104,6 +104,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
   const formulaState = {
     engine: null as ReturnType<typeof createDefaultFormulaEngine>['engine'] | null,
     graph: null as ReturnType<typeof createDefaultFormulaEngine>['graph'] | null,
+    failed: false,
   };
 
   interface SheetSnapshot {
@@ -160,11 +161,21 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     }
   };
 
-  const initEngine = () => {
+  const initEngine = (silent = false) => {
+    if (formulaState.failed) return null;
     if (!formulaState.engine) {
-      const { engine, graph } = createDefaultFormulaEngine(getCellFromStore, setCellComputedFromStore);
-      formulaState.engine = engine;
-      formulaState.graph = graph;
+      try {
+        const { engine, graph } = createDefaultFormulaEngine(getCellFromStore, setCellComputedFromStore);
+        formulaState.engine = engine;
+        formulaState.graph = graph;
+      } catch (err) {
+        formulaState.failed = true;
+        console.error('公式引擎初始化失败:', err);
+        if (!silent) {
+          window.alert('公式引擎初始化失败，公式计算功能暂不可用。普通数据导入和编辑仍可继续使用。');
+        }
+        return null;
+      }
     }
     return formulaState.engine;
   };
@@ -189,8 +200,10 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     if (newFormula === cell.formula) return cell;
     const newCell: Cell = { ...cell, formula: newFormula };
     const engine = initEngine();
-    const ref = coordsToCell(0, 0);
-    newCell.computed = engine.evaluate(ref, newFormula);
+    if (engine) {
+      const ref = coordsToCell(0, 0);
+      newCell.computed = engine.evaluate(ref, newFormula);
+    }
     return newCell;
   };
 
@@ -247,7 +260,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
 
     setCellValue: (row: number, col: number, value: string) => {
       if (row < 0 || row >= SHEET_ROW_COUNT || col < 0 || col >= SHEET_COL_COUNT) return;
-      const engine = initEngine();
+      const isFormula = value.startsWith('=');
       const ref = coordsToCell(row, col);
       const sheet = get().getActiveSheet();
       const existing = sheet.cells.get(ref);
@@ -259,18 +272,27 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
         sheet.cells.delete(ref);
       } else {
         const cell: Cell = { value, style: existing?.style };
-        if (value.startsWith('=')) {
-          cell.formula = value;
-          const result = engine.evaluate(ref, value);
-          cell.computed = result;
+        if (isFormula) {
+          const engine = initEngine();
+          if (engine) {
+            cell.formula = value;
+            const result = engine.evaluate(ref, value);
+            cell.computed = result;
+          } else {
+            cell.formula = value;
+            cell.computed = '#ERR';
+          }
         }
         sheet.cells.set(ref, cell);
       }
 
-      const recalcResults = engine.recalculate(ref);
-      for (const [depRef, val] of recalcResults) {
-        const depCell = sheet.cells.get(depRef);
-        if (depCell) depCell.computed = val;
+      const engine = formulaState.engine;
+      if (engine) {
+        const recalcResults = engine.recalculate(ref);
+        for (const [depRef, val] of recalcResults) {
+          const depCell = sheet.cells.get(depRef);
+          if (depCell) depCell.computed = val;
+        }
       }
 
       set({ workbook: { ...get().workbook } });
@@ -669,7 +691,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
             const newCell: Cell = { value: value || '', style: srcCell.style };
             if (formula) {
               newCell.formula = formula;
-              newCell.computed = engine.evaluate(targetRef, formula);
+              newCell.computed = engine ? engine.evaluate(targetRef, formula) : '#ERR';
             }
             sheet.cells.set(targetRef, newCell);
           } else if (value !== undefined) {
@@ -1066,8 +1088,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
           const cell: Cell = { value };
           if (value.startsWith('=')) {
             cell.formula = value;
-            const result = engine.evaluate(ref, value);
-            cell.computed = result;
+            cell.computed = engine ? engine.evaluate(ref, value) : '#ERR';
           }
           sheet.cells.set(ref, cell);
         }

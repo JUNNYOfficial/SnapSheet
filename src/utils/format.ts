@@ -105,7 +105,7 @@ function applyNumericPattern(num: number, pattern: string): string {
   const decPart = absRounded - intPart;
 
   // Format integer with thousands separator if pattern contains ,
-  let intStr = pattern.includes(',') ? intPart.toLocaleString('en-US') : String(intPart);
+  const intStr = pattern.includes(',') ? intPart.toLocaleString('en-US') : String(intPart);
 
   // Format decimal
   let decStr = '';

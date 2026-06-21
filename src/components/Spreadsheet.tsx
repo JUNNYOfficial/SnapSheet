@@ -206,9 +206,12 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
               const curEditing = store.getState().editing;
               (e.target as HTMLInputElement).blur();
               if (curEditing) {
-                const newRow = curEditing.row + 1;
+                const delta = e.shiftKey ? -1 : 1;
+                const newRow = curEditing.row + delta;
                 const newCol = curEditing.col;
-                store.getState().setSelection({ startRow: newRow, startCol: newCol, endRow: newRow, endCol: newCol });
+                if (newRow >= 0 && newRow < SHEET_ROW_COUNT) {
+                  store.getState().setSelection({ startRow: newRow, startCol: newCol, endRow: newRow, endCol: newCol });
+                }
               }
             } else if (e.key === 'Escape') {
               e.preventDefault();
@@ -218,9 +221,12 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
               const curEditing = store.getState().editing;
               (e.target as HTMLInputElement).blur();
               if (curEditing) {
+                const delta = e.shiftKey ? -1 : 1;
                 const newRow = curEditing.row;
-                const newCol = curEditing.col + 1;
-                store.getState().setSelection({ startRow: newRow, startCol: newCol, endRow: newRow, endCol: newCol });
+                const newCol = curEditing.col + delta;
+                if (newCol >= 0 && newCol < SHEET_COL_COUNT) {
+                  store.getState().setSelection({ startRow: newRow, startCol: newCol, endRow: newRow, endCol: newCol });
+                }
               }
             }
           }}

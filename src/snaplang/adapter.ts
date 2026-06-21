@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Cell } from '../types';
 import { getCellsInRange } from '../utils/cellRef';
 import * as snaplangModule from './snaplang-wrapper';

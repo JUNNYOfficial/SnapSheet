@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSpreadsheetStore } from '../store/useSpreadsheetStore';
 import { coordsToCell } from '../utils/cellRef';
-import { X, Bold, AlignLeft, AlignCenter, AlignRight, Grid3X3, Paintbrush, Hash, Percent, DollarSign, Calendar, CheckCircle, List, Filter, Wand2, Lock, Unlock, Trash2, Plus, Minus, MessageSquare, Merge, Split, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Bold, AlignLeft, AlignCenter, AlignRight, Grid3X3, Paintbrush, Hash, Percent, DollarSign, Calendar, CheckCircle, List, Filter, Wand2, Lock, Unlock, Trash2, Plus, Minus, MessageSquare, Merge, Split } from 'lucide-react';
 
 interface PropertyPanelProps {
   isOpen: boolean;
@@ -143,7 +143,7 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
         onClick={onClose}
       />
       <div
-        className="fixed top-0 right-0 bottom-0 w-72 border-l z-50 flex flex-col shadow-xl"
+        className="fixed top-0 right-0 bottom-0 w-full sm:w-80 md:w-72 border-l z-50 flex flex-col shadow-xl"
         style={{
           borderColor: 'var(--ss-border)',
           background: 'var(--ss-toolbar-bg)',
