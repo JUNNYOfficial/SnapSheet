@@ -7,3 +7,5 @@
 {"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"A","location":"electron/main.ts","msg":"[DEBUG] renderer did-finish-load","ts":1782033823971}
 {"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782033823972}
 {"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782033827354}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"B","location":"electron/preload.cjs","msg":"[DEBUG] preload script executed","ts":1782035369149}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"B","location":"electron/preload.cjs","msg":"[DEBUG] preload script executed","ts":1782035389560}

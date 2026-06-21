@@ -7,19 +7,6 @@
 
 import { contextBridge, ipcRenderer } from 'electron';
 
-// #region debug-point B:preload-start
-function debugLog(hypothesisId: string, msg: string, data?: unknown) {
-  try {
-    fetch('http://127.0.0.1:7777/event', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: 'electron-white-screen', runId: 'pre', hypothesisId, location: 'electron/preload.ts', msg: `[DEBUG] ${msg}`, data, ts: Date.now() }),
-    }).catch(() => {});
-  } catch {}
-}
-debugLog('B', 'preload script executed');
-// #endregion
-
 export interface ElectronAPI {
   openFile: (options: Electron.OpenDialogOptions) => Promise<string[] | undefined>;
   saveFile: (options: Electron.SaveDialogOptions) => Promise<string | undefined>;

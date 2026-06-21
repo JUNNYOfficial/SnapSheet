@@ -22,16 +22,6 @@ const STORAGE_KEY = 'snapsheet_autosave';
 type SaveStatus = 'saved' | 'saving' | 'unsaved';
 
 export default function App() {
-  // #region debug-point C:app-mount
-  try {
-    fetch('http://127.0.0.1:7777/event', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: 'electron-white-screen', runId: 'pre', hypothesisId: 'C', location: 'src/App.tsx', msg: '[DEBUG] App component rendered', ts: Date.now() }),
-    }).catch(() => {});
-  } catch {}
-  // #endregion
-
   /** 查找对话框开关状态 */
   const [findOpen, setFindOpen] = useState(false);
   /** 右侧属性面板开关状态 */

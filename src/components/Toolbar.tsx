@@ -41,7 +41,7 @@ interface ToolbarButtonProps {
 }
 
 /** 单个工具栏按钮，支持图标/图文两种展示形式与悬停提示 */
-function ToolbarButton({ onClick, icon, label, title, shortcut, disabled, active, variant = 'icon' }: ToolbarButtonProps) {
+function ToolbarButton({ onClick, icon, label, title, shortcut, disabled, active, variant = 'both' }: ToolbarButtonProps) {
   return (
     <div className="relative group inline-flex">
       <button
@@ -57,7 +57,7 @@ function ToolbarButton({ onClick, icon, label, title, shortcut, disabled, active
         ].join(' ')}
       >
         {icon}
-        {label && <span className="text-xs whitespace-nowrap hidden sm:inline">{label}</span>}
+        <span className="text-xs whitespace-nowrap hidden sm:inline">{label ?? title}</span>
       </button>
       <div
         className="absolute left-1/2 top-full z-[100] mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md px-2 py-1 text-xs opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150"

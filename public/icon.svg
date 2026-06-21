@@ -1,64 +1,57 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- 主背景渐变：深绿到翠绿 -->
+    <!-- 主背景：深翠绿渐变 -->
     <linearGradient id="bgGradient" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#22C55E"/>
       <stop offset="55%" stop-color="#16A34A"/>
       <stop offset="100%" stop-color="#15803D"/>
     </linearGradient>
 
-    <!-- 阴影层渐变 -->
+    <!-- 右侧阴影层 -->
     <linearGradient id="shadowGradient" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#14532D"/>
+      <stop offset="0%" stop-color="#166534"/>
       <stop offset="100%" stop-color="#052E16"/>
     </linearGradient>
 
-    <!-- 毛玻璃主层：半透明白色 -->
+    <!-- 毛玻璃层：更不透明，减少浑浊感 -->
     <linearGradient id="glassGradient" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.78"/>
-      <stop offset="45%" stop-color="#FFFFFF" stop-opacity="0.55"/>
-      <stop offset="100%" stop-color="#D1FAE5" stop-opacity="0.42"/>
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.90"/>
+      <stop offset="45%" stop-color="#F0FDF4" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#DCFCE7" stop-opacity="0.55"/>
     </linearGradient>
 
-    <!-- 左上角高光 -->
-    <linearGradient id="topHighlight" x1="160" y1="120" x2="520" y2="520" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"/>
-      <stop offset="35%" stop-color="#FFFFFF" stop-opacity="0.55"/>
-      <stop offset="70%" stop-color="#FFFFFF" stop-opacity="0.15"/>
+    <!-- 顶部高光 -->
+    <linearGradient id="topHighlight" x1="120" y1="100" x2="480" y2="480" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.98"/>
+      <stop offset="30%" stop-color="#FFFFFF" stop-opacity="0.65"/>
+      <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.20"/>
       <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
     </linearGradient>
 
-    <!-- 表格纸片渐变 -->
+    <!-- 表格纸片：高对比 -->
     <linearGradient id="sheetGradient" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.90"/>
-      <stop offset="100%" stop-color="#ECFDF5" stop-opacity="0.82"/>
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#F0FDF4" stop-opacity="0.92"/>
     </linearGradient>
 
-    <!-- 柔和外阴影 -->
+    <!-- 柔和投影 -->
     <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="28" stdDeviation="32" flood-color="#000000" flood-opacity="0.22"/>
+      <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#000000" flood-opacity="0.22"/>
     </filter>
 
-    <!-- 毛玻璃模糊：对背景做高斯模糊 -->
+    <!-- 背景模糊 -->
     <filter id="glassBlur" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="18"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14"/>
     </filter>
 
-    <!-- 内发光/边缘柔化 -->
+    <!-- 边缘内发光 -->
     <filter id="innerGlow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="16" result="blur"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="12" result="blur"/>
       <feOffset dx="0" dy="0"/>
       <feComposite in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff"/>
-      <feFlood flood-color="#FFFFFF" flood-opacity="0.35"/>
+      <feFlood flood-color="#FFFFFF" flood-opacity="0.45"/>
       <feComposite in2="shadowDiff" operator="in"/>
       <feComposite in2="SourceGraphic" operator="over"/>
-    </filter>
-
-    <!-- 磨砂噪点纹理 -->
-    <filter id="noiseTexture" x="0" y="0" width="100%" height="100%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="4" stitchTiles="stitch" result="noise"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.06 0" in="noise" result="coloredNoise"/>
-      <feComposite operator="in" in="coloredNoise" in2="SourceGraphic"/>
     </filter>
 
     <!-- 圆角裁剪 -->
@@ -67,48 +60,48 @@
     </clipPath>
   </defs>
 
-  <!-- 1. 底层深绿阴影（模拟纸张堆叠） -->
-  <rect x="96" y="96" width="880" height="880" rx="200" ry="200" fill="url(#shadowGradient)" filter="url(#dropShadow)"/>
+  <!-- 1. 右侧阴影层（纸张堆叠感） -->
+  <rect x="92" y="92" width="884" height="884" rx="200" ry="200" fill="url(#shadowGradient)" filter="url(#dropShadow)"/>
 
   <!-- 2. 主背景 -->
   <rect x="48" y="48" width="928" height="928" rx="220" ry="220" fill="url(#bgGradient)"/>
 
-  <!-- 3. 毛玻璃层：带模糊背景效果 -->
+  <!-- 3. 毛玻璃层 -->
   <g clip-path="url(#roundedClip)">
-    <!-- 模糊后的背景副本 -->
-    <rect x="48" y="48" width="928" height="928" fill="url(#bgGradient)" filter="url(#glassBlur)" opacity="0.45"/>
-    <!-- 半透明玻璃覆盖 -->
+    <rect x="48" y="48" width="928" height="928" fill="url(#bgGradient)" filter="url(#glassBlur)" opacity="0.35"/>
     <rect x="48" y="48" width="928" height="928" fill="url(#glassGradient)"/>
-    <!-- 噪点纹理 -->
-    <rect x="48" y="48" width="928" height="928" fill="#FFFFFF" filter="url(#noiseTexture)"/>
-    <!-- 顶部弧形高光 -->
-    <path d="M48 268C48 143.288 143.288 48 268 48H756C880.712 48 976 143.288 976 268V420C976 420 780 280 512 280C244 280 48 420 48 420V268Z" fill="url(#topHighlight)"/>
+    <path d="M48 248C48 135.929 148.929 48 261 48H763C875.071 48 976 148.929 976 261V400C976 400 784 272 512 272C240 272 48 400 48 400V248Z" fill="url(#topHighlight)"/>
   </g>
 
-  <!-- 4. 边缘柔化与内发光 -->
-  <rect x="48" y="48" width="928" height="928" rx="220" ry="220" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-opacity="0.45" filter="url(#innerGlow)"/>
+  <!-- 4. 边缘柔化 -->
+  <rect x="48" y="48" width="928" height="928" rx="220" ry="220" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-opacity="0.55" filter="url(#innerGlow)"/>
 
-  <!-- 5. 内部表格纸片 -->
+  <!-- 5. 表格纸片（更清晰、高对比） -->
   <g transform="translate(262, 292)">
     <rect x="0" y="0" width="500" height="440" rx="72" ry="72" fill="url(#sheetGradient)" filter="url(#dropShadow)"/>
 
-    <!-- 表格网格 3x3 -->
-    <g transform="translate(40, 40)">
-      <!-- 第一行 -->
-      <rect x="0" y="0" width="130" height="110" rx="20" ry="20" fill="#16A34A" fill-opacity="0.22"/>
-      <rect x="150" y="0" width="130" height="110" rx="20" ry="20" fill="#16A34A" fill-opacity="0.22"/>
-      <rect x="300" y="0" width="130" height="110" rx="20" ry="20" fill="#16A34A" fill-opacity="0.22"/>
-      <!-- 第二行 -->
-      <rect x="0" y="130" width="130" height="110" rx="20" ry="20" fill="#16A34A" fill-opacity="0.22"/>
-      <rect x="150" y="130" width="130" height="110" rx="20" ry="20" fill="#16A34A" fill-opacity="0.22"/>
-      <rect x="300" y="130" width="130" height="110" rx="20" ry="20" fill="#16A34A" fill-opacity="0.22"/>
-      <!-- 第三行：右下角高亮 -->
-      <rect x="0" y="260" width="130" height="110" rx="20" ry="20" fill="#16A34A" fill-opacity="0.22"/>
-      <rect x="150" y="260" width="130" height="110" rx="20" ry="20" fill="#16A34A" fill-opacity="0.22"/>
-      <rect x="300" y="260" width="130" height="110" rx="20" ry="20" fill="#4ADE80" fill-opacity="0.55"/>
+    <!-- 表格网格 3x3：高对比填充 -->
+    <g transform="translate(44, 44)">
+      <rect x="0" y="0" width="130" height="110" rx="18" ry="18" fill="#15803D" fill-opacity="0.55"/>
+      <rect x="150" y="0" width="130" height="110" rx="18" ry="18" fill="#15803D" fill-opacity="0.55"/>
+      <rect x="300" y="0" width="130" height="110" rx="18" ry="18" fill="#15803D" fill-opacity="0.55"/>
+
+      <rect x="0" y="130" width="130" height="110" rx="18" ry="18" fill="#15803D" fill-opacity="0.55"/>
+      <rect x="150" y="130" width="130" height="110" rx="18" ry="18" fill="#15803D" fill-opacity="0.55"/>
+      <rect x="300" y="130" width="130" height="110" rx="18" ry="18" fill="#15803D" fill-opacity="0.55"/>
+
+      <rect x="0" y="260" width="130" height="110" rx="18" ry="18" fill="#15803D" fill-opacity="0.55"/>
+      <rect x="150" y="260" width="130" height="110" rx="18" ry="18" fill="#15803D" fill-opacity="0.55"/>
+      <rect x="300" y="260" width="130" height="110" rx="18" ry="18" fill="#22C55E" fill-opacity="0.75"/>
     </g>
 
-    <!-- 表格外边框 -->
-    <rect x="40" y="40" width="420" height="360" rx="28" ry="28" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-opacity="0.70"/>
+    <!-- 表格外框：粗白边 -->
+    <rect x="44" y="44" width="412" height="352" rx="28" ry="28" fill="none" stroke="#FFFFFF" stroke-width="16" stroke-opacity="0.95"/>
+
+    <!-- 分隔线 -->
+    <line x1="44" y1="154" x2="456" y2="154" stroke="#FFFFFF" stroke-width="16" stroke-opacity="0.95"/>
+    <line x1="44" y1="284" x2="456" y2="284" stroke="#FFFFFF" stroke-width="16" stroke-opacity="0.95"/>
+    <line x1="194" y1="44" x2="194" y2="396" stroke="#FFFFFF" stroke-width="16" stroke-opacity="0.95"/>
+    <line x1="344" y1="44" x2="344" y2="396" stroke="#FFFFFF" stroke-width="16" stroke-opacity="0.95"/>
   </g>
 </svg>
