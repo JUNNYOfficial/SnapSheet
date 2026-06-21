@@ -33,10 +33,26 @@ await build({
   format: 'esm',
   platform: 'browser',
   outfile: outFile,
-  external: ['./stdlib/*'],
+  external: [],
   alias: {
     fs: resolve(outDir, 'fs-stub.js'),
     path: resolve(outDir, 'path-stub.js'),
+  },
+  plugins: [
+    {
+      name: 'stdlib-alias',
+      setup(build) {
+        build.onResolve({ filter: /^\.\.?\/stdlib(\/.*)?$/ }, (args) => ({
+          path: resolve(outDir, 'stdlib-stub.js'),
+        }));
+        build.onResolve({ filter: /^snaplang-v1\.0\.0\/dist\/stdlib(\/.*)?$/ }, (args) => ({
+          path: resolve(outDir, 'stdlib-stub.js'),
+        }));
+      },
+    },
+  ],
+  banner: {
+    js: `var process = (typeof globalThis !== 'undefined' && globalThis.process) || { exit: function() {}, stdout: { write: function() {} } };`,
   },
   target: 'es2020',
   sourcemap: false,
