@@ -15,6 +15,11 @@ dist-ssr
 # Generated SnapLang ESM bundle
 src/snaplang/vendor/snaplang.esm.js
 
+# Build / release artifacts
+release
+.dbg
+debug-*.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

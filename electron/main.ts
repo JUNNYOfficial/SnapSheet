@@ -148,6 +148,7 @@ function setAboutPanel() {
 
 /** 应用准备就绪后创建窗口 */
 app.on('ready', () => {
+  app.setName('SnapSheet');
   setAppMenu();
   setAboutPanel();
   createWindow();
