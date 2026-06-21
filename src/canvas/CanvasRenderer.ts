@@ -1,3 +1,12 @@
+/**
+ * @file canvas/CanvasRenderer.ts
+ * @description Canvas 渲染引擎。
+ *              负责电子表格主画布的绘制：单元格、网格线、行列标题、选中框、
+ *              冻结窗格、合并单元格、条件格式等；同时处理鼠标、键盘、滚轮事件。
+ *              采用 requestAnimationFrame 渲染节流与文本测量缓存优化性能。
+ *              被 Spreadsheet 组件实例化并驱动。
+ */
+
 import {
   DEFAULT_COL_WIDTH,
   DEFAULT_ROW_HEIGHT,
@@ -13,6 +22,7 @@ import { colToLetter } from '../utils/cellRef';
 import { formatNumber } from '../utils/format';
 import type { Cell, Selection, MergeRange, ConditionalFormat, NumberFormat } from '../types';
 
+/** CanvasRenderer 构造选项，包含渲染数据与交互回调 */
 export interface CanvasRendererOptions {
   canvas: HTMLCanvasElement;
   isDark?: boolean;
@@ -42,26 +52,52 @@ export interface CanvasRendererOptions {
   selection: Selection;
 }
 
+/**
+ * 电子表格 Canvas 渲染器。
+ * 管理画布生命周期、渲染管线、事件绑定与滚动/选择状态。
+ */
 export class CanvasRenderer {
+  /** 渲染器选项与回调 */
   private opts: CanvasRendererOptions;
+  /** Canvas 2D 上下文 */
   private ctx: CanvasRenderingContext2D;
+  /** 水平滚动偏移 */
   private scrollLeft = 0;
+  /** 垂直滚动偏移 */
   private scrollTop = 0;
+  /** 当前选择区域 */
   private selection: Selection;
+  /** 鼠标是否按下 */
   private mouseDown = false;
+  /** 拖拽起始单元格 */
   private dragStart: { row: number; col: number } | null = null;
+  /** 正在调整宽度的列索引 */
   private resizingCol: number | null = null;
+  /** 正在调整高度的行索引 */
   private resizingRow: number | null = null;
+  /** 上一次鼠标 X 坐标 */
   private lastMouseX = 0;
+  /** 上一次鼠标 Y 坐标 */
   private lastMouseY = 0;
+  /** 是否正在拖拽填充柄 */
   private fillHandleDragging = false;
+  /** 填充柄源区域 */
   private fillHandleSource: { startRow: number; startCol: number; endRow: number; endCol: number } | null = null;
+  /** 填充柄目标位置 */
   private fillHandleTarget: { row: number; col: number } | null = null;
+  /** 当前主题色 */
   private theme: ThemeColors;
+  /** 是否有待渲染帧 */
   private _pendingRender = false;
+  /** requestAnimationFrame 帧 ID */
   private _renderFrame: number | null = null;
+  /** 文本测量缓存，key 为 font|text */
   private _textMetricsCache = new Map<string, TextMetrics>();
 
+  /**
+   * 创建 CanvasRenderer 实例。
+   * @param opts 渲染器选项
+   */
   constructor(opts: CanvasRendererOptions) {
     this.opts = opts;
     this.selection = opts.selection;
@@ -73,15 +109,27 @@ export class CanvasRenderer {
     this.bindEvents();
   }
 
+  /**
+   * 切换浅色/深色主题。
+   * @param isDark 是否为深色模式
+   */
   setTheme(isDark: boolean): void {
     this.theme = getThemeColors(isDark);
   }
 
+  /**
+   * 设置冻结窗格行数与列数。
+   * @param frozenRows 冻结行数
+   * @param frozenCols 冻结列数
+   */
   setFrozenPanes(frozenRows: number, frozenCols: number): void {
     this.opts.frozenRows = frozenRows;
     this.opts.frozenCols = frozenCols;
   }
 
+  /**
+   * 根据容器大小调整 Canvas 物理像素尺寸并适配 DPR。
+   */
   resize(): void {
     const canvas = this.opts.canvas;
     const dpr = window.devicePixelRatio || 1;
@@ -91,11 +139,20 @@ export class CanvasRenderer {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
+  /**
+   * 更新滚动偏移量。
+   * @param scrollLeft 水平滚动偏移
+   * @param scrollTop 垂直滚动偏移
+   */
   setScroll(scrollLeft: number, scrollTop: number): void {
     this.scrollLeft = scrollLeft;
     this.scrollTop = scrollTop;
   }
 
+  /**
+   * 更新当前选择区域。
+   * @param selection 新的选择区域
+   */
   setSelection(selection: Selection): void {
     this.selection = selection;
   }
@@ -113,6 +170,11 @@ export class CanvasRenderer {
     return `${weight}${styleItalic}${size}px ${family}`;
   }
 
+  /**
+   * 滚动视口使指定单元格可见，同时考虑冻结窗格。
+   * @param row 目标行索引
+   * @param col 目标列索引
+   */
   scrollIntoView(row: number, col: number): void {
     const canvas = this.opts.canvas;
     const rect = canvas.getBoundingClientRect();
@@ -203,6 +265,10 @@ export class CanvasRenderer {
     return formatNumber(value, format);
   }
 
+  /**
+   * 请求渲染一帧。使用 requestAnimationFrame 进行渲染节流，
+   * 避免高频状态更新导致重复绘制。
+   */
   render(): void {
     this._pendingRender = true;
     if (this._renderFrame !== null) return;
@@ -215,6 +281,10 @@ export class CanvasRenderer {
     });
   }
 
+  /**
+   * 立即执行渲染管线：背景、单元格层、网格线、表头、选中框等。
+   * 仅由 render() 在 requestAnimationFrame 回调中调用。
+   */
   private _renderNow(): void {
     const ctx = this.ctx;
     const canvas = this.opts.canvas;
@@ -957,6 +1027,10 @@ export class CanvasRenderer {
     return x >= rect.x && x <= rect.x + 8 && y >= rect.y && y <= rect.y + 8;
   }
 
+  /**
+   * 绑定 Canvas 鼠标、键盘、滚轮事件。
+   * 包括单元格选择、拖拽、行列调整、填充柄、右键菜单、复制粘贴、撤销重做等。
+   */
   private bindEvents(): void {
     const canvas = this.opts.canvas;
 

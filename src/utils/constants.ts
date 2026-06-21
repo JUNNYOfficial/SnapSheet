@@ -1,3 +1,11 @@
+/**
+ * @file utils/constants.ts
+ * @description SnapSheet 全局常量定义。
+ *              集中管理字体、字号、默认行列尺寸、表格边界等配置，
+ *              便于统一调整 UI 与 Canvas 渲染行为。
+ */
+
+/** 字号下拉选项（单位：px） */
 export const FONT_SIZE_OPTIONS: { label: string; value: number }[] = [
   { label: '9', value: 9 },
   { label: '10', value: 10 },
@@ -16,11 +24,17 @@ export const FONT_SIZE_OPTIONS: { label: string; value: number }[] = [
   { label: '72', value: 72 },
 ];
 
+/** 默认列宽（px） */
 export const DEFAULT_COL_WIDTH = 100;
+/** 默认行高（px） */
 export const DEFAULT_ROW_HEIGHT = 26;
+/** 表头行高（px） */
 export const HEADER_ROW_HEIGHT = 30;
+/** 表头列宽（px） */
 export const HEADER_COL_WIDTH = 52;
+/** 列宽最小值（px），防止拖拽到过窄 */
 export const MIN_COL_WIDTH = 40;
+/** 行高最小值（px） */
 export const MIN_ROW_HEIGHT = 20;
 
 /* ============================================================
@@ -30,14 +44,21 @@ export const MIN_ROW_HEIGHT = 20;
    - 禁止在 UI 中使用宋体/黑体（SimSun/SimHei）
    ============================================================ */
 
+/** UI 通用字体栈 */
 export const FONT_FAMILY_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+/** 等宽字体栈，用于公式栏、单元格引用等需要固定宽度的场景 */
 export const FONT_FAMILY_MONO = '"SF Mono", "Fira Code", "Cascadia Code", Consolas, "Courier New", monospace';
+/** 默认字体（当前与 UI 字体一致） */
 export const FONT_FAMILY = FONT_FAMILY_UI;
 
+/** 默认单元格字号（px） */
 export const FONT_SIZE = 13;
+/** 表头字体 CSS 描述 */
 export const HEADER_FONT = '500 12px ' + FONT_FAMILY;
+/** 单元格字体 CSS 描述 */
 export const CELL_FONT = FONT_SIZE + 'px ' + FONT_FAMILY;
 
+/** 字体下拉选项 */
 export const FONT_OPTIONS: { label: string; value: string }[] = [
   { label: '默认', value: FONT_FAMILY },
   { label: '黑体', value: '"SimHei", "黑体", "Microsoft YaHei", sans-serif' },
@@ -51,5 +72,7 @@ export const FONT_OPTIONS: { label: string; value: string }[] = [
   { label: 'Verdana', value: 'Verdana, sans-serif' },
 ];
 
+/** 工作表最大行数 */
 export const SHEET_ROW_COUNT = 5000;
+/** 工作表最大列数 */
 export const SHEET_COL_COUNT = 200;

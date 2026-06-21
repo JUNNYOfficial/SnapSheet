@@ -1,12 +1,29 @@
+/**
+ * @file snaplang/adapter.ts
+ * @description SnapLang 公式引擎适配层。
+ *              将 SnapLang v1.0.0 运行时与 SnapSheet 的单元格模型桥接：
+ *              - 公式预处理：将 A1 / A1:B5 等引用替换为 getCell / getCellRange 调用
+ *              - 注册原生函数：sum/avg/max 等表格函数及数学/字符串/逻辑函数
+ *              - 收集依赖、执行求值、统一错误码
+ *              被 FormulaEngine.ts 调用。
+ */
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Cell } from '../types';
 import { getCellsInRange } from '../utils/cellRef';
 import * as snaplangModule from './snaplang-wrapper';
 
+/** 返回 SnapLang 模块对象 */
 function loadSnaplang() {
   return snaplangModule;
 }
 
+/**
+ * 公式预处理：将单元格引用替换为 getCell/getCellRange 原生调用。
+ * 会跳过字符串常量中的内容，避免误替换。
+ * @param formula 原始公式，以 '=' 开头或纯表达式
+ * @returns 可供 SnapLang 解析的源代码
+ */
 function preprocessFormula(formula: string): string {
   let source = formula.startsWith('=') ? formula.slice(1) : formula;
 
@@ -47,11 +64,18 @@ function preprocessFormula(formula: string): string {
     .join('');
 }
 
+/** 公式引擎上下文：读写单元格数据 */
 export interface FormulaContext {
+  /** 获取单元格数据 */
   getCell: (ref: string) => Cell | undefined;
+  /** 设置单元格计算结果 */
   setCellComputed: (ref: string, value: number | string) => void;
 }
 
+/**
+ * SnapLang 公式引擎封装。
+ * 负责将 SnapSheet 公式语法转换为 SnapLang 可执行代码，并注册所需的单元格/表格函数。
+ */
 export class SnapLangFormulaEngine {
   private ctx: FormulaContext;
 
@@ -59,6 +83,12 @@ export class SnapLangFormulaEngine {
     this.ctx = ctx;
   }
 
+  /**
+   * 在 Evaluator 全局环境中注册所有 SnapSheet 原生函数。
+   * 包括单元格读写、区域读写、聚合函数、数学/字符串/逻辑函数。
+   * @param snaplang SnapLang 模块
+   * @param evaluator SnapLang 求值器实例
+   */
   private setupCellFunctions(snaplang: any, evaluator: any) {
     const env = evaluator.globals;
 
@@ -284,6 +314,12 @@ export class SnapLangFormulaEngine {
     snaplang.defineVariable(env, 'not', notFunc, false, true);
   }
 
+  /**
+   * 从公式文本中提取所有单元格依赖（包括区域展开后的单元格）。
+   * 用于构建 DependencyGraph 的依赖关系。
+   * @param formula 公式原文
+   * @returns 去重后的单元格引用数组
+   */
   collectDependencies(formula: string): string[] {
     const deps: string[] = [];
     const rangePattern = /\b([A-Z]+[0-9]+):([A-Z]+[0-9]+)\b/g;
@@ -320,6 +356,12 @@ export class SnapLangFormulaEngine {
     return deps;
   }
 
+  /**
+   * 对公式进行求值，并返回计算结果或错误字符串。
+   * 错误码统一为 #LEX! / #SYNTAX! / #RUNTIME! / #ERROR! 等格式。
+   * @param formula 公式原文（以 = 开头）
+   * @returns 计算结果或错误字符串
+   */
   evaluate(formula: string): number | string {
     const snaplang = loadSnaplang();
     const source = preprocessFormula(formula);
@@ -402,6 +444,11 @@ export class SnapLangFormulaEngine {
   }
 }
 
+/**
+ * 创建 SnapLang 公式引擎实例的工厂函数。
+ * @param ctx 公式引擎上下文
+ * @returns SnapLangFormulaEngine 实例
+ */
 export function createSnapLangEngine(ctx: FormulaContext): SnapLangFormulaEngine {
   return new SnapLangFormulaEngine(ctx);
 }

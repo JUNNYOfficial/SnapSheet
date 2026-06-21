@@ -1,3 +1,9 @@
+/**
+ * @file utils/json.test.ts
+ * @description 工作簿 JSON 序列化/反序列化的单元测试。
+ *              覆盖工作簿往返、空工作表、Map 结构正确还原等场景。
+ */
+
 import { describe, it, expect } from 'vitest';
 import { workbookToJSON, workbookFromJSON } from './json';
 import type { Workbook } from '../types';

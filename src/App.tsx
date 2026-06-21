@@ -1,3 +1,10 @@
+/**
+ * @file App.tsx
+ * @description 应用根组件。
+ *              组合 Toolbar、FormulaBar、Spreadsheet、SheetTabs、FindDialog、PropertyPanel 等子组件，
+ *              并负责自动保存、Ctrl+S/Ctrl+F 快捷键、主题切换等全局行为。
+ */
+
 import { useState, useEffect } from 'react';
 import Toolbar from './components/Toolbar';
 import FormulaBar from './components/FormulaBar';
@@ -15,12 +22,19 @@ const STORAGE_KEY = 'snapsheet_autosave';
 type SaveStatus = 'saved' | 'saving' | 'unsaved';
 
 export default function App() {
+  /** 查找对话框开关状态 */
   const [findOpen, setFindOpen] = useState(false);
+  /** 右侧属性面板开关状态 */
   const [panelOpen, setPanelOpen] = useState(false);
+  /** 自动保存状态：已保存/保存中/未保存 */
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const store = useSpreadsheetStore;
   const { theme, toggleTheme, isDark } = useTheme();
 
+  /**
+   * 初始化时从 localStorage 读取自动保存的工作簿。
+   * 若缓存为示例文档则清空，避免污染用户数据。
+   */
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -42,6 +56,10 @@ export default function App() {
     }
   }, [store]);
 
+  /**
+   * 自动保存订阅：状态变更后延迟 800ms 序列化工作簿到 localStorage。
+   * 超过 4MB 时跳过保存并提示用户。
+   */
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const MAX_LOCAL_STORAGE_SIZE = 4 * 1024 * 1024; // 4MB 阈值
@@ -71,6 +89,9 @@ export default function App() {
     };
   }, [store]);
 
+  /**
+   * 全局快捷键监听：Ctrl/Cmd + F 打开查找，Ctrl/Cmd + S 强制保存。
+   */
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
@@ -96,7 +117,10 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [store]);
 
-  // 开发模式性能测试工具
+  /**
+   * 开发模式性能测试工具：向 window 暴露 __generateTestData 与 __clearData，
+   * 用于在控制台快速生成大量测试数据或清空工作簿。
+   */
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     (window as unknown as Record<string, unknown>).__generateTestData = (rows: number, cols: number) => {

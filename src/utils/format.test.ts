@@ -1,3 +1,9 @@
+/**
+ * @file utils/format.test.ts
+ * @description 数字格式化工具的单元测试。
+ *              覆盖无格式、小数位、百分比、货币、非数字输入及日期格式。
+ */
+
 import { describe, it, expect } from 'vitest';
 import { formatNumber } from './format';
 

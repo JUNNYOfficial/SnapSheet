@@ -1,3 +1,9 @@
+/**
+ * @file components/PropertyPanel.tsx
+ * @description 右侧属性面板组件。
+ *              提供单元格格式、数据验证、条件格式、合并单元格、AI 公式建议等设置入口。
+ */
+
 import { useState, useEffect } from 'react';
 import { useSpreadsheetStore } from '../store/useSpreadsheetStore';
 import { coordsToCell } from '../utils/cellRef';

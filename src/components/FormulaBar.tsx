@@ -1,3 +1,9 @@
+/**
+ * @file components/FormulaBar.tsx
+ * @description 公式栏组件。
+ *              显示当前选中单元格地址、编辑单元格值/公式，并提供函数名自动补全建议。
+ */
+
 import { useEffect, useRef, useState } from 'react';
 import { useSpreadsheetStore, SHEET_ROW_COUNT } from '../store/useSpreadsheetStore';
 import { colToLetter, coordsToCell } from '../utils/cellRef';
@@ -16,12 +22,19 @@ export default function FormulaBar() {
   const selection = store((s) => s.selection);
   const editing = store((s) => s.editing);
   const formulaBarValue = store((s) => s.formulaBarValue);
+  /** 公式输入框引用 */
   const inputRef = useRef<HTMLInputElement>(null);
+  /** 当前自动补全建议列表 */
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  /** 当前选中的建议索引 */
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const cellRef = coordsToCell(selection.startRow, selection.startCol);
 
+  /**
+   * 非编辑状态下，当选择单元格变化时同步公式栏值。
+   * 编辑状态下由输入框自身控制，避免覆盖用户输入。
+   */
   useEffect(() => {
     if (!editing) {
       const sheet = store.getState().getActiveSheet();
@@ -31,6 +44,10 @@ export default function FormulaBar() {
     }
   }, [cellRef, editing, formulaBarValue, store]);
 
+  /**
+   * 根据输入内容提供函数名自动补全建议。
+   * 仅在以 = 开头的公式中触发。
+   */
   useEffect(() => {
     if (!formulaBarValue.startsWith('=') || !inputRef.current) {
       setSuggestions([]);
@@ -46,6 +63,7 @@ export default function FormulaBar() {
     setSelectedIndex(0);
   }, [formulaBarValue]);
 
+  /** 将选中的函数名插入到公式中 */
   const applySuggestion = (fn: string) => {
     if (!inputRef.current) return;
     const cursor = inputRef.current.selectionStart ?? formulaBarValue.length;
@@ -65,6 +83,7 @@ export default function FormulaBar() {
     }, 0);
   };
 
+  /** 输入框失焦时提交编辑或设置单元格值 */
   const handleBlur = () => {
     setSuggestions([]);
     if (formulaBarValue !== '' || editing) {

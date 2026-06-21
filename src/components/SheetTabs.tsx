@@ -1,3 +1,9 @@
+/**
+ * @file components/SheetTabs.tsx
+ * @description 底部工作表标签与状态栏组件。
+ *              展示当前选择区域统计信息、工作表切换、新建/删除工作表等操作。
+ */
+
 import { useState } from 'react';
 import { useSpreadsheetStore, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../store/useSpreadsheetStore';
 import { colToLetter, coordsToCell } from '../utils/cellRef';
@@ -8,6 +14,7 @@ export default function SheetTabs() {
   const store = useSpreadsheetStore;
   const workbook = store((s) => s.workbook);
   const selection = store((s) => s.selection);
+  /** 统计信息是否展开 */
   const [statsExpanded, setStatsExpanded] = useState(false);
 
   const minRow = Math.min(selection.startRow, selection.endRow);
@@ -16,7 +23,9 @@ export default function SheetTabs() {
   const maxCol = Math.max(selection.startCol, selection.endCol);
   const isRange = minRow !== maxRow || minCol !== maxCol;
 
+  /** 当前激活工作表 */
   const sheet = workbook.sheets.find((s) => s.id === workbook.activeSheetId);
+  /** 选择区域内的数值集合，用于状态栏统计 */
   const numericValues: number[] = [];
   if (sheet) {
     for (let r = minRow; r <= maxRow; r++) {

@@ -1,3 +1,9 @@
+/**
+ * @file components/FindDialog.tsx
+ * @description 查找/替换对话框组件。
+ *              支持在当前工作表中查找文本、跳转到上一个/下一个匹配项，并替换单元格内容。
+ */
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSpreadsheetStore } from '../store/useSpreadsheetStore';
 import { coordsToCell, cellToCoords } from '../utils/cellRef';

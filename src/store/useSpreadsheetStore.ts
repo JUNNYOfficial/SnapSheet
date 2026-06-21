@@ -1,3 +1,11 @@
+/**
+ * @file store/useSpreadsheetStore.ts
+ * @description 电子表格全局状态管理（基于 Zustand）。
+ *              维护工作簿、工作表、选择区域、编辑状态、滚动位置等核心状态，
+ *              提供单元格读写、行列操作、公式计算、撤销重做、本地存储等完整 API。
+ *              被 Spreadsheet、Toolbar、FormulaBar、SheetTabs 等组件共同使用。
+ */
+
 import { create } from 'zustand';
 import type { Cell, Sheet, Workbook, Selection, CellStyle, NumberFormat, BorderStyle, MergeRange, ConditionalFormat, ValidationRule } from '../types';
 import { DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT, MIN_ROW_HEIGHT, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../utils/constants';
@@ -5,6 +13,7 @@ import { coordsToCell, cellToCoords, colToLetter, letterToCol } from '../utils/c
 import { applyTemplateToSheet } from '../templates';
 import { createDefaultFormulaEngine, CycleError } from '../engine/FormulaEngine';
 
+/** 电子表格全局状态接口 */
 interface SpreadsheetState {
   workbook: Workbook;
   selection: Selection;
@@ -79,6 +88,12 @@ interface SpreadsheetState {
   listSavedWorkbooks: () => { name: string; savedAt?: string }[];
 }
 
+/**
+ * 创建空工作表。
+ * @param name 工作表名称
+ * @param id 工作表唯一标识
+ * @returns 空工作表对象
+ */
 function createSheet(name: string, id: string): Sheet {
   return {
     id,
@@ -93,6 +108,10 @@ function createSheet(name: string, id: string): Sheet {
   };
 }
 
+/**
+ * 创建初始工作簿，默认包含一张名为 Sheet1 的工作表。
+ * @returns 初始工作簿对象
+ */
 function createInitialWorkbook(): Workbook {
   const sheet1 = createSheet('Sheet1', 'sheet-1');
   return {
@@ -102,20 +121,28 @@ function createInitialWorkbook(): Workbook {
 }
 
 export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
+  /** 公式引擎与依赖图状态，懒加载并缓存 */
   const formulaState = {
     engine: null as ReturnType<typeof createDefaultFormulaEngine>['engine'] | null,
     graph: null as ReturnType<typeof createDefaultFormulaEngine>['graph'] | null,
     failed: false,
   };
 
+  /** 工作表快照，用于撤销重做 */
   interface SheetSnapshot {
     cells: Map<string, Cell>;
     colWidths: Map<number, number>;
   }
 
+  /** 撤销历史栈 */
   const history: SheetSnapshot[] = [];
+  /** 重做栈 */
   const redoStack: SheetSnapshot[] = [];
 
+  /**
+   * 对当前工作表生成快照（深拷贝单元格与列宽）。
+   * @returns 工作表快照
+   */
   const snapshotActiveSheet = (): SheetSnapshot => {
     const sheet = get().getActiveSheet();
     const cells = new Map<string, Cell>();
@@ -129,12 +156,20 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     return { cells, colWidths };
   };
 
+  /**
+   * 将当前工作表状态推入撤销栈，并清空重做栈。
+   * 历史记录上限为 100 条。
+   */
   const pushHistory = () => {
     history.push(snapshotActiveSheet());
     while (history.length > 100) history.shift();
     redoStack.length = 0;
   };
 
+  /**
+   * 从快照恢复当前工作表状态。
+   * @param snapshot 工作表快照
+   */
   const restoreFromSnapshot = (snapshot: SheetSnapshot) => {
     const sheet = get().getActiveSheet();
     sheet.cells.clear();
@@ -148,11 +183,21 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     set({ workbook: { ...get().workbook } });
   };
 
+  /**
+   * 从当前工作表读取单元格数据，供公式引擎使用。
+   * @param ref 单元格引用
+   * @returns 单元格数据或 undefined
+   */
   const getCellFromStore = (ref: string): Cell | undefined => {
     const sheet = get().getActiveSheet();
     return sheet.cells.get(ref);
   };
 
+  /**
+   * 将公式计算结果写回单元格，供公式引擎使用。
+   * @param ref 单元格引用
+   * @param value 计算结果或错误字符串
+   */
   const setCellComputedFromStore = (ref: string, value: number | string): void => {
     const state = get();
     const sheet = state.getActiveSheet();
@@ -162,6 +207,11 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     }
   };
 
+  /**
+   * 懒初始化公式引擎。
+   * @param silent 初始化失败时是否不弹窗提示
+   * @returns 公式引擎实例或 null
+   */
   const initEngine = (silent = false) => {
     if (formulaState.failed) return null;
     if (!formulaState.engine) {
@@ -181,6 +231,15 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     return formulaState.engine;
   };
 
+  /**
+   * 在插入/删除行列后，平移公式中的单元格引用。
+   * @param formula 原始公式
+   * @param rowDelta 行偏移量（插入为正，删除为负）
+   * @param colDelta 列偏移量
+   * @param startRow 开始平移的行
+   * @param startCol 开始平移的列
+   * @returns 平移后的公式
+   */
   const shiftFormulaRefs = (formula: string, rowDelta: number, colDelta: number, startRow: number, startCol: number): string => {
     if (!formula.startsWith('=')) return formula;
     return formula.replace(/([A-Z]+)(\d+)(?::([A-Z]+)(\d+))?/g, (match, c1, r1, c2, r2) => {
@@ -195,6 +254,15 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     });
   };
 
+  /**
+   * 移动单元格时同步更新其公式引用并重新计算。
+   * @param cell 原始单元格
+   * @param rowDelta 行偏移量
+   * @param colDelta 列偏移量
+   * @param startRow 开始平移的行
+   * @param startCol 开始平移的列
+   * @returns 更新后的单元格
+   */
   const moveCellRefs = (cell: Cell, rowDelta: number, colDelta: number, startRow: number, startCol: number): Cell => {
     if (!cell.formula) return cell;
     const newFormula = shiftFormulaRefs(cell.formula, rowDelta, colDelta, startRow, startCol);
@@ -209,18 +277,26 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
   };
 
   return {
+    /** 当前工作簿 */
     workbook: createInitialWorkbook(),
+    /** 当前选择区域 */
     selection: { startRow: 0, startCol: 0, endRow: 0, endCol: 0 },
+    /** 当前正在编辑的单元格 */
     editing: null,
+    /** 公式栏当前值 */
     formulaBarValue: '',
+    /** 水平滚动偏移 */
     scrollLeft: 0,
+    /** 垂直滚动偏移 */
     scrollTop: 0,
 
+    /** 获取当前激活的工作表 */
     getActiveSheet: () => {
       const state = get();
       return state.workbook.sheets.find((s) => s.id === state.workbook.activeSheetId) || state.workbook.sheets[0];
     },
 
+    /** 切换激活工作表 */
     setActiveSheet: (id: string) => {
       set((state) => ({
         workbook: { ...state.workbook, activeSheetId: id },
@@ -229,6 +305,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       }));
     },
 
+    /** 新增工作表并切换为激活状态 */
     addSheet: () => {
       set((state) => {
         const idx = state.workbook.sheets.length + 1;
@@ -244,6 +321,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       });
     },
 
+    /** 删除指定工作表，至少保留一张工作表 */
     deleteSheet: (id: string) => {
       set((state) => {
         if (state.workbook.sheets.length <= 1) return state;
@@ -259,6 +337,13 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       });
     },
 
+    /**
+     * 设置单个单元格的值。
+     * 公式值会触发公式引擎计算并级联重算依赖单元格。
+     * @param row 行索引
+     * @param col 列索引
+     * @param value 单元格值（公式以 = 开头）
+     */
     setCellValue: (row: number, col: number, value: string) => {
       if (row < 0 || row >= SHEET_ROW_COUNT || col < 0 || col >= SHEET_COL_COUNT) return;
       const isFormula = value.startsWith('=');
@@ -308,6 +393,11 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 批量设置多个单元格的值。
+     * 适合 CSV/Excel 导入等场景，会统一触发公式重算。
+     * @param cells 单元格数据数组
+     */
     setCellsBulk: (cells: { row: number; col: number; value: string }[]) => {
       if (cells.length === 0) return;
       pushHistory();
@@ -358,6 +448,10 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 提交当前编辑单元格的值，并进行数据验证。
+     * @param value 用户输入值
+     */
     commitEdit: (value: string) => {
       const state = get();
       if (!state.editing) return;
@@ -377,6 +471,12 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ editing: null, formulaBarValue: '' });
     },
 
+    /**
+     * 设置单个单元格的完整样式。
+     * @param row 行索引
+     * @param col 列索引
+     * @param style 单元格样式
+     */
     setCellStyle: (row: number, col: number, style: CellStyle) => {
       if (row < 0 || row >= SHEET_ROW_COUNT || col < 0 || col >= SHEET_COL_COUNT) return;
       const sheet = get().getActiveSheet();
@@ -393,6 +493,10 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 将样式应用到当前选择区域的所有单元格。
+     * @param style 部分样式属性
+     */
     applyStyleToSelection: (style: Partial<CellStyle>) => {
       const state = get();
       const sel = state.selection;
@@ -423,6 +527,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /** 清除当前选择区域的所有单元格样式 */
     clearFormatSelection: () => {
       const state = get();
       const sel = state.selection;
@@ -449,6 +554,10 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 设置当前选择区域，并自动限制在工作表边界内。
+     * @param selection 选择区域
+     */
     setSelection: (selection: Selection) => {
       const clamped = {
         startRow: Math.max(0, Math.min(SHEET_ROW_COUNT - 1, selection.startRow)),
@@ -459,6 +568,11 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ selection: clamped });
     },
 
+    /**
+     * 设置当前正在编辑的单元格。
+     * @param row 行索引
+     * @param col 列索引，传 null 表示退出编辑
+     */
     setEditing: (row: number, col: number | null) => {
       if (col === null) {
         set({ editing: null });
@@ -472,14 +586,21 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ editing: { row, col }, formulaBarValue: value });
     },
 
+    /** 设置公式栏显示值 */
     setFormulaBarValue: (value: string) => {
       set({ formulaBarValue: value });
     },
 
+    /** 设置滚动偏移 */
     setScroll: (scrollLeft: number, scrollTop: number) => {
       set({ scrollLeft, scrollTop });
     },
 
+    /**
+     * 设置列宽。
+     * @param col 列索引
+     * @param width 宽度（px）
+     */
     setColWidth: (col: number, width: number) => {
       if (col < 0 || col >= SHEET_COL_COUNT) return;
       const sheet = get().getActiveSheet();
@@ -490,6 +611,11 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 设置行高。
+     * @param row 行索引
+     * @param height 高度（px）
+     */
     setRowHeight: (row: number, height: number) => {
       if (row < 0 || row >= SHEET_ROW_COUNT) return;
       const sheet = get().getActiveSheet();
@@ -500,16 +626,19 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /** 获取列宽，未设置时返回默认值 */
     getColWidth: (col: number) => {
       const sheet = get().getActiveSheet();
       return sheet.colWidths.get(col) || DEFAULT_COL_WIDTH;
     },
 
+    /** 获取行高，未设置时返回默认值 */
     getRowHeight: (row: number) => {
       const sheet = get().getActiveSheet();
       return sheet.rowHeights.get(row) || DEFAULT_ROW_HEIGHT;
     },
 
+    /** 设置冻结行数 */
     setFrozenRows: (rows: number) => {
       const sheet = get().getActiveSheet();
       const value = Math.max(0, Math.min(rows, SHEET_ROW_COUNT));
@@ -519,6 +648,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /** 设置冻结列数 */
     setFrozenCols: (cols: number) => {
       const sheet = get().getActiveSheet();
       const value = Math.max(0, Math.min(cols, SHEET_COL_COUNT));
@@ -528,6 +658,10 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 在指定行前插入新行，并平移后续单元格与公式引用。
+     * @param row 插入位置的行索引
+     */
     insertRow: (row: number) => {
       if (row < 0 || row >= SHEET_ROW_COUNT) return;
       pushHistory();
@@ -563,6 +697,10 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 删除指定行，并平移后续单元格与公式引用。
+     * @param row 要删除的行索引
+     */
     deleteRow: (row: number) => {
       if (row < 0 || row >= SHEET_ROW_COUNT) return;
       pushHistory();
@@ -603,6 +741,10 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 在指定列前插入新列，并平移后续单元格与公式引用。
+     * @param col 插入位置的列索引
+     */
     insertCol: (col: number) => {
       if (col < 0 || col >= SHEET_COL_COUNT) return;
       pushHistory();
@@ -638,6 +780,10 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 删除指定列，并平移后续单元格与公式引用。
+     * @param col 要删除的列索引
+     */
     deleteCol: (col: number) => {
       if (col < 0 || col >= SHEET_COL_COUNT) return;
       pushHistory();
@@ -678,6 +824,11 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 按源区域向目标区域填充数据。
+     * @param source 源区域
+     * @param target 目标区域
+     */
     fillRange: (source, target) => {
       const sHeight = source.endRow - source.startRow + 1;
       const sWidth = source.endCol - source.startCol + 1;
@@ -762,6 +913,11 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 按指定列对选择区域或整表排序。
+     * @param col 排序依据列索引
+     * @param direction 升序/降序
+     */
     sortByColumn: (col: number, direction: 'asc' | 'desc') => {
       if (col < 0 || col >= SHEET_COL_COUNT) return;
       const state = get();
@@ -831,6 +987,10 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 对选择区域应用或清除数字格式。
+     * @param format 数字格式配置，null 表示清除
+     */
     applyNumberFormat: (format: Partial<NumberFormat> | null) => {
       const state = get();
       const sel = state.selection;
@@ -869,6 +1029,11 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 对选择区域应用边框样式。
+     * @param side 边框位置：top/bottom/left/right/all/none
+     * @param style 边框样式
+     */
     applyBorderSelection: (side, style = { style: 'thin', color: '#262626' }) => {
       const state = get();
       const sel = state.selection;
@@ -935,6 +1100,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /** 合并当前选择区域的单元格 */
     mergeCells: () => {
       const state = get();
       const sel = state.selection;
@@ -965,6 +1131,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /** 拆分当前选择区域中的合并单元格 */
     unmergeCells: () => {
       const state = get();
       const sel = state.selection;
@@ -978,6 +1145,12 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 获取指定单元格所在的合并范围。
+     * @param row 行索引
+     * @param col 列索引
+     * @returns 合并范围或 null
+     */
     getMergedRange: (row: number, col: number) => {
       const sheet = get().getActiveSheet();
       for (const range of sheet.mergedCells.values()) {
@@ -988,10 +1161,12 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       return null;
     },
 
+    /** 判断指定单元格是否处于合并范围内 */
     isCellMerged: (row: number, col: number) => {
       return get().getMergedRange(row, col) !== null;
     },
 
+    /** 添加条件格式规则 */
     addConditionalFormat: (format: ConditionalFormat) => {
       const sheet = get().getActiveSheet();
       sheet.conditionalFormats.push(format);
@@ -999,6 +1174,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /** 清除当前工作表的所有条件格式 */
     clearConditionalFormats: () => {
       const sheet = get().getActiveSheet();
       if (sheet.conditionalFormats.length === 0) return;
@@ -1007,6 +1183,12 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 设置单元格批注。
+     * @param row 行索引
+     * @param col 列索引
+     * @param comment 批注内容
+     */
     setCellComment: (row: number, col: number, comment: string) => {
       if (row < 0 || row >= SHEET_ROW_COUNT || col < 0 || col >= SHEET_COL_COUNT) return;
       const sheet = get().getActiveSheet();
@@ -1022,6 +1204,11 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 删除单元格批注。
+     * @param row 行索引
+     * @param col 列索引
+     */
     deleteCellComment: (row: number, col: number) => {
       if (row < 0 || row >= SHEET_ROW_COUNT || col < 0 || col >= SHEET_COL_COUNT) return;
       const sheet = get().getActiveSheet();
@@ -1033,6 +1220,12 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 设置单元格数据验证规则。
+     * @param row 行索引
+     * @param col 列索引
+     * @param rule 验证规则
+     */
     setCellValidation: (row: number, col: number, rule: ValidationRule) => {
       if (row < 0 || row >= SHEET_ROW_COUNT || col < 0 || col >= SHEET_COL_COUNT) return;
       const sheet = get().getActiveSheet();
@@ -1047,6 +1240,11 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 清除单元格数据验证规则。
+     * @param row 行索引
+     * @param col 列索引
+     */
     clearCellValidation: (row: number, col: number) => {
       if (row < 0 || row >= SHEET_ROW_COUNT || col < 0 || col >= SHEET_COL_COUNT) return;
       const sheet = get().getActiveSheet();
@@ -1058,6 +1256,12 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /**
+     * 根据验证规则校验输入值。
+     * @param value 输入值
+     * @param rule 验证规则
+     * @returns true 表示通过，否则返回错误提示
+     */
     validateCellValue: (value: string, rule?: ValidationRule) => {
       if (!rule) return true;
       if (value === '' && rule.allowBlank !== false) return true;
@@ -1118,6 +1322,10 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       return true;
     },
 
+    /**
+     * 应用预设模板到当前工作表。
+     * @param templateId 模板标识
+     */
     applyTemplate: (templateId: string) => {
       const sheet = get().getActiveSheet();
       applyTemplateToSheet(sheet, templateId);
@@ -1128,6 +1336,12 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       });
     },
 
+    /**
+     * 从制表符分隔文本粘贴单元格数据。
+     * @param text 粘贴文本
+     * @param startRow 起始行
+     * @param startCol 起始列
+     */
     pasteCells: (text: string, startRow: number, startCol: number) => {
       if (startRow < 0 || startCol < 0 || startRow >= SHEET_ROW_COUNT || startCol >= SHEET_COL_COUNT) return;
       const rows = text.split(/\r?\n/).filter((r) => r.length > 0).map((r) => r.split('\t'));
@@ -1156,6 +1370,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /** 复制当前选择区域为制表符分隔文本 */
     copySelection: () => {
       const state = get();
       const sel = state.selection;
@@ -1183,6 +1398,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       return lines.join('\n');
     },
 
+    /** 清空当前选择区域的单元格内容 */
     clearSelection: () => {
       const state = get();
       const sel = state.selection;
@@ -1215,6 +1431,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ workbook: { ...get().workbook } });
     },
 
+    /** 撤销上一次操作 */
     undo: () => {
       if (history.length === 0) return;
       const current = snapshotActiveSheet();
@@ -1223,6 +1440,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       restoreFromSnapshot(previous);
     },
 
+    /** 重做上一次撤销的操作 */
     redo: () => {
       if (redoStack.length === 0) return;
       const current = snapshotActiveSheet();
@@ -1231,9 +1449,15 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       restoreFromSnapshot(next);
     },
 
+    /** 是否可以撤销 */
     canUndo: () => history.length > 0,
+    /** 是否可以重做 */
     canRedo: () => redoStack.length > 0,
 
+    /**
+     * 加载外部工作簿数据。
+     * @param workbook 工作簿对象
+     */
     loadWorkbook: (workbook: Workbook) => {
       set({
         workbook,
@@ -1243,6 +1467,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       });
     },
 
+    /** 创建新工作簿 */
     newWorkbook: () => {
       set({
         workbook: createInitialWorkbook(),
@@ -1252,6 +1477,10 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       });
     },
 
+    /**
+     * 将工作簿保存到 localStorage。
+     * @param filename 保存名称
+     */
     saveWorkbook: (filename: string = 'snapsheet') => {
       const state = get();
       const data = JSON.stringify(state.workbook);
@@ -1259,6 +1488,10 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       return true;
     },
 
+    /**
+     * 从 localStorage 加载工作簿。
+     * @param filename 保存名称
+     */
     loadFromStorage: (filename: string = 'snapsheet') => {
       const data = localStorage.getItem(filename);
       if (data) {
@@ -1278,6 +1511,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       return false;
     },
 
+    /** 列出 localStorage 中保存的工作簿列表 */
     listSavedWorkbooks: () => {
       const keys = Object.keys(localStorage);
       const workbooks: { name: string; savedAt?: string }[] = [];

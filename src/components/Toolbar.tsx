@@ -1,3 +1,10 @@
+/**
+ * @file components/Toolbar.tsx
+ * @description 顶部工具栏组件。
+ *              提供文件导入导出、样式设置、行列操作、撤销重做、主题切换等功能按钮，
+ *              通过 Ribbon 标签页组织各类操作入口。
+ */
+
 import { useRef, useState } from 'react';
 import { useSpreadsheetStore } from '../store/useSpreadsheetStore';
 import { toCSV, parseCSV } from '../utils/csv';
@@ -33,6 +40,7 @@ interface ToolbarButtonProps {
   variant?: 'icon' | 'both';
 }
 
+/** 单个工具栏按钮，支持图标/图文两种展示形式与悬停提示 */
 function ToolbarButton({ onClick, icon, label, title, shortcut, disabled, active, variant = 'icon' }: ToolbarButtonProps) {
   return (
     <div className="relative group inline-flex">
@@ -62,6 +70,7 @@ function ToolbarButton({ onClick, icon, label, title, shortcut, disabled, active
   );
 }
 
+/** 工具栏按钮分组容器，显示分组标题 */
 function ToolbarGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-1 px-2 py-1">
@@ -73,6 +82,7 @@ function ToolbarGroup({ title, children }: { title: string; children: React.Reac
   );
 }
 
+/** 工具栏垂直分隔线 */
 function ToolbarDivider() {
   return <div className="mx-1 h-8 w-px rounded-full" style={{ background: 'var(--ss-border)' }} />;
 }
@@ -80,25 +90,33 @@ function ToolbarDivider() {
 export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }: ToolbarProps) {
   const store = useSpreadsheetStore;
   const selection = useSpreadsheetStore((s) => s.selection);
+  /** CSV 文件输入引用 */
   const fileInputRef = useRef<HTMLInputElement>(null);
+  /** JSON 文件输入引用 */
   const jsonInputRef = useRef<HTMLInputElement>(null);
+  /** Excel 文件输入引用 */
   const excelInputRef = useRef<HTMLInputElement>(null);
+  /** 当前 Ribbon 标签页 */
   const [activeTab, setActiveTab] = useState<RibbonTab>('home');
+  /** 工具栏是否折叠 */
   const [collapsed, setCollapsed] = useState(false);
   const canUndo = store.getState().canUndo();
   const canRedo = store.getState().canRedo();
 
+  /** 导出当前工作表为 CSV 文件 */
   const handleExportCSV = () => {
     const sheet = store.getState().getActiveSheet();
     const csv = toCSV(sheet.cells, sheet.colWidths);
     if (csv) downloadFile(csv, sheet.name + '.csv', 'text/csv;charset=utf-8');
   };
 
+  /** 导出整个工作簿为 JSON 文件 */
   const handleExportJSON = () => {
     const json = workbookToJSON(store.getState().workbook);
     downloadFile(json, 'workbook.json', 'application/json;charset=utf-8');
   };
 
+  /** 从 CSV 文件导入数据到当前工作表 */
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -165,8 +183,10 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
     if (jsonInputRef.current) jsonInputRef.current.value = '';
   };
 
+  /** 导出整个工作簿为 Excel 文件 */
   const handleExportExcel = () => exportToExcel(store.getState().workbook, 'snapsheet.xlsx');
 
+  /** 从 Excel 文件导入数据（取第一个工作表） */
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -207,6 +227,10 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
     if (excelInputRef.current) excelInputRef.current.value = '';
   };
 
+  /**
+   * 获取选择区域中首个存在单元格的指定样式值，用于判断工具栏按钮激活状态。
+   * @param key 样式属性名
+   */
   const getFirstCellStyle = (key: keyof NonNullable<import('../types').Cell['style']>) => {
     const sel = store.getState().selection;
     const sheet = store.getState().getActiveSheet();
@@ -219,14 +243,22 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
     return false;
   };
 
+  /** 加粗开关 */
   const handleBold = () => store.getState().applyStyleToSelection({ bold: !getFirstCellStyle('bold') });
+  /** 斜体开关 */
   const handleItalic = () => store.getState().applyStyleToSelection({ italic: !getFirstCellStyle('italic') });
+  /** 下划线开关 */
   const handleUnderline = () => store.getState().applyStyleToSelection({ underline: !getFirstCellStyle('underline') });
+  /** 左对齐 */
   const handleAlignLeft = () => store.getState().applyStyleToSelection({ align: 'left' });
+  /** 居中对齐 */
   const handleAlignCenter = () => store.getState().applyStyleToSelection({ align: 'center' });
+  /** 右对齐 */
   const handleAlignRight = () => store.getState().applyStyleToSelection({ align: 'right' });
+  /** 清空选择区域内容 */
   const handleClear = () => store.getState().clearSelection();
 
+  /** Ribbon 标签页配置 */
   const tabs: { id: RibbonTab; label: string; icon: React.ReactNode }[] = [
     { id: 'file', label: '文件', icon: <FileText size={14} /> },
     { id: 'home', label: '开始', icon: <Home size={14} /> },
@@ -234,6 +266,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
     { id: 'view', label: '视图', icon: <Eye size={14} /> },
   ];
 
+  /** 右侧公共控制区：属性面板与主题切换 */
   const CommonControls = () => (
     <div className="flex items-center gap-1">
       <ToolbarButton onClick={onTogglePanel!} icon={<PanelRight size={16} />} title="属性面板" />

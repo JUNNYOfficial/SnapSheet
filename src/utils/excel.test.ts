@@ -1,3 +1,9 @@
+/**
+ * @file utils/excel.test.ts
+ * @description Excel 导入导出工具的单元测试。
+ *              覆盖工作簿导出为 Buffer、从文件导入并还原单元格数据等场景。
+ */
+
 import { describe, it, expect } from 'vitest';
 import * as XLSX from 'xlsx';
 import { exportToExcelBuffer, importFromExcel } from './excel';

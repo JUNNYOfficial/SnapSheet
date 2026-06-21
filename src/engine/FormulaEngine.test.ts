@@ -1,3 +1,9 @@
+/**
+ * @file engine/FormulaEngine.test.ts
+ * @description 公式引擎的单元测试。
+ *              覆盖依赖图维护、循环引用检测、公式求值与级联重算等核心能力。
+ */
+
 import { describe, it, expect } from 'vitest';
 import { DependencyGraph, CycleError, createDefaultFormulaEngine } from './FormulaEngine';
 import type { Cell } from '../types';

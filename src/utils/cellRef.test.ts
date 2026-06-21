@@ -1,3 +1,9 @@
+/**
+ * @file utils/cellRef.test.ts
+ * @description 单元格引用转换函数的单元测试。
+ *              覆盖坐标与 A1 引用互转、列字母与索引互转等核心场景。
+ */
+
 import { describe, it, expect } from 'vitest';
 import { coordsToCell, cellToCoords, colToLetter, letterToCol } from './cellRef';
 

@@ -1,3 +1,9 @@
+/**
+ * @file store/useSpreadsheetStore.test.ts
+ * @description 全局状态管理 store 的单元测试。
+ *              覆盖单元格读写、批量设置、公式计算、撤销重做、行列操作等场景。
+ */
+
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useSpreadsheetStore } from './useSpreadsheetStore';
 

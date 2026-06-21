@@ -1,14 +1,27 @@
+/**
+ * @file utils/excel.ts
+ * @description Excel 导入导出工具（基于 sheetjs/xlsx）。
+ *              提供工作簿/工作表导出为 .xlsx 文件、从 .xlsx 文件导入单元格数据、
+ *              以及浏览器下载触发等功能。
+ *              被 Toolbar 组件在导入/导出 Excel 时调用。
+ */
+
 import * as XLSX from 'xlsx';
 import type { Workbook, Sheet } from '../types';
 import { coordsToCell, cellToCoords } from './cellRef';
 
+/**
+ * 将内存中的 Workbook 构建为 xlsx 内部 WorkBook 对象。
+ * @param workbook SnapSheet 工作簿
+ * @returns xlsx 库使用的 WorkBook
+ */
 function buildXLSXWorkbook(workbook: Workbook): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
 
   workbook.sheets.forEach((sheet) => {
     const data: (string | number | null)[][] = [];
 
-    // 找到数据的边界
+    // 计算数据边界，避免导出全量空单元格
     let maxRow = 0;
     let maxCol = 0;
     sheet.cells.forEach((_, key) => {
@@ -24,7 +37,7 @@ function buildXLSXWorkbook(workbook: Workbook): XLSX.WorkBook {
         const ref = coordsToCell(r, c);
         const cell = sheet.cells.get(ref);
         if (cell) {
-          // 如果有计算值，使用计算值
+          // 优先使用公式计算结果，否则回退到原始值
           if (cell.computed !== undefined && cell.computed !== null) {
             rowData.push(cell.computed as string | number);
           } else if (cell.value !== undefined && cell.value !== null) {
@@ -39,7 +52,7 @@ function buildXLSXWorkbook(workbook: Workbook): XLSX.WorkBook {
       data.push(rowData);
     }
 
-    // 如果没有数据，创建一个空行
+    // 如果没有数据，创建一个空行避免 xlsx 报错
     if (data.length === 0) {
       data.push([]);
     }
@@ -51,11 +64,21 @@ function buildXLSXWorkbook(workbook: Workbook): XLSX.WorkBook {
   return wb;
 }
 
+/**
+ * 将 Workbook 导出为 Excel 二进制数据（ArrayBuffer 或 Uint8Array）。
+ * @param workbook 工作簿对象
+ * @returns .xlsx 文件二进制数据
+ */
 export function exportToExcelBuffer(workbook: Workbook): ArrayBuffer | Uint8Array {
   const wb = buildXLSXWorkbook(workbook);
   return XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: false });
 }
 
+/**
+ * 将 Workbook 导出为 Excel 文件并触发浏览器下载。
+ * @param workbook 工作簿对象
+ * @param filename 下载文件名，默认 'snapsheet.xlsx'
+ */
 export function exportToExcel(workbook: Workbook, filename: string = 'snapsheet.xlsx'): void {
   const wbout = exportToExcelBuffer(workbook);
   const bytes = wbout instanceof ArrayBuffer ? new Uint8Array(wbout) : wbout;
@@ -70,8 +93,14 @@ export function exportToExcel(workbook: Workbook, filename: string = 'snapsheet.
   URL.revokeObjectURL(url);
 }
 
+/** Excel 导入后的单元格数据结构 */
 export type ImportedCell = { row: number; col: number; value: string | null; formula?: string };
 
+/**
+ * 读取二进制或字符串形式的 Excel 数据为 xlsx WorkBook。
+ * @param data ArrayBuffer、字符串等 Excel 数据
+ * @returns xlsx WorkBook
+ */
 function readExcelData(data: ArrayBuffer | string): XLSX.WorkBook {
   if (typeof data === 'string') {
     return XLSX.read(data, { type: 'binary', cellDates: true, cellNF: true });
@@ -79,6 +108,11 @@ function readExcelData(data: ArrayBuffer | string): XLSX.WorkBook {
   return XLSX.read(data, { type: 'array', cellDates: true, cellNF: true });
 }
 
+/**
+ * 从 Excel 文件导入单元格数据。
+ * @param file File 对象、ArrayBuffer 或 Uint8Array
+ * @returns 包含所有工作表数据的对象
+ */
 export function importFromExcel(file: File | ArrayBuffer | Uint8Array): Promise<{
   name: string;
   sheets: {
@@ -178,17 +212,22 @@ export function importFromExcel(file: File | ArrayBuffer | Uint8Array): Promise<
   });
 }
 
+/**
+ * 将单个工作表导出为 Excel 文件并触发浏览器下载。
+ * @param sheet 工作表对象
+ * @param filename 下载文件名，默认 'sheet.xlsx'
+ */
 export function exportSheetToExcel(
   sheet: Sheet,
   filename: string = 'sheet.xlsx'
 ): void {
   const data: (string | number | null)[][] = [];
 
-  // 找到数据的边界
+  // 计算数据边界
   let maxRow = 0;
   let maxCol = 0;
   sheet.cells.forEach((_, key) => {
-    const [row, col] = key.split(':').map(Number);
+    const { row, col } = cellToCoords(key);
     if (row > maxRow) maxRow = row;
     if (col > maxCol) maxCol = col;
   });

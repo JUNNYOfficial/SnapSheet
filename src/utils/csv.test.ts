@@ -1,3 +1,9 @@
+/**
+ * @file utils/csv.test.ts
+ * @description CSV 解析与导出工具的单元测试。
+ *              覆盖简单行、带引号字段、转义引号、CRLF 行尾、空行过滤等场景。
+ */
+
 import { describe, it, expect } from 'vitest';
 import { parseCSV, toCSV } from './csv';
 

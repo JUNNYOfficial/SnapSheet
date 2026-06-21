@@ -1,5 +1,19 @@
+/**
+ * @file utils/format.ts
+ * @description 单元格值格式化工具。
+ *              根据 NumberFormat 配置将原始字符串渲染为数字、百分比、
+ *              货币、日期、时间或自定义格式。支持 Excel 日期序列号解析。
+ *              被 CanvasRenderer 在渲染单元格时调用。
+ */
+
 import type { NumberFormat } from '../types';
 
+/**
+ * 将原始值按指定格式转换为显示字符串。
+ * @param value 单元格原始字符串值
+ * @param format 数字/日期格式配置，undefined 或 'general' 时原样返回
+ * @returns 格式化后的字符串
+ */
 export function formatNumber(value: string, format: NumberFormat | undefined): string {
   if (!format || format.type === 'general') return value;
 
@@ -41,6 +55,12 @@ export function formatNumber(value: string, format: NumberFormat | undefined): s
   return value;
 }
 
+/**
+ * 尝试将字符串解析为 Date。
+ * 优先解析 ISO/标准日期字符串，其次按 Excel 日期序列号（1900 纪元）解析。
+ * @param value 原始字符串
+ * @returns 解析成功的 Date，否则返回 null
+ */
 function parseDate(value: string): Date | null {
   if (!value) return null;
   // 优先尝试标准日期字符串解析
@@ -57,10 +77,17 @@ function parseDate(value: string): Date | null {
   return null;
 }
 
+/**
+ * 应用自定义格式模板。
+ * 数字按数字占位符处理，非数字则尝试按日期模板处理。
+ * @param value 原始字符串值
+ * @param pattern 自定义模板，如 '0.00%'、'yyyy-MM-dd'
+ * @returns 格式化结果
+ */
 function applyCustomFormat(value: string, pattern: string): string {
   const num = parseFloat(value);
   if (isNaN(num)) {
-    // If not a number, try date formatting
+    // 非数字时尝试日期格式化
     const date = parseDate(value);
     if (date) return formatDatePattern(date, pattern);
     return value;
@@ -68,6 +95,13 @@ function applyCustomFormat(value: string, pattern: string): string {
   return formatNumberPattern(num, pattern);
 }
 
+/**
+ * 根据数字格式模板格式化数字。
+ * 支持百分比、正负零分支、千位分隔符及小数位。
+ * @param num 数字值
+ * @param pattern 模板字符串
+ * @returns 格式化后的字符串
+ */
 function formatNumberPattern(num: number, pattern: string): string {
   // Simple number format: 0, #, ., ,, %
   // Detect percentage
@@ -85,6 +119,12 @@ function formatNumberPattern(num: number, pattern: string): string {
   return applyNumericPattern(workingNum, positivePattern);
 }
 
+/**
+ * 将单个数字按模板中的占位符（0/#）进行格式化。
+ * @param num 数字值
+ * @param pattern 单分支模板
+ * @returns 格式化后的字符串
+ */
 function applyNumericPattern(num: number, pattern: string): string {
   // Remove color sections [Red] etc.
   pattern = pattern.replace(/\[[^\]]+\]/g, '');
@@ -133,6 +173,13 @@ function applyNumericPattern(num: number, pattern: string): string {
   return result;
 }
 
+/**
+ * 将 Date 按日期/时间模板格式化。
+ * 支持的占位符：yyyy, yy, MM, M, dd, d, HH, H, hh, h, mm, ss, AM/PM。
+ * @param date 日期对象
+ * @param pattern 模板字符串
+ * @returns 格式化后的日期/时间字符串
+ */
 function formatDatePattern(date: Date, pattern: string): string {
   const y = date.getFullYear();
   const m = date.getMonth() + 1;

@@ -1,3 +1,10 @@
+/**
+ * @file components/Spreadsheet.tsx
+ * @description 电子表格主组件。
+ *              负责挂载 Canvas 渲染器、绑定编辑输入框、处理滚动/主题/选择变化，
+ *              并作为 CanvasRenderer 与全局状态之间的桥接层。
+ */
+
 import { useEffect, useRef, useState } from 'react';
 import { CanvasRenderer } from '../canvas/CanvasRenderer';
 import { useSpreadsheetStore, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../store/useSpreadsheetStore';
@@ -14,8 +21,11 @@ interface SpreadsheetProps {
 }
 
 export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
+  /** Canvas DOM 引用 */
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  /** 单元格编辑输入框引用 */
   const editInputRef = useRef<HTMLInputElement>(null);
+  /** CanvasRenderer 实例引用 */
   const rendererRef = useRef<CanvasRenderer | null>(null);
 
   const store = useSpreadsheetStore;
@@ -25,8 +35,13 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
   const scrollLeft = store((s) => s.scrollLeft);
   const scrollTop = store((s) => s.scrollTop);
   const workbook = store((s) => s.workbook);
+  /** 右键菜单位置状态，null 表示未打开 */
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
+  /**
+   * 初始化 CanvasRenderer，并绑定单元格读取、选择、编辑、粘贴、滚动等回调。
+   * 只在组件挂载时执行一次。
+   */
   useEffect(() => {
     if (!canvasRef.current) return;
 
@@ -90,6 +105,7 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** 滚动变化时通知渲染器重绘 */
   useEffect(() => {
     if (rendererRef.current) {
       rendererRef.current.setScroll(scrollLeft, scrollTop);
@@ -97,6 +113,7 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
     }
   }, [scrollLeft, scrollTop]);
 
+  /** 选择区域变化时通知渲染器重绘 */
   useEffect(() => {
     if (rendererRef.current) {
       rendererRef.current.setSelection(selection);
@@ -104,6 +121,7 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
     }
   }, [selection]);
 
+  /** 进入编辑状态时聚焦并全选输入框内容 */
   useEffect(() => {
     if (editing && editInputRef.current) {
       setTimeout(() => {
@@ -113,6 +131,7 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
     }
   }, [editing]);
 
+  /** 主题切换时通知渲染器更新 */
   useEffect(() => {
     if (rendererRef.current) {
       rendererRef.current.setTheme(isDark);
@@ -120,6 +139,7 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
     }
   }, [isDark]);
 
+  /** 激活工作表变化时同步冻结窗格配置 */
   useEffect(() => {
     if (rendererRef.current) {
       const sheet = store.getState().getActiveSheet();
@@ -128,12 +148,17 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
     }
   }, [workbook.activeSheetId, store]);
 
+  /** 获取当前编辑单元格的数据 */
   const getEditCell = () => {
     if (!editing) return undefined;
     const sheet = store.getState().getActiveSheet();
     return sheet.cells.get(coordsToCell(editing.row, editing.col));
   };
 
+  /**
+   * 计算编辑输入框在 Canvas 上的绝对定位样式。
+   * 基于行高、列宽与滚动偏移定位到对应单元格位置。
+   */
   const getEditInputStyle = () => {
     if (!editing) return {};
     const colWidths: number[] = [];
@@ -156,6 +181,7 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
     };
   };
 
+  /** 从系统剪贴板读取文本并粘贴到当前选择区域 */
   const handlePaste = async () => {
     const text = await navigator.clipboard.readText();
     const sel = store.getState().selection;

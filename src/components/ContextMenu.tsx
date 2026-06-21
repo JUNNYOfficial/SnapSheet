@@ -1,3 +1,9 @@
+/**
+ * @file components/ContextMenu.tsx
+ * @description 右键上下文菜单组件。
+ *              提供复制、粘贴、清除、清除格式、插入/删除行列等快捷操作。
+ */
+
 interface ContextMenuProps {
   x: number;
   y: number;
