@@ -276,7 +276,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
 
   if (collapsed) {
     return (
-      <div className="flex items-center border-b px-2 py-1.5" style={{ borderColor: 'var(--ss-border)', background: 'var(--ss-toolbar-bg)' }}>
+      <div className="ss-vibrancy flex items-center border-b px-2 py-1.5" style={{ borderColor: 'var(--ss-border)' }}>
         <ToolbarButton onClick={() => setCollapsed(false)} icon={<ChevronRight size={16} />} title="展开工具栏" />
         <div className="ml-2 flex items-center gap-1">
           <ToolbarButton onClick={() => store.getState().undo()} icon={<Undo2 size={16} />} title="撤销" shortcut="Ctrl+Z" disabled={!canUndo} />
@@ -290,7 +290,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   }
 
   return (
-    <div className="flex flex-col border-b" style={{ borderColor: 'var(--ss-border)', background: 'var(--ss-toolbar-bg)' }}>
+    <div className="ss-vibrancy flex flex-col border-b" style={{ borderColor: 'var(--ss-border)' }}>
       <div className="flex items-center px-2 pt-1">
         <ToolbarButton onClick={() => setCollapsed(true)} icon={<ChevronLeft size={14} />} title="折叠工具栏" />
         <div className="flex items-center gap-0.5 ml-1">

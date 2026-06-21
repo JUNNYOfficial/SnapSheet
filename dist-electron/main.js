@@ -57,6 +57,11 @@ function createWindow() {
         minHeight: 600,
         title: 'SnapSheet',
         icon: path.join(process.env.VITE_PUBLIC ?? __dirname, 'icon.png'),
+        titleBarStyle: 'hiddenInset',
+        transparent: true,
+        vibrancy: 'under-window',
+        backgroundMaterial: 'acrylic',
+        backgroundColor: '#00000000',
         webPreferences: {
             preload: path.join(__dirname, 'preload.cjs'),
             contextIsolation: true,

@@ -149,10 +149,9 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
         onClick={onClose}
       />
       <div
-        className="fixed top-0 right-0 bottom-0 w-full sm:w-80 md:w-72 border-l z-50 flex flex-col shadow-xl"
+        className="ss-vibrancy-strong fixed top-0 right-0 bottom-0 w-full sm:w-80 md:w-72 border-l z-50 flex flex-col shadow-xl"
         style={{
           borderColor: 'var(--ss-border)',
-          background: 'var(--ss-toolbar-bg)',
           transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}

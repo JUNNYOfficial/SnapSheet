@@ -43,7 +43,7 @@ export default function SheetTabs() {
   const min = numericValues.length > 0 ? Math.min(...numericValues) : null;
 
   return (
-    <div className="flex flex-col border-t" style={{ borderColor: 'var(--ss-border)', background: 'var(--ss-toolbar-bg)' }}>
+    <div className="ss-vibrancy flex flex-col border-t" style={{ borderColor: 'var(--ss-border)' }}>
       {/* 状态栏 */}
       <div className="flex items-center justify-between px-3 py-1 text-xs" style={{ fontFamily: FONT_FAMILY_MONO, color: 'var(--ss-text-secondary)', borderBottom: '1px solid var(--ss-border-light)' }}>
         <div className="flex items-center gap-3 overflow-hidden">

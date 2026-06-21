@@ -144,7 +144,40 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
   font-weight: 400;
   color: var(--ss-text-primary);
-  background: var(--ss-bg);
+  background: transparent;
+}
+
+/* macOS 毛玻璃工具类 */
+.ss-vibrancy {
+  background: color-mix(in srgb, var(--ss-toolbar-bg) 72%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.dark .ss-vibrancy {
+  background: color-mix(in srgb, var(--ss-toolbar-bg) 60%, transparent);
+}
+
+.ss-vibrancy-strong {
+  background: color-mix(in srgb, var(--ss-toolbar-bg) 85%, transparent);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+.dark .ss-vibrancy-strong {
+  background: color-mix(in srgb, var(--ss-toolbar-bg) 72%, transparent);
+}
+
+/* 可拖动区域 */
+.ss-drag-region {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+/* 不可拖动元素 */
+.ss-no-drag {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 * {

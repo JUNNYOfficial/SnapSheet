@@ -24,37 +24,11 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 
 let win: BrowserWindow | null = null;
 
-// #region debug-point A:main-init
-function debugLog(hypothesisId: string, msg: string, data?: unknown) {
-  try {
-    const envPath = path.join(process.env.APP_ROOT ?? __dirname, '.dbg', 'electron-white-screen.env');
-    let url = 'http://127.0.0.1:7777/event';
-    let sessionId = 'electron-white-screen';
-    if (fs.existsSync(envPath)) {
-      const env = fs.readFileSync(envPath, 'utf-8');
-      const u = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1];
-      const s = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1];
-      if (u) url = u.trim();
-      if (s) sessionId = s.trim();
-    }
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, runId: 'pre', hypothesisId, location: 'electron/main.ts', msg: `[DEBUG] ${msg}`, data, ts: Date.now() }),
-    }).catch(() => {});
-  } catch {}
-}
-debugLog('A', 'main process started', { VITE_DEV_SERVER_URL, APP_ROOT: process.env.APP_ROOT, RENDERER_DIST });
-// #endregion
-
 /**
  * 创建主窗口。
  * 开发环境加载 Vite 开发服务器，生产环境加载构建后的 index.html。
  */
 function createWindow() {
-  // #region debug-point A:create-window
-  debugLog('A', 'createWindow called');
-  // #endregion
   win = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -62,6 +36,11 @@ function createWindow() {
     minHeight: 600,
     title: 'SnapSheet',
     icon: path.join(process.env.VITE_PUBLIC ?? __dirname, 'icon.png'),
+    titleBarStyle: 'hiddenInset',
+    transparent: true,
+    vibrancy: 'under-window',
+    backgroundMaterial: 'acrylic',
+    backgroundColor: '#00000000',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -69,30 +48,11 @@ function createWindow() {
     },
   });
 
-  // #region debug-point A:load-target
-  const loadTarget = VITE_DEV_SERVER_URL || path.join(RENDERER_DIST, 'index.html');
-  debugLog('A', 'loading renderer', { loadTarget, preload: path.join(__dirname, 'preload.js') });
-  // #endregion
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {
     win.loadFile(path.join(RENDERER_DIST, 'index.html'));
   }
-
-  // #region debug-point A:load-events
-  win.webContents.on('did-finish-load', () => {
-    debugLog('A', 'renderer did-finish-load');
-  });
-  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
-    debugLog('A', 'renderer did-fail-load', { errorCode, errorDescription });
-  });
-  win.webContents.on('render-process-gone', (_event, details) => {
-    debugLog('A', 'render-process-gone', details);
-  });
-  win.webContents.on('console-message', (_event, level, message) => {
-    debugLog('C', `console-${level}`, { message });
-  });
-  // #endregion
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -101,12 +61,7 @@ function createWindow() {
 }
 
 /** 应用准备就绪后创建窗口 */
-// #region debug-point A:app-ready
-app.on('ready', () => {
-  debugLog('A', 'app ready');
-  createWindow();
-});
-// #endregion
+app.on('ready', createWindow);
 
 /** 所有窗口关闭后退出应用（Windows/Linux） */
 app.on('window-all-closed', () => {
