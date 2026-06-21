@@ -24,7 +24,12 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - name: Build SnapLang bundle
+        run: npm run build:snaplang
+      - name: Type check
+        run: npx tsc -b
+      - name: Build for production
+        run: npx vite build
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist/
