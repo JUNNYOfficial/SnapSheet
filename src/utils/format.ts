@@ -43,13 +43,17 @@ export function formatNumber(value: string, format: NumberFormat | undefined): s
 
 function parseDate(value: string): Date | null {
   if (!value) return null;
+  // 优先尝试标准日期字符串解析
+  const parsed = new Date(value);
+  if (!isNaN(parsed.getTime()) && (value.includes('-') || value.includes('/') || value.includes(':'))) {
+    return parsed;
+  }
+  // 再尝试 Excel 日期序列号
   const num = parseFloat(value);
   if (!isNaN(num) && num > 0 && num < 50000) {
     const date = new Date(1900, 0, num - 1);
     if (!isNaN(date.getTime())) return date;
   }
-  const parsed = new Date(value);
-  if (!isNaN(parsed.getTime())) return parsed;
   return null;
 }
 

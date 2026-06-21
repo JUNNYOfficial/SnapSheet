@@ -44,14 +44,25 @@ export default function App() {
 
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
+    const MAX_LOCAL_STORAGE_SIZE = 4 * 1024 * 1024; // 4MB 阈值
     const unsubscribe = store.subscribe((state) => {
       setSaveStatus('unsaved');
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
         setSaveStatus('saving');
-        const json = workbookToJSON(state.workbook);
-        localStorage.setItem(STORAGE_KEY, json);
-        setSaveStatus('saved');
+        try {
+          const json = workbookToJSON(state.workbook);
+          if (json.length > MAX_LOCAL_STORAGE_SIZE) {
+            setSaveStatus('unsaved');
+            console.warn('[AutoSave] Workbook too large for localStorage, skipped');
+            return;
+          }
+          localStorage.setItem(STORAGE_KEY, json);
+          setSaveStatus('saved');
+        } catch (err) {
+          setSaveStatus('unsaved');
+          console.error('[AutoSave] Failed to save workbook:', err);
+        }
       }, 800);
     });
     return () => {
@@ -68,13 +79,49 @@ export default function App() {
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        const json = workbookToJSON(store.getState().workbook);
-        localStorage.setItem(STORAGE_KEY, json);
-        setSaveStatus('saved');
+        try {
+          const json = workbookToJSON(store.getState().workbook);
+          if (json.length > 4 * 1024 * 1024) {
+            alert('工作簿过大，无法保存到本地存储。建议导出为文件。');
+            return;
+          }
+          localStorage.setItem(STORAGE_KEY, json);
+          setSaveStatus('saved');
+        } catch (err) {
+          alert('保存失败: ' + (err as Error).message);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [store]);
+
+  // 开发模式性能测试工具
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (window as unknown as Record<string, unknown>).__generateTestData = (rows: number, cols: number) => {
+      const cells: { row: number; col: number; value: string }[] = [];
+      const start = performance.now();
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const value = c === 0 ? String(r + 1) : String(Math.round(Math.random() * 1000));
+          cells.push({ row: r, col: c, value });
+        }
+      }
+      store.getState().newWorkbook();
+      store.getState().setCellsBulk(cells);
+      const duration = performance.now() - start;
+      console.log(`[Perf] Generated ${rows}×${cols} = ${rows * cols} cells in ${duration.toFixed(2)}ms`);
+      return duration;
+    };
+    (window as unknown as Record<string, unknown>).__clearData = () => {
+      store.getState().newWorkbook();
+      console.log('[Perf] Workbook cleared');
+    };
+    return () => {
+      delete (window as unknown as Record<string, unknown>).__generateTestData;
+      delete (window as unknown as Record<string, unknown>).__clearData;
+    };
   }, [store]);
 
   return (

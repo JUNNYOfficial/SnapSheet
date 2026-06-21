@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useSpreadsheetStore } from '../store/useSpreadsheetStore';
-import { toCSV } from '../utils/csv';
+import { toCSV, parseCSV } from '../utils/csv';
 import { workbookToJSON, workbookFromJSON, downloadFile } from '../utils/json';
 import { exportToExcel, importFromExcel } from '../utils/excel';
 import { coordsToCell } from '../utils/cellRef';
@@ -102,34 +102,38 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    if (file.size > MAX_FILE_SIZE) {
+      alert('CSV 文件过大，请选择小于 10MB 的文件');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const cleaned = text.replace(/^\ufeff/, '');
-      const rows = cleaned.split(/\r?\n/).filter((r) => r.length > 0).map((r) => {
-        const cells: string[] = [];
-        let field = '';
-        let inQuotes = false;
-        for (let i = 0; i < r.length; i++) {
-          const ch = r[i];
-          if (inQuotes) {
-            if (ch === '"' && r[i + 1] === '"') { field += '"'; i++; }
-            else if (ch === '"') inQuotes = false;
-            else field += ch;
-          } else if (ch === '"') inQuotes = true;
-          else if (ch === ',') { cells.push(field); field = ''; }
-          else field += ch;
+      try {
+        const text = (event.target?.result as string || '').replace(/^\ufeff/, '');
+        if (!text.trim()) {
+          alert('CSV 文件为空');
+          return;
         }
-        cells.push(field);
-        return cells;
-      });
-      for (let r = 0; r < rows.length; r++) {
-        for (let c = 0; c < rows[r].length; c++) {
-          const value = rows[r][c];
-          if (value !== '') store.getState().setCellValue(r, c, value);
+        const rows = parseCSV(text);
+        if (rows.length === 0) {
+          alert('未解析到有效数据');
+          return;
         }
+        const cells: { row: number; col: number; value: string }[] = [];
+        for (let r = 0; r < rows.length; r++) {
+          for (let c = 0; c < rows[r].length; c++) {
+            const value = rows[r][c];
+            if (value !== '') cells.push({ row: r, col: c, value });
+          }
+        }
+        store.getState().setCellsBulk(cells);
+      } catch (err) {
+        alert('CSV 解析失败: ' + (err as Error).message);
       }
     };
+    reader.onerror = () => alert('读取 CSV 文件失败');
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -137,12 +141,26 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+    if (file.size > MAX_FILE_SIZE) {
+      alert('JSON 文件过大，请选择小于 20MB 的文件');
+      if (jsonInputRef.current) jsonInputRef.current.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (event) => {
-      const text = event.target?.result as string;
-      try { store.getState().loadWorkbook(workbookFromJSON(text)); }
-      catch (err) { alert('无效的 JSON 文件: ' + (err as Error).message); }
+      try {
+        const text = event.target?.result as string;
+        if (!text.trim()) {
+          alert('JSON 文件为空');
+          return;
+        }
+        store.getState().loadWorkbook(workbookFromJSON(text));
+      } catch (err) {
+        alert('无效的 JSON 文件: ' + (err as Error).message);
+      }
     };
+    reader.onerror = () => alert('读取 JSON 文件失败');
     reader.readAsText(file);
     if (jsonInputRef.current) jsonInputRef.current.value = '';
   };
@@ -152,6 +170,12 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+    if (file.size > MAX_FILE_SIZE) {
+      alert('Excel 文件过大，请选择小于 20MB 的文件');
+      if (excelInputRef.current) excelInputRef.current.value = '';
+      return;
+    }
     const extension = file.name.toLowerCase().split('.').pop();
     const validTypes = [
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -172,9 +196,10 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
       store.getState().newWorkbook();
       const importedSheet = result.sheets[0];
       if (importedSheet.data && importedSheet.data.length > 0) {
-        importedSheet.data.forEach((cell) => {
-          if (cell.row >= 0 && cell.col >= 0) store.getState().setCellValue(cell.row, cell.col, cell.value);
-        });
+        const cells = importedSheet.data
+          .filter((cell) => cell.row >= 0 && cell.col >= 0 && cell.value !== null)
+          .map((cell) => ({ row: cell.row, col: cell.col, value: cell.value as string }));
+        store.getState().setCellsBulk(cells);
       }
     } catch (err) {
       alert('导入 Excel 文件失败: ' + (err as Error).message);

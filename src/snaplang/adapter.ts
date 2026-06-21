@@ -7,6 +7,46 @@ function loadSnaplang() {
   return snaplangModule;
 }
 
+function preprocessFormula(formula: string): string {
+  const source = formula.startsWith('=') ? formula.slice(1) : formula;
+
+  const parts: string[] = [];
+  let inString = false;
+  let stringChar = '';
+  let current = '';
+
+  for (const ch of source) {
+    if (inString) {
+      current += ch;
+      if (ch === stringChar) {
+        inString = false;
+        parts.push(current);
+        current = '';
+      }
+    } else if (ch === '"' || ch === "'") {
+      if (current) {
+        parts.push(current);
+        current = '';
+      }
+      inString = true;
+      stringChar = ch;
+      current += ch;
+    } else {
+      current += ch;
+    }
+  }
+  if (current) parts.push(current);
+
+  return parts
+    .map((part) => {
+      if (part.startsWith('"') || part.startsWith("'")) return part;
+      part = part.replace(/\b([A-Z]+[0-9]+):([A-Z]+[0-9]+)\b/g, 'getCellRange("$1:$2")');
+      part = part.replace(/\b([A-Z]+[0-9]+)\b/g, 'getCell("$1")');
+      return part;
+    })
+    .join('');
+}
+
 export interface FormulaContext {
   getCell: (ref: string) => Cell | undefined;
   setCellComputed: (ref: string, value: number | string) => void;
@@ -14,18 +54,14 @@ export interface FormulaContext {
 
 export class SnapLangFormulaEngine {
   private ctx: FormulaContext;
-  private evaluator: any;
-  private env: any;
 
   constructor(ctx: FormulaContext) {
     this.ctx = ctx;
-    const snaplang = loadSnaplang();
-    this.evaluator = new snaplang.Evaluator();
-    this.env = snaplang.createEnvironment();
-    this.setupCellFunctions(snaplang);
   }
 
-  private setupCellFunctions(snaplang: any) {
+  private setupCellFunctions(snaplang: any, evaluator: any) {
+    const env = evaluator.globals;
+
     const getCellValue = snaplang.makeNativeFunction('getCell', (ref: string) => {
       const cell = this.ctx.getCell(ref);
       if (!cell) return null;
@@ -43,78 +79,78 @@ export class SnapLangFormulaEngine {
       return value;
     });
 
-    const sumRange = snaplang.makeNativeFunction('sum', (...refs: string[]) => {
+    const getCellRange = snaplang.makeNativeFunction('getCellRange', (range: string) => {
+      if (typeof range !== 'string') return [];
+      try {
+        return getCellsInRange(range).map((ref) => {
+          const cell = this.ctx.getCell(ref);
+          if (!cell) return null;
+          if (cell.computed !== undefined) return cell.computed;
+          const num = parseFloat(cell.value);
+          if (!isNaN(num) && cell.value.trim() !== '') return num;
+          return cell.value;
+        });
+      } catch {
+        return [];
+      }
+    });
+
+    const sumRange = snaplang.makeNativeFunction('sum', (...values: any[]) => {
       let sum = 0;
-      for (const ref of refs) {
-        const cell = this.ctx.getCell(ref);
-        if (cell) {
-          const val = cell.computed !== undefined ? cell.computed : cell.value;
-          if (typeof val === 'number') sum += val;
-          else if (typeof val === 'string') {
-            const n = parseFloat(val);
-            if (!isNaN(n)) sum += n;
-          }
+      for (const v of values.flat()) {
+        if (typeof v === 'number') sum += v;
+        else if (typeof v === 'string') {
+          const n = parseFloat(v);
+          if (!isNaN(n)) sum += n;
         }
       }
       return sum;
     });
 
-    const avgRange = snaplang.makeNativeFunction('avg', (...refs: string[]) => {
+    const avgRange = snaplang.makeNativeFunction('avg', (...values: any[]) => {
       let sum = 0;
       let count = 0;
-      for (const ref of refs) {
-        const cell = this.ctx.getCell(ref);
-        if (cell) {
-          const val = cell.computed !== undefined ? cell.computed : cell.value;
-          if (typeof val === 'number') {
-            sum += val;
+      for (const v of values.flat()) {
+        if (typeof v === 'number') {
+          sum += v;
+          count++;
+        } else if (typeof v === 'string') {
+          const n = parseFloat(v);
+          if (!isNaN(n)) {
+            sum += n;
             count++;
-          } else if (typeof val === 'string') {
-            const n = parseFloat(val);
-            if (!isNaN(n)) {
-              sum += n;
-              count++;
-            }
           }
         }
       }
       return count > 0 ? sum / count : 0;
     });
 
-    const maxRange = snaplang.makeNativeFunction('max', (...refs: string[]) => {
+    const maxRange = snaplang.makeNativeFunction('max', (...values: any[]) => {
       let max = -Infinity;
-      for (const ref of refs) {
-        const cell = this.ctx.getCell(ref);
-        if (cell) {
-          const val = cell.computed !== undefined ? cell.computed : cell.value;
-          if (typeof val === 'number' && val > max) max = val;
-          else if (typeof val === 'string') {
-            const n = parseFloat(val);
-            if (!isNaN(n) && n > max) max = n;
-          }
+      for (const v of values.flat()) {
+        if (typeof v === 'number' && v > max) max = v;
+        else if (typeof v === 'string') {
+          const n = parseFloat(v);
+          if (!isNaN(n) && n > max) max = n;
         }
       }
       return max === -Infinity ? 0 : max;
     });
 
-    const minRange = snaplang.makeNativeFunction('min', (...refs: string[]) => {
+    const minRange = snaplang.makeNativeFunction('min', (...values: any[]) => {
       let min = Infinity;
-      for (const ref of refs) {
-        const cell = this.ctx.getCell(ref);
-        if (cell) {
-          const val = cell.computed !== undefined ? cell.computed : cell.value;
-          if (typeof val === 'number' && val < min) min = val;
-          else if (typeof val === 'string') {
-            const n = parseFloat(val);
-            if (!isNaN(n) && n < min) min = n;
-          }
+      for (const v of values.flat()) {
+        if (typeof v === 'number' && v < min) min = v;
+        else if (typeof v === 'string') {
+          const n = parseFloat(v);
+          if (!isNaN(n) && n < min) min = n;
         }
       }
       return min === Infinity ? 0 : min;
     });
 
-    const countRange = snaplang.makeNativeFunction('count', (...refs: string[]) => {
-      return refs.length;
+    const countRange = snaplang.makeNativeFunction('count', (...values: any[]) => {
+      return values.flat().length;
     });
 
     // 数学函数
@@ -185,146 +221,118 @@ export class SnapLangFormulaEngine {
       return Math.floor(num);
     });
 
-    snaplang.defineVariable(this.env, 'getCell', getCellValue, false, true);
-    snaplang.defineVariable(this.env, 'setCell', setCellValue, false, true);
-    snaplang.defineVariable(this.env, 'sum', sumRange, false, true);
-    snaplang.defineVariable(this.env, 'avg', avgRange, false, true);
-    snaplang.defineVariable(this.env, 'max', maxRange, false, true);
-    snaplang.defineVariable(this.env, 'min', minRange, false, true);
-    snaplang.defineVariable(this.env, 'count', countRange, false, true);
-    
-    // 数学函数
-    snaplang.defineVariable(this.env, 'abs', absFunc, false, true);
-    snaplang.defineVariable(this.env, 'sqrt', sqrtFunc, false, true);
-    snaplang.defineVariable(this.env, 'power', powerFunc, false, true);
-    snaplang.defineVariable(this.env, 'round', roundFunc, false, true);
-    snaplang.defineVariable(this.env, 'ceil', ceilFunc, false, true);
-    snaplang.defineVariable(this.env, 'floor', floorFunc, false, true);
-    
     // 字符串函数
     const concatFunc = snaplang.makeNativeFunction('concat', (...args: any[]) => {
-      return args.map(arg => String(arg)).join('');
+      return args.map((arg) => String(arg)).join('');
     });
 
     const lenFunc = snaplang.makeNativeFunction('len', (str: string) => {
-      if (typeof str !== 'string') {
-        return String(str).length;
-      }
-      return str.length;
+      return typeof str === 'string' ? str.length : String(str).length;
     });
 
     const upperFunc = snaplang.makeNativeFunction('upper', (str: string) => {
-      if (typeof str !== 'string') {
-        return String(str).toUpperCase();
-      }
-      return str.toUpperCase();
+      return typeof str === 'string' ? str.toUpperCase() : String(str).toUpperCase();
     });
 
     const lowerFunc = snaplang.makeNativeFunction('lower', (str: string) => {
-      if (typeof str !== 'string') {
-        return String(str).toLowerCase();
-      }
-      return str.toLowerCase();
+      return typeof str === 'string' ? str.toLowerCase() : String(str).toLowerCase();
     });
 
     const trimFunc = snaplang.makeNativeFunction('trim', (str: string) => {
-      if (typeof str !== 'string') {
-        return String(str).trim();
-      }
-      return str.trim();
+      return typeof str === 'string' ? str.trim() : String(str).trim();
     });
 
-    snaplang.defineVariable(this.env, 'concat', concatFunc, false, true);
-    snaplang.defineVariable(this.env, 'len', lenFunc, false, true);
-    snaplang.defineVariable(this.env, 'upper', upperFunc, false, true);
-    snaplang.defineVariable(this.env, 'lower', lowerFunc, false, true);
-    snaplang.defineVariable(this.env, 'trim', trimFunc, false, true);
-    
     // 逻辑函数
     const ifFunc = snaplang.makeNativeFunction('if', (condition: any, trueValue: any, falseValue: any) => {
-      const isTrue = snaplang.isTruthy(condition);
-      return isTrue ? trueValue : falseValue;
+      return snaplang.isTruthy(condition) ? trueValue : falseValue;
     });
 
     const andFunc = snaplang.makeNativeFunction('and', (...args: any[]) => {
-      return args.every(arg => snaplang.isTruthy(arg));
+      return args.every((arg) => snaplang.isTruthy(arg));
     });
 
     const orFunc = snaplang.makeNativeFunction('or', (...args: any[]) => {
-      return args.some(arg => snaplang.isTruthy(arg));
+      return args.some((arg) => snaplang.isTruthy(arg));
     });
 
     const notFunc = snaplang.makeNativeFunction('not', (value: any) => {
       return !snaplang.isTruthy(value);
     });
 
-    snaplang.defineVariable(this.env, 'if', ifFunc, false, true);
-    snaplang.defineVariable(this.env, 'and', andFunc, false, true);
-    snaplang.defineVariable(this.env, 'or', orFunc, false, true);
-    snaplang.defineVariable(this.env, 'not', notFunc, false, true);
+    snaplang.defineVariable(env, 'getCell', getCellValue, false, true);
+    snaplang.defineVariable(env, 'getCellRange', getCellRange, false, true);
+    snaplang.defineVariable(env, 'setCell', setCellValue, false, true);
+    snaplang.defineVariable(env, 'sum', sumRange, false, true);
+    snaplang.defineVariable(env, 'avg', avgRange, false, true);
+    snaplang.defineVariable(env, 'max', maxRange, false, true);
+    snaplang.defineVariable(env, 'min', minRange, false, true);
+    snaplang.defineVariable(env, 'count', countRange, false, true);
+    snaplang.defineVariable(env, 'abs', absFunc, false, true);
+    snaplang.defineVariable(env, 'sqrt', sqrtFunc, false, true);
+    snaplang.defineVariable(env, 'power', powerFunc, false, true);
+    snaplang.defineVariable(env, 'round', roundFunc, false, true);
+    snaplang.defineVariable(env, 'ceil', ceilFunc, false, true);
+    snaplang.defineVariable(env, 'floor', floorFunc, false, true);
+    snaplang.defineVariable(env, 'concat', concatFunc, false, true);
+    snaplang.defineVariable(env, 'len', lenFunc, false, true);
+    snaplang.defineVariable(env, 'upper', upperFunc, false, true);
+    snaplang.defineVariable(env, 'lower', lowerFunc, false, true);
+    snaplang.defineVariable(env, 'trim', trimFunc, false, true);
+    snaplang.defineVariable(env, 'if', ifFunc, false, true);
+    snaplang.defineVariable(env, 'and', andFunc, false, true);
+    snaplang.defineVariable(env, 'or', orFunc, false, true);
+    snaplang.defineVariable(env, 'not', notFunc, false, true);
   }
 
   collectDependencies(formula: string): string[] {
     const deps: string[] = [];
-    
-    // 匹配区域引用（如 A1:B5）
     const rangePattern = /\b([A-Z]+[0-9]+):([A-Z]+[0-9]+)\b/g;
     let rangeMatch;
     while ((rangeMatch = rangePattern.exec(formula)) !== null) {
-      const range = rangeMatch[0];
       try {
-        const cells = getCellsInRange(range);
-        for (const cell of cells) {
-          if (!deps.includes(cell)) {
-            deps.push(cell);
-          }
+        for (const cell of getCellsInRange(rangeMatch[0])) {
+          if (!deps.includes(cell)) deps.push(cell);
         }
       } catch {
-        // 如果区域解析失败，跳过
+        // ignore
       }
     }
-    
-    // 匹配单个单元格引用（排除已经在区域中的）
+
     const cellRefPattern = /\b[A-Z]+[0-9]+\b/g;
     let cellMatch;
     while ((cellMatch = cellRefPattern.exec(formula)) !== null) {
       const ref = cellMatch[0];
-      // 检查是否在区域引用中（避免重复添加）
-      const isInRange = /\b([A-Z]+[0-9]+):([A-Z]+[0-9]+)\b/g.test(formula);
-      if (!isInRange && !deps.includes(ref)) {
-        // 检查是否是区域的一部分
-        let isPartOfRange = false;
-        rangePattern.lastIndex = 0;
-        while ((rangeMatch = rangePattern.exec(formula)) !== null) {
-          try {
-            const cells = getCellsInRange(rangeMatch[0]);
-            if (cells.includes(ref)) {
-              isPartOfRange = true;
-              break;
-            }
-          } catch {
-            // 忽略解析错误
+      let isPartOfRange = false;
+      rangePattern.lastIndex = 0;
+      while ((rangeMatch = rangePattern.exec(formula)) !== null) {
+        try {
+          if (getCellsInRange(rangeMatch[0]).includes(ref)) {
+            isPartOfRange = true;
+            break;
           }
-        }
-        if (!isPartOfRange && !deps.includes(ref)) {
-          deps.push(ref);
+        } catch {
+          // ignore
         }
       }
+      if (!isPartOfRange && !deps.includes(ref)) deps.push(ref);
     }
-    
+
     return deps;
   }
 
   evaluate(formula: string): number | string {
     const snaplang = loadSnaplang();
+    const source = preprocessFormula(formula);
+    const evaluator = new snaplang.Evaluator();
+    this.setupCellFunctions(snaplang, evaluator);
 
     try {
-      const lexer = new snaplang.Lexer(formula);
+      const lexer = new snaplang.Lexer(source);
       const tokens = lexer.tokenize();
       const parser = new snaplang.Parser(tokens);
       const ast = parser.parse();
 
-      const result = this.evaluator.evaluateProgram(ast);
+      const result = evaluator.evaluateProgram(ast);
 
       if (result === null || result === undefined) return '';
       if (typeof result === 'number') {
@@ -339,32 +347,27 @@ export class SnapLangFormulaEngine {
       if (typeof result === 'boolean') return result ? 1 : 0;
       return snaplang.stringify(result);
     } catch (e: any) {
-      // 词法错误
       if (e.name === 'LexerError') {
         const line = e.line || 1;
         const column = e.column || 1;
         const msg = e.message?.replace('[词法错误] ', '') || '未知词法错误';
         return `#LEX! 第${line}行第${column}列: ${msg}`;
       }
-      
-      // 语法错误
+
       if (e.name === 'ParserError') {
         const line = e.line || 1;
         const column = e.column || 1;
         const msg = e.message?.replace('[语法错误] ', '') || '未知语法错误';
         return `#SYNTAX! 第${line}行第${column}列: ${msg}`;
       }
-      
-      // 运行时错误
+
       if (e.name === 'RuntimeError') {
         const msg = e.message?.replace('[运行时错误] ', '') || '未知运行时错误';
-        
-        // 处理未定义的标识符
+
         if (msg.includes('未定义的标识符')) {
           const match = msg.match(/'([^']+)'/);
           if (match) {
             const ident = match[1];
-            // 如果是单元格引用
             if (/^[A-Z]+[0-9]+$/.test(ident)) {
               const cell = this.ctx.getCell(ident);
               if (cell) {
@@ -378,25 +381,21 @@ export class SnapLangFormulaEngine {
               }
               return `#REF! 单元格 '${ident}' 不存在`;
             }
-            // 如果是未定义的函数
             return `#NAME! 未定义的函数或变量 '${ident}'`;
           }
         }
-        
-        // 处理常量重新赋值错误
+
         if (msg.includes('不能重新赋值常量')) {
           return `#CONST! ${msg}`;
         }
-        
-        // 处理不可变变量重新赋值错误
+
         if (msg.includes('不能重新赋值不可变变量')) {
           return `#IMMUT! ${msg}`;
         }
-        
+
         return `#RUNTIME! ${msg}`;
       }
-      
-      // 其他错误
+
       const errorMsg = e.message || '未知错误';
       return `#ERROR! ${errorMsg}`;
     }

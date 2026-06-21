@@ -13,6 +13,8 @@ interface SerializableSheet {
   cells: Record<string, SerializableCell>;
   colWidths: Record<number, number>;
   rowHeights: Record<number, number>;
+  frozenRows?: number;
+  frozenCols?: number;
   mergedCells?: Record<string, { startRow: number; startCol: number; endRow: number; endCol: number }>;
   conditionalFormats?: Sheet['conditionalFormats'];
 }
@@ -35,6 +37,8 @@ export function workbookToJSON(workbook: Workbook): string {
       ),
       colWidths: Object.fromEntries(Array.from(sheet.colWidths.entries())),
       rowHeights: Object.fromEntries(Array.from(sheet.rowHeights.entries())),
+      frozenRows: sheet.frozenRows,
+      frozenCols: sheet.frozenCols,
       mergedCells: Object.fromEntries(Array.from(sheet.mergedCells.entries())),
       conditionalFormats: sheet.conditionalFormats,
     })),
@@ -44,17 +48,23 @@ export function workbookToJSON(workbook: Workbook): string {
 
 export function workbookFromJSON(json: string): Workbook {
   const data = JSON.parse(json) as SerializableWorkbook;
+  if (!data || typeof data !== 'object') {
+    throw new Error('JSON 数据格式无效');
+  }
+  if (!Array.isArray(data.sheets)) {
+    throw new Error('JSON 中缺少工作表数据');
+  }
   const sheets: Sheet[] = data.sheets.map((s) => ({
-    id: s.id,
-    name: s.name,
+    id: s.id || 'default',
+    name: s.name || 'Sheet',
     cells: new Map<string, Cell>(
-      Object.entries(s.cells).map(([ref, cell]) => [ref, cell as Cell]),
+      Object.entries(s.cells || {}).map(([ref, cell]) => [ref, cell as Cell]),
     ),
     colWidths: new Map<number, number>(
-      Object.entries(s.colWidths).map(([col, width]) => [parseInt(col, 10), width]),
+      Object.entries(s.colWidths || {}).map(([col, width]) => [parseInt(col, 10), width]),
     ),
     rowHeights: new Map<number, number>(
-      Object.entries(s.rowHeights).map(([row, height]) => [parseInt(row, 10), height]),
+      Object.entries(s.rowHeights || {}).map(([row, height]) => [parseInt(row, 10), height]),
     ),
     frozenRows: (s as SerializableSheet & { frozenRows?: number }).frozenRows || 0,
     frozenCols: (s as SerializableSheet & { frozenCols?: number }).frozenCols || 0,
@@ -63,9 +73,15 @@ export function workbookFromJSON(json: string): Workbook {
       Object.entries(s.mergedCells || {}),
     ) as Sheet['mergedCells'],
   }));
+  if (sheets.length === 0) {
+    throw new Error('工作簿中没有任何工作表');
+  }
+  const activeSheetId = data.activeSheetId && sheets.some((s) => s.id === data.activeSheetId)
+    ? data.activeSheetId
+    : sheets[0].id;
   return {
     sheets,
-    activeSheetId: data.activeSheetId || sheets[0]?.id || 'default',
+    activeSheetId,
   };
 }
 

@@ -3,7 +3,7 @@ import type { Cell, Sheet, Workbook, Selection, CellStyle, NumberFormat, BorderS
 import { DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT, MIN_ROW_HEIGHT, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../utils/constants';
 import { coordsToCell, cellToCoords, colToLetter, letterToCol } from '../utils/cellRef';
 import { applyTemplateToSheet } from '../templates';
-import { createDefaultFormulaEngine } from '../engine/FormulaEngine';
+import { createDefaultFormulaEngine, CycleError } from '../engine/FormulaEngine';
 
 interface SpreadsheetState {
   workbook: Workbook;
@@ -19,6 +19,7 @@ interface SpreadsheetState {
   deleteSheet: (id: string) => void;
 
   setCellValue: (row: number, col: number, value: string) => void;
+  setCellsBulk: (cells: { row: number; col: number; value: string }[]) => void;
   commitEdit: (value: string) => void;
   setCellStyle: (row: number, col: number, style: CellStyle) => void;
   applyStyleToSelection: (style: Partial<CellStyle>) => void;
@@ -288,10 +289,69 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
 
       const engine = formulaState.engine;
       if (engine) {
-        const recalcResults = engine.recalculate(ref);
-        for (const [depRef, val] of recalcResults) {
-          const depCell = sheet.cells.get(depRef);
-          if (depCell) depCell.computed = val;
+        try {
+          const recalcResults = engine.recalculate(ref);
+          for (const [depRef, val] of recalcResults) {
+            const depCell = sheet.cells.get(depRef);
+            if (depCell) depCell.computed = val;
+          }
+        } catch (err) {
+          if (err instanceof CycleError) {
+            const cell = sheet.cells.get(ref);
+            if (cell) cell.computed = '#CYCLE!';
+          } else {
+            console.error('公式重算失败:', err);
+          }
+        }
+      }
+
+      set({ workbook: { ...get().workbook } });
+    },
+
+    setCellsBulk: (cells: { row: number; col: number; value: string }[]) => {
+      if (cells.length === 0) return;
+      pushHistory();
+      const sheet = get().getActiveSheet();
+      const engine = initEngine(true);
+      const formulaRefs: string[] = [];
+
+      for (const { row, col, value } of cells) {
+        if (row < 0 || row >= SHEET_ROW_COUNT || col < 0 || col >= SHEET_COL_COUNT) continue;
+        const ref = coordsToCell(row, col);
+        const existing = sheet.cells.get(ref);
+        if (value === '') {
+          sheet.cells.delete(ref);
+          continue;
+        }
+        const cell: Cell = { value, style: existing?.style };
+        if (value.startsWith('=')) {
+          cell.formula = value;
+          if (engine) {
+            cell.computed = engine.evaluate(ref, value);
+            formulaRefs.push(ref);
+          } else {
+            cell.computed = '#ERR';
+          }
+        }
+        sheet.cells.set(ref, cell);
+      }
+
+      if (engine && formulaRefs.length > 0) {
+        try {
+          const recalcResults = engine.recalculateMany(formulaRefs);
+          for (const [depRef, val] of recalcResults) {
+            const depCell = sheet.cells.get(depRef);
+            if (depCell) depCell.computed = val;
+          }
+        } catch (err) {
+          if (err instanceof CycleError) {
+            for (const ref of formulaRefs) {
+              const cell = sheet.cells.get(ref);
+              if (cell) cell.computed = '#CYCLE!';
+            }
+          } else {
+            console.error('批量公式重算失败:', err);
+          }
         }
       }
 

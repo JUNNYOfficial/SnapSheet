@@ -1,6 +1,13 @@
 import { SnapLangFormulaEngine } from '../snaplang/adapter';
 import type { Cell } from '../types';
 
+export class CycleError extends Error {
+  constructor(public cells: string[]) {
+    super(`Circular reference detected: ${cells.join(' -> ')}`);
+    this.name = 'CycleError';
+  }
+}
+
 export class DependencyGraph {
   private dependents: Map<string, Set<string>> = new Map();
   private dependencies: Map<string, Set<string>> = new Map();
@@ -33,10 +40,14 @@ export class DependencyGraph {
     const visited = new Set<string>();
     const result: string[] = [];
     const stack: Set<string> = new Set();
+    const cycleCells = new Set<string>();
 
     const visit = (cell: string): void => {
-      if (stack.has(cell)) return;
       if (visited.has(cell)) return;
+      if (stack.has(cell)) {
+        cycleCells.add(cell);
+        return;
+      }
       stack.add(cell);
       const deps = this.dependencies.get(cell);
       if (deps) {
@@ -56,6 +67,11 @@ export class DependencyGraph {
         visit(dep);
       }
     }
+
+    if (cycleCells.size > 0) {
+      throw new CycleError(Array.from(cycleCells));
+    }
+
     return result;
   }
 
@@ -120,14 +136,33 @@ export class FormulaEngine {
   }
 
   recalculate(changedRef: string): Map<string, number | string> {
+    return this.recalculateMany([changedRef]);
+  }
+
+  recalculateMany(changedRefs: string[]): Map<string, number | string> {
     const results = new Map<string, number | string>();
-    const order = this.graph.getTopologicalOrder([changedRef]);
-    for (const ref of order) {
-      const cell = this.ctx.getCell(ref);
-      if (cell && cell.formula) {
-        const val = this.evaluate(ref, cell.formula);
-        results.set(ref, val);
-        this.ctx.setCellComputed(ref, val);
+    try {
+      const order = this.graph.getTopologicalOrder(changedRefs);
+      for (const ref of order) {
+        const cell = this.ctx.getCell(ref);
+        if (cell && cell.formula) {
+          const val = this.evaluate(ref, cell.formula);
+          results.set(ref, val);
+          this.ctx.setCellComputed(ref, val);
+        }
+      }
+    } catch (err) {
+      if (err instanceof CycleError) {
+        const cycleValue = '#CYCLE!';
+        for (const ref of changedRefs) {
+          const cell = this.ctx.getCell(ref);
+          if (cell && cell.formula) {
+            results.set(ref, cycleValue);
+            this.ctx.setCellComputed(ref, cycleValue);
+          }
+        }
+      } else {
+        throw err;
       }
     }
     return results;
