@@ -6,15 +6,16 @@
 ![Vite](https://img.shields.io/badge/Vite-6.3.5-646CFF.svg)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3-06B6D4.svg)
 ![Zustand](https://img.shields.io/badge/Zustand-4-35A29F.svg)
+![Electron](https://img.shields.io/badge/Electron-35-47848F.svg)
 ![GitHub stars](https://img.shields.io/github/stars/JUNNYOfficial/SnapSheet)
 ![GitHub forks](https://img.shields.io/github/forks/JUNNYOfficial/SnapSheet)
 ![GitHub issues](https://img.shields.io/github/issues/JUNNYOfficial/SnapSheet)
 
-一个现代化的电子表格应用，基于 React + TypeScript + Canvas 构建，支持公式计算、多工作表、AI数据分析等功能。
+一个现代化的电子表格应用，基于 React + TypeScript + Canvas 构建，支持公式计算、多工作表、AI 数据分析、SnapLang 脚本以及本地桌面客户端。
 
 ## 🖼️ 预览
 
-![SnapSheet Preview](https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern%20spreadsheet%20application%20interface%20with%20toolbar%20ribbon%2C%20formula%20bar%2C%20and%20data%20table%2C%20clean%20minimal%20design%2C%20dark%20theme&image_size=landscape_16_9)
+![SnapSheet Preview](website/screenshot.png)
 
 ## ✨ 功能特性
 
@@ -34,14 +35,19 @@
 - 🎯 **数据验证**：支持数值范围验证、下拉列表等数据验证规则
 - 🎨 **条件格式**：支持基于条件的单元格高亮显示
 
-### AI 功能
+### 脚本与 AI
 - 🤖 **AI 数据分析**：选中区域自动分析统计数据（求和、平均值、最大值、最小值等）
 - ✨ **公式生成**：通过自然语言描述自动生成公式（如"求和"、"平均值"）
+- ⚡ **SnapLang 脚本**：自定义脚本语言，支持变量、函数、循环与表格操作
 
 ### 视图功能
 - 🔒 **冻结窗格**：支持冻结首行、首列或两者同时冻结
 - 📱 **响应式布局**：顶部 Ribbon 支持折叠/展开，右侧属性面板可伸缩
 - 🌓 **主题切换**：支持浅色/深色主题切换
+
+### 桌面客户端
+- 🖥️ **Electron 桌面版**：支持 macOS（Apple Silicon / Intel），可离线运行
+- 🌐 **官方网站**：`website/` 目录包含产品官网，支持在线试用与下载
 
 ## 🚀 快速开始
 
@@ -51,7 +57,7 @@
 npm install
 ```
 
-### 开发模式
+### Web 开发模式
 
 ```bash
 npm run dev
@@ -59,10 +65,20 @@ npm run dev
 
 启动后访问 http://localhost:5173
 
+### 桌面端开发模式
+
+```bash
+npm run dev:electron
+```
+
 ### 构建生产版本
 
 ```bash
+# Web 版本
 npm run build
+
+# Electron 桌面客户端（生成 DMG 安装包）
+npm run build:electron
 ```
 
 ### 预览生产版本
@@ -71,7 +87,7 @@ npm run build
 npm run preview
 ```
 
-### 代码检查
+### 代码检查与测试
 
 ```bash
 # ESLint 检查
@@ -79,6 +95,9 @@ npm run lint
 
 # TypeScript 类型检查
 npm run check
+
+# 运行测试
+npm test
 ```
 
 ## 📖 使用说明
@@ -117,6 +136,20 @@ npm run check
 =ROUND(G1, 2)     # 四舍五入保留两位小数
 =ABS(H1)          # 绝对值
 ```
+
+### SnapLang 脚本
+
+SnapSheet 支持使用 SnapLang 脚本批量操作表格：
+
+```javascript
+// 批量填充数据
+for (let i = 1; i <= 10; i++) {
+  setCell('A' + i, i * 10);
+}
+setCell('A11', '=SUM(A1:A10)');
+```
+
+脚本支持变量、函数定义、条件判断与循环，具体语法可参考 `src/snaplang/grammar.ne`。
 
 ### 单元格选择
 
@@ -157,7 +190,8 @@ npm run check
 | **公式函数** | 50+ 种内置函数 |
 | **撤销/重做** | 无限历史记录 |
 | **内存占用** | 轻量级设计，纯前端实现 |
-| **构建大小** | ~85KB gzip |
+| **Web 构建大小** | ~85KB gzip |
+| **桌面安装包** | ~130MB（含 Electron 运行时） |
 
 ## 🛠️ 技术栈
 
@@ -170,44 +204,60 @@ npm run check
 | **状态管理** | Zustand | 4 |
 | **图标** | Lucide React | 0 |
 | **画布渲染** | HTML5 Canvas | - |
+| **桌面框架** | Electron | 35 |
+| **打包工具** | electron-builder | - |
+| **测试** | Vitest | - |
 
 ## 📁 项目结构
 
 ```
-src/
-├── components/          # UI 组件
-│   ├── Toolbar.tsx      # 顶部 Ribbon 工具栏
-│   ├── FormulaBar.tsx   # 公式输入栏
-│   ├── Spreadsheet.tsx  # 表格主组件（Canvas 渲染）
-│   ├── SheetTabs.tsx    # 底部工作表标签
-│   ├── PropertyPanel.tsx # 右侧属性面板
-│   └── FindDialog.tsx   # 查找替换对话框
-├── engine/              # 公式计算引擎
-│   ├── Lexer.ts         # 词法分析器
-│   ├── Parser.ts        # 语法分析器
-│   ├── Evaluator.ts     # 表达式求值器
-│   └── functions.ts     # 内置函数定义
-├── store/               # Zustand 状态管理
-│   └── useSpreadsheetStore.ts
-├── hooks/               # 自定义 Hooks
-│   ├── useTheme.ts      # 主题切换 Hook
-│   └── useKeyboard.ts   # 键盘快捷键 Hook
-├── types/               # TypeScript 类型定义
-│   └── index.ts
-├── utils/               # 工具函数
-│   ├── cellRef.ts       # 单元格引用转换 (A1 ↔ 行列坐标)
-│   ├── constants.ts     # 常量定义
-│   ├── csv.ts           # CSV 导入导出
-│   ├── json.ts          # JSON 导入导出
-│   └── excel.ts         # Excel 导入导出
-├── templates/           # 预设模板
-│   └── index.ts
-├── App.tsx              # 主应用组件
-├── main.tsx             # 应用入口
-└── index.css            # 全局样式（主题变量）
+SnapSheet/
+├── electron/            # Electron 桌面端
+│   ├── main.ts          # 主进程入口
+│   └── preload.ts       # 预加载脚本
+├── public/              # 静态资源
+│   ├── icon.svg         # 应用图标
+│   ├── icon.png         # 窗口图标
+│   └── icon.icns        # macOS 程序图标
+├── src/
+│   ├── components/      # UI 组件
+│   │   ├── Toolbar.tsx       # 顶部 Ribbon 工具栏
+│   │   ├── FormulaBar.tsx    # 公式输入栏
+│   │   ├── Spreadsheet.tsx   # 表格主组件（Canvas 渲染）
+│   │   ├── SheetTabs.tsx     # 底部工作表标签
+│   │   ├── PropertyPanel.tsx # 右侧属性面板
+│   │   └── FindDialog.tsx    # 查找替换对话框
+│   ├── engine/          # 公式计算引擎
+│   │   ├── Lexer.ts     # 词法分析器
+│   │   ├── Parser.ts    # 语法分析器
+│   │   ├── Evaluator.ts # 表达式求值器
+│   │   └── functions.ts # 内置函数定义
+│   ├── snaplang/        # SnapLang 脚本语言
+│   │   ├── grammar.ne   # 语法定义
+│   │   └── adapter.ts   # 与表格交互适配器
+│   ├── store/           # Zustand 状态管理
+│   │   └── useSpreadsheetStore.ts
+│   ├── hooks/           # 自定义 Hooks
+│   ├── types/           # TypeScript 类型定义
+│   ├── utils/           # 工具函数
+│   │   ├── cellRef.ts   # 单元格引用转换 (A1 ↔ 行列坐标)
+│   │   ├── csv.ts       # CSV 导入导出
+│   │   ├── json.ts      # JSON 导入导出
+│   │   └── excel.ts     # Excel 导入导出
+│   ├── App.tsx          # 主应用组件
+│   ├── main.tsx         # 应用入口
+│   └── index.css        # 全局样式（主题变量）
+├── tests/               # 单元测试
+├── website/             # 产品官网
+│   ├── index.html       # 官网落地页
+│   └── screenshot.png   # 界面预览图
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml   # GitHub Pages 自动部署
+├── package.json
+├── vite.config.ts
+├── vite.electron.config.ts
+└── README.md
 ```
 
 ## 🏗️ 开发指南
@@ -222,6 +272,9 @@ npm run lint
 
 # 运行 TypeScript 类型检查
 npm run check
+
+# 运行单元测试
+npm test
 
 # 自动修复 ESLint 问题
 npm run lint -- --fix
@@ -244,6 +297,9 @@ SnapSheet 采用分层架构设计：
 ├─────────────────────────────────────────────────────────────┤
 │                      计算层 (Compute)                       │
 │        Lexer → Parser → Evaluator → 依赖追踪               │
+├─────────────────────────────────────────────────────────────┤
+│                      脚本层 (Script)                        │
+│                  SnapLang → Adapter → Store                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -341,24 +397,30 @@ git commit -m "docs: 更新 API 文档"
 
 ## 📦 部署
 
-### Vercel 部署
-
-1. 安装 Vercel CLI：`npm install -g vercel`
-2. 登录：`vercel login`
-3. 部署：`vercel`
-
-### Netlify 部署
-
-1. 安装 Netlify CLI：`npm install -g netlify-cli`
-2. 登录：`netlify login`
-3. 初始化：`netlify init`
-4. 部署：`netlify deploy --prod`
-
-### GitHub Pages 部署
+### Web 版本
 
 ```bash
 npm run build
-# 将 dist 目录内容推送到 gh-pages 分支
+```
+
+构建产物位于 `dist/` 目录，可部署到 Vercel、Netlify、GitHub Pages 等静态托管平台。
+
+### Electron 桌面版
+
+```bash
+npm run build:electron
+```
+
+构建产物位于 `release/` 目录，包含：
+
+- `SnapSheet-0.0.0-arm64.dmg` — Apple Silicon（M1/M2/M3/M4）
+- `SnapSheet-0.0.0.dmg` — Intel 处理器 Mac
+
+### 官网
+
+```bash
+# 官网为纯静态页面，可直接部署 website/ 目录
+# 注意：部署前请将 ../dist/ 和 ../release/*.dmg 链接替换为线上地址
 ```
 
 ## 🌐 浏览器兼容性
@@ -372,22 +434,17 @@ npm run build
 
 ## 📝 更新日志
 
-### v1.1.0 (2026-06-19)
-- ✨ Excel 导入导出功能（支持 .xlsx/.xls 文件）
-- ✨ 本地保存功能（浏览器本地存储）
-- ✨ 打开已保存工作簿功能
-- 🐛 修复新建工作簿不切换到空白表格的问题
-- 🐛 修复自动保存覆盖示例数据的问题
-- 🔧 添加 GitHub Pages 自动部署工作流
-
-### v1.0.0 (2026-06-18)
+### v0.0.0 (2026-06-21)
 - 🎉 初始版本发布
-- ✨ 支持 50+ 公式函数
+- ✨ React + TypeScript + Canvas 表格核心
+- ✨ 50+ 公式函数与依赖追踪
 - ✨ 多工作表管理
-- ✨ AI 数据分析功能
-- ✨ 响应式布局和主题切换
-- ✨ 右侧属性面板
-- ✨ 查找替换功能
+- ✨ Excel / CSV / JSON 导入导出
+- ✨ AI 数据分析与自然语言公式生成
+- ✨ SnapLang 脚本语言
+- ✨ Electron 桌面客户端（macOS）
+- ✨ 产品官网落地页
+- ✨ Vitest 单元测试覆盖
 
 ## ❓ FAQ
 
@@ -397,47 +454,8 @@ A: 点击工具栏"文件"标签页中的"导入 Excel"按钮，选择 .xlsx 或
 ### Q: 公式计算性能如何？
 A: 公式引擎采用依赖追踪和缓存机制，只在依赖单元格变化时重新计算，1000 行 × 100 列的表格可以流畅运行。
 
-### Q: 是否支持协作编辑？
-A: 当前版本为单用户离线应用，不支持实时协作编辑。未来版本可能会添加此功能。
+### Q: 如何运行桌面版？
+A: 运行 `npm run build:electron` 后，打开 `release/` 目录中的 `.dmg` 文件，将 SnapSheet.app 拖到 Applications 文件夹即可。
 
-### Q: 数据是否会自动保存？
-A: 应用支持两种保存方式：
-1. **自动保存**：编辑过程中自动保存到浏览器本地存储，下次打开自动恢复
-2. **手动保存**：点击"保存"按钮或按 `Ctrl/Cmd + S`，可指定保存名称
-3. **导出文件**：导出为 Excel、CSV 或 JSON 文件永久保存
-
-### Q: 新建工作簿后为什么是空白表格？
-A: 新建工作簿会创建一个全新的空白表格，初始加载时会显示示例数据供参考。
-
-## 🐛 问题反馈
-
-如果您发现 bug 或有功能建议，请在 [Issues](https://github.com/JUNNYOfficial/SnapSheet/issues) 中提交。
-
-提交问题时请包含：
-- 问题描述
-- 复现步骤
-- 预期行为
-- 截图（可选）
-- 浏览器版本和操作系统
-
-## 📄 许可证
-
-MIT License - 详见 [LICENSE](LICENSE) 文件
-
-## 🙏 致谢
-
-感谢以下开源项目和资源：
-
-- [React](https://react.dev/) - UI 框架
-- [TypeScript](https://www.typescriptlang.org/) - 类型安全
-- [Vite](https://vitejs.dev/) - 构建工具
-- [Zustand](https://zustand-demo.pmnd.rs/) - 状态管理
-- [Lucide React](https://lucide.dev/) - 图标库
-- [Tailwind CSS](https://tailwindcss.com/) - CSS 框架
-
-感谢所有为 SnapSheet 做出贡献的开发者！
-
----
-
-⭐ 如果您喜欢这个项目，请给它一个 Star！
-
+### Q: 如何更新官网中的下载链接？
+A: 修改 `website/index.html` 中下载按钮的 `href`，指向线上 DMG 文件地址即可。
