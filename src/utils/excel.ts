@@ -1,8 +1,8 @@
 import * as XLSX from 'xlsx';
 import type { Workbook, Sheet } from '../types';
-import { coordsToCell } from './cellRef';
+import { coordsToCell, cellToCoords } from './cellRef';
 
-export function exportToExcel(workbook: Workbook, filename: string = 'snapsheet.xlsx'): void {
+function buildXLSXWorkbook(workbook: Workbook): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
 
   workbook.sheets.forEach((sheet) => {
@@ -12,7 +12,7 @@ export function exportToExcel(workbook: Workbook, filename: string = 'snapsheet.
     let maxRow = 0;
     let maxCol = 0;
     sheet.cells.forEach((_, key) => {
-      const [row, col] = key.split(':').map(Number);
+      const { row, col } = cellToCoords(key);
       if (row > maxRow) maxRow = row;
       if (col > maxCol) maxCol = col;
     });
@@ -48,9 +48,18 @@ export function exportToExcel(workbook: Workbook, filename: string = 'snapsheet.
     XLSX.utils.book_append_sheet(wb, ws, sheet.name);
   });
 
-  // 生成文件并下载
-  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  return wb;
+}
+
+export function exportToExcelBuffer(workbook: Workbook): ArrayBuffer | Uint8Array {
+  const wb = buildXLSXWorkbook(workbook);
+  return XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: false });
+}
+
+export function exportToExcel(workbook: Workbook, filename: string = 'snapsheet.xlsx'): void {
+  const wbout = exportToExcelBuffer(workbook);
+  const bytes = wbout instanceof ArrayBuffer ? new Uint8Array(wbout) : wbout;
+  const blob = new Blob([bytes as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -63,7 +72,14 @@ export function exportToExcel(workbook: Workbook, filename: string = 'snapsheet.
 
 export type ImportedCell = { row: number; col: number; value: string | null; formula?: string };
 
-export function importFromExcel(file: File): Promise<{
+function readExcelData(data: ArrayBuffer | string): XLSX.WorkBook {
+  if (typeof data === 'string') {
+    return XLSX.read(data, { type: 'binary', cellDates: true, cellNF: true });
+  }
+  return XLSX.read(data, { type: 'array', cellDates: true, cellNF: true });
+}
+
+export function importFromExcel(file: File | ArrayBuffer | Uint8Array): Promise<{
   name: string;
   sheets: {
     name: string;
@@ -71,22 +87,13 @@ export function importFromExcel(file: File): Promise<{
   }[];
 }> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
+    const parse = (data: ArrayBuffer | string) => {
       try {
-        if (!e.target?.result) {
-          reject(new Error('文件读取结果为空'));
+        if (typeof data !== 'string' && data.byteLength === 0) {
+          reject(new Error('文件为空'));
           return;
         }
-        const data = e.target.result;
-        
-        // 检查数据是否有效
-        if (!(data instanceof ArrayBuffer) && typeof data !== 'string') {
-          reject(new Error('无效的文件数据格式'));
-          return;
-        }
-        
-        const wb = XLSX.read(data, { type: ArrayBuffer.isView(data) ? 'array' : 'binary', cellDates: true, cellNF: true });
+        const wb = readExcelData(data);
 
         // 检查工作表是否存在
         if (!wb.SheetNames || wb.SheetNames.length === 0) {
@@ -149,10 +156,25 @@ export function importFromExcel(file: File): Promise<{
         reject(new Error('无法解析 Excel 文件: ' + (error as Error).message));
       }
     };
-    reader.onerror = () => {
-      reject(new Error('读取文件失败，请重试'));
-    };
-    reader.readAsArrayBuffer(file);
+
+    if (file instanceof ArrayBuffer || file instanceof Uint8Array) {
+      const data = file instanceof Uint8Array ? new Uint8Array(file).buffer : file;
+      parse(data as ArrayBuffer);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const data = e.target?.result;
+        if (!data || (!(data instanceof ArrayBuffer) && typeof data !== 'string')) {
+          reject(new Error('无效的文件数据格式'));
+          return;
+        }
+        parse(data);
+      };
+      reader.onerror = () => {
+        reject(new Error('读取文件失败，请重试'));
+      };
+      reader.readAsArrayBuffer(file);
+    }
   });
 }
 

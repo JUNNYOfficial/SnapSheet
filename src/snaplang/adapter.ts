@@ -8,9 +8,10 @@ function loadSnaplang() {
 }
 
 function preprocessFormula(formula: string): string {
-  const source = formula.startsWith('=') ? formula.slice(1) : formula;
+  let source = formula.startsWith('=') ? formula.slice(1) : formula;
 
-  const parts: string[] = [];
+  // 按字符串常量分割，避免替换字符串内部看起来像单元格引用的内容
+  const segments: { text: string; isString: boolean }[] = [];
   let inString = false;
   let stringChar = '';
   let current = '';
@@ -20,29 +21,28 @@ function preprocessFormula(formula: string): string {
       current += ch;
       if (ch === stringChar) {
         inString = false;
-        parts.push(current);
+        segments.push({ text: current, isString: true });
         current = '';
       }
     } else if (ch === '"' || ch === "'") {
-      if (current) {
-        parts.push(current);
-        current = '';
-      }
+      if (current) segments.push({ text: current, isString: false });
       inString = true;
       stringChar = ch;
-      current += ch;
+      current = ch;
     } else {
       current += ch;
     }
   }
-  if (current) parts.push(current);
+  if (current) segments.push({ text: current, isString: inString });
 
-  return parts
-    .map((part) => {
-      if (part.startsWith('"') || part.startsWith("'")) return part;
-      part = part.replace(/\b([A-Z]+[0-9]+):([A-Z]+[0-9]+)\b/g, 'getCellRange("$1:$2")');
-      part = part.replace(/\b([A-Z]+[0-9]+)\b/g, 'getCell("$1")');
-      return part;
+  // 只在非字符串部分替换单元格引用
+  return segments
+    .map(({ text, isString }) => {
+      if (isString) return text;
+      // 先替换单个单元格引用，再把相邻的 getCell("A1"):getCell("A3") 合并为区域
+      let out = text.replace(/\b([A-Z]+[0-9]+)\b/g, 'getCell("$1")');
+      out = out.replace(/getCell\("([A-Z]+[0-9]+)"\):getCell\("([A-Z]+[0-9]+)"\)/g, 'getCellRange("$1:$2")');
+      return out;
     })
     .join('');
 }

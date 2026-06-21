@@ -72,4 +72,40 @@ describe('FormulaEngine', () => {
     expect(results.get('A1')).toBe('#CYCLE!');
     expect(results.get('B1')).toBe('#CYCLE!');
   });
+
+  it('returns error for empty reference', () => {
+    const cells = new Map<string, Cell>();
+    const { engine } = createEngine(cells);
+
+    const result = engine.evaluate('A1', '=B1*2');
+    expect(result).toSatisfy((r: number | string) => typeof r === 'string' && r.startsWith('#'));
+  });
+
+  it('supports range functions', () => {
+    const cells = new Map<string, Cell>([
+      ['A1', { value: '1' }],
+      ['A2', { value: '2' }],
+      ['A3', { value: '3' }],
+      ['B1', { value: '=sum(A1:A3)', formula: '=sum(A1:A3)' }],
+    ]);
+    const { engine } = createEngine(cells);
+
+    const result = engine.evaluate('B1', '=sum(A1:A3)');
+    expect(result).toBe(6);
+  });
+
+  it('handles deep dependency chains', () => {
+    const cells = new Map<string, Cell>();
+    const { engine } = createEngine(cells);
+
+    for (let i = 1; i <= 50; i++) {
+      const ref = `A${i}`;
+      const formula = i === 1 ? '=1' : `=A${i - 1}+1`;
+      cells.set(ref, { value: formula, formula });
+      engine.evaluate(ref, formula);
+    }
+
+    const results = engine.recalculateMany(Array.from({ length: 50 }, (_, i) => `A${i + 1}`));
+    expect(results.get('A50')).toBe(50);
+  });
 });
