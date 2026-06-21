@@ -1,0 +1,42 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2DD4A0"/>
+      <stop offset="100%" stop-color="#0BAD4A"/>
+    </linearGradient>
+    <linearGradient id="sheet" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#E8FFF1" stop-opacity="0.95"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="20" flood-color="#000000" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <!-- 圆角方形背景 -->
+  <rect x="48" y="48" width="928" height="928" rx="224" ry="224" fill="url(#bg)" filter="url(#shadow)"/>
+
+  <!-- 内部表格纸片 -->
+  <rect x="238" y="238" width="548" height="548" rx="96" ry="96" fill="url(#sheet)"/>
+
+  <!-- 表头高亮行 -->
+  <rect x="238" y="238" width="548" height="120" rx="96" ry="96" fill="#0BAD4A" fill-opacity="0.12"/>
+  <rect x="238" y="328" width="548" height="30" fill="#0BAD4A" fill-opacity="0.12"/>
+
+  <!-- 行线 -->
+  <line x1="238" y1="418" x2="786" y2="418" stroke="#0BAD4A" stroke-opacity="0.18" stroke-width="12"/>
+  <line x1="238" y1="522" x2="786" y2="522" stroke="#0BAD4A" stroke-opacity="0.18" stroke-width="12"/>
+  <line x1="238" y1="626" x2="786" y2="626" stroke="#0BAD4A" stroke-opacity="0.18" stroke-width="12"/>
+  <line x1="238" y1="730" x2="786" y2="730" stroke="#0BAD4A" stroke-opacity="0.18" stroke-width="12"/>
+
+  <!-- 列线 -->
+  <line x1="418" y1="238" x2="418" y2="786" stroke="#0BAD4A" stroke-opacity="0.18" stroke-width="12"/>
+  <line x1="598" y1="238" x2="598" y2="786" stroke="#0BAD4A" stroke-opacity="0.18" stroke-width="12"/>
+
+  <!-- 选中单元格高亮 -->
+  <rect x="418" y="522" width="180" height="104" rx="24" ry="24" fill="#0BAD4A" fill-opacity="0.22"/>
+
+  <!-- 左上角单元格标识 -->
+  <rect x="238" y="238" width="180" height="180" rx="96" ry="96" fill="#0BAD4A" fill-opacity="0.08"/>
+  <path d="M310 352V298H346C360 298 370 308 370 320C370 332 360 342 346 342H322V352H310ZM322 332H344C352 332 356 327 356 320C356 313 352 308 344 308H322V332Z" fill="#0BAD4A"/>
+</svg>

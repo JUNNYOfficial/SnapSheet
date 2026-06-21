@@ -3,15 +3,63 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "dist-electron/main.js",
   "scripts": {
     "build:snaplang": "node scripts/build-snaplang.js",
     "dev": "npm run build:snaplang && vite",
+    "dev:electron": "npm run build:snaplang && vite --config vite.electron.config.ts",
     "build": "npm run build:snaplang && tsc -b && vite build",
+    "build:electron": "npm run build:snaplang && tsc -b && vite build --config vite.electron.config.ts && tsc -p electron/tsconfig.json && electron-builder",
     "lint": "eslint .",
     "preview": "vite preview",
     "check": "tsc -b --noEmit",
     "test": "npm run build:snaplang && vitest run",
     "test:watch": "npm run build:snaplang && vitest"
+  },
+  "build": {
+    "appId": "com.snapsheet.app",
+    "productName": "SnapSheet",
+    "directories": {
+      "output": "release",
+      "buildResources": "public"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "public/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -28,12 +76,14 @@
     "@eslint/js": "^9.25.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "@types/node": "^22.15.30",
+    "@types/node": "^22.20.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.21",
     "babel-plugin-react-dev-locator": "^1.0.0",
+    "electron": "^42.4.1",
+    "electron-builder": "^24.13.3",
     "eslint": "^9.25.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",

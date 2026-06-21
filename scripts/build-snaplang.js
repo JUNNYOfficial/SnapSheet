@@ -33,7 +33,11 @@ await build({
   format: 'esm',
   platform: 'browser',
   outfile: outFile,
-  external: ['./stdlib/*', 'fs', 'path'],
+  external: ['./stdlib/*'],
+  alias: {
+    fs: resolve(outDir, 'fs-stub.js'),
+    path: resolve(outDir, 'path-stub.js'),
+  },
   target: 'es2020',
   sourcemap: false,
   minify: false,
