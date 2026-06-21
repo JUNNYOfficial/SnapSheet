@@ -5,7 +5,7 @@
  *              构建后由 electron-builder 打包为桌面应用，安装时自动生成桌面快捷方式。
  */
 
-import { app, BrowserWindow, shell, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, dialog, Menu } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -60,8 +60,98 @@ function createWindow() {
   });
 }
 
+/** 设置 macOS 原生应用菜单为中文 */
+function setAppMenu() {
+  if (process.platform !== 'darwin') return;
+
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: 'SnapSheet',
+      submenu: [
+        { label: '关于 SnapSheet', role: 'about' },
+        { type: 'separator' },
+        { label: '偏好设置…', accelerator: 'CmdOrCtrl+,', click: () => win?.webContents.send('menu:preferences') },
+        { type: 'separator' },
+        { label: '隐藏 SnapSheet', role: 'hide' },
+        { label: '隐藏其他', role: 'hideOthers' },
+        { label: '显示全部', role: 'unhide' },
+        { type: 'separator' },
+        { label: '退出 SnapSheet', role: 'quit' },
+      ],
+    },
+    {
+      label: '文件',
+      submenu: [
+        { label: '新建工作簿', accelerator: 'CmdOrCtrl+N', click: () => win?.webContents.send('menu:new-workbook') },
+        { label: '打开…', accelerator: 'CmdOrCtrl+O', click: () => win?.webContents.send('menu:open-workbook') },
+        { type: 'separator' },
+        { label: '保存', accelerator: 'CmdOrCtrl+S', click: () => win?.webContents.send('menu:save-workbook') },
+        { type: 'separator' },
+        { label: '关闭窗口', role: 'close' },
+      ],
+    },
+    {
+      label: '编辑',
+      submenu: [
+        { label: '撤销', role: 'undo', accelerator: 'CmdOrCtrl+Z' },
+        { label: '重做', role: 'redo', accelerator: 'CmdOrCtrl+Shift+Z' },
+        { type: 'separator' },
+        { label: '剪切', role: 'cut', accelerator: 'CmdOrCtrl+X' },
+        { label: '复制', role: 'copy', accelerator: 'CmdOrCtrl+C' },
+        { label: '粘贴', role: 'paste', accelerator: 'CmdOrCtrl+V' },
+        { label: '全选', role: 'selectAll', accelerator: 'CmdOrCtrl+A' },
+      ],
+    },
+    {
+      label: '视图',
+      submenu: [
+        { label: '重新加载', role: 'reload' },
+        { label: '切换开发者工具', role: 'toggleDevTools', accelerator: 'Alt+CmdOrCtrl+I' },
+        { type: 'separator' },
+        { label: '实际大小', role: 'resetZoom', accelerator: 'CmdOrCtrl+0' },
+        { label: '放大', role: 'zoomIn', accelerator: 'CmdOrCtrl+Plus' },
+        { label: '缩小', role: 'zoomOut', accelerator: 'CmdOrCtrl+-' },
+        { type: 'separator' },
+        { label: '切换全屏', role: 'togglefullscreen' },
+      ],
+    },
+    {
+      label: '窗口',
+      submenu: [
+        { label: '最小化', role: 'minimize', accelerator: 'CmdOrCtrl+M' },
+        { label: '缩放', role: 'zoom' },
+        { type: 'separator' },
+        { label: '前置全部窗口', role: 'front' },
+      ],
+    },
+    {
+      label: '帮助',
+      submenu: [
+        { label: 'SnapSheet 帮助', click: () => shell.openExternal('https://github.com/snapsheet/snapsheet') },
+      ],
+    },
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+/** 配置“关于”面板信息 */
+function setAboutPanel() {
+  app.setAboutPanelOptions({
+    applicationName: 'SnapSheet',
+    applicationVersion: '0.0.0',
+    version: '0.0.0',
+    copyright: '版权所有 © 2026 SnapSheet',
+    credits: 'SnapSheet 团队',
+  });
+}
+
 /** 应用准备就绪后创建窗口 */
-app.on('ready', createWindow);
+app.on('ready', () => {
+  setAppMenu();
+  setAboutPanel();
+  createWindow();
+});
 
 /** 所有窗口关闭后退出应用（Windows/Linux） */
 app.on('window-all-closed', () => {

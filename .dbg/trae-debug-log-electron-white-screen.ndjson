@@ -9,3 +9,24 @@
 {"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782033827354}
 {"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"B","location":"electron/preload.cjs","msg":"[DEBUG] preload script executed","ts":1782035369149}
 {"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"B","location":"electron/preload.cjs","msg":"[DEBUG] preload script executed","ts":1782035389560}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"B","location":"electron/preload.cjs","msg":"[DEBUG] preload script executed","ts":1782036900673}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"A","location":"electron/main.ts","msg":"[DEBUG] main process started","data":{"APP_ROOT":"/Applications/SnapSheet.app/Contents/Resources/app.asar","RENDERER_DIST":"/Applications/SnapSheet.app/Contents/Resources/app.asar/dist"},"ts":1782037511315}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"A","location":"electron/main.ts","msg":"[DEBUG] app ready","ts":1782037511379}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"A","location":"electron/main.ts","msg":"[DEBUG] createWindow called","ts":1782037511379}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"A","location":"electron/main.ts","msg":"[DEBUG] loading renderer","data":{"loadTarget":"/Applications/SnapSheet.app/Contents/Resources/app.asar/dist/index.html","preload":"/Applications/SnapSheet.app/Contents/Resources/app.asar/dist-electron/preload.js"},"ts":1782037511434}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"B","location":"electron/preload.cjs","msg":"[DEBUG] preload script executed","ts":1782037511547}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/main.tsx","msg":"[DEBUG] main.tsx executed","data":{"electronAPI":true},"ts":1782037511566}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"A","location":"electron/main.ts","msg":"[DEBUG] renderer did-finish-load","ts":1782037511578}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037511568}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037514153}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037514946}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037514965}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037517213}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037517214}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037529638}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037530439}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037530645}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037530662}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037533162}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037533164}
+{"sessionId":"electron-white-screen","runId":"pre","hypothesisId":"C","location":"src/App.tsx","msg":"[DEBUG] App component rendered","ts":1782037533165}
