@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CanvasRenderer } from '../canvas/CanvasRenderer';
 import { useSpreadsheetStore, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../store/useSpreadsheetStore';
 import { coordsToCell } from '../utils/cellRef';
+import type { Chart } from '../types';
 import {
   FONT_SIZE,
   HEADER_COL_WIDTH,
@@ -32,9 +33,10 @@ function measureTextWidth(text: string, font: string): number {
 
 interface SpreadsheetProps {
   isDark?: boolean;
+  onEditChart?: (chart: Chart) => void;
 }
 
-export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
+export default function Spreadsheet({ isDark = false, onEditChart }: SpreadsheetProps) {
   /** Canvas DOM 引用 */
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /** 单元格编辑输入框引用 */
@@ -310,7 +312,7 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
         </div>
       )}
       {charts.map((chart) => (
-        <ChartCard key={chart.id} chart={chart} />
+        <ChartCard key={chart.id} chart={chart} onEdit={(c) => onEditChart?.(c)} />
       ))}
       {contextMenu && (
         <ContextMenu

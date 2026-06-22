@@ -20,6 +20,7 @@ import { useTheme } from './hooks/useTheme';
 import { workbookToJSON, workbookFromJSON } from './utils/json';
 import { registerDeleteConfirmation } from './utils/deleteConfirmation';
 import { Save, CheckCircle } from 'lucide-react';
+import type { Chart } from './types';
 
 const STORAGE_KEY = 'snapsheet_autosave';
 
@@ -40,6 +41,8 @@ export default function App() {
   const pendingActionRef = useRef<(() => void) | null>(null);
   /** 图表插入对话框开关 */
   const [chartOpen, setChartOpen] = useState(false);
+  /** 当前正在编辑的图表，null 表示新建图表 */
+  const [editingChart, setEditingChart] = useState<Chart | null>(null);
   const store = useSpreadsheetStore;
   const { theme, toggleTheme, isDark } = useTheme();
 
@@ -236,14 +239,14 @@ export default function App() {
       </div>
 
       {/* Ribbon 工具栏 */}
-      <Toolbar isDark={isDark} onToggleTheme={toggleTheme} onTogglePanel={() => setPanelOpen(!panelOpen)} onInsertChart={() => setChartOpen(true)} />
+      <Toolbar isDark={isDark} onToggleTheme={toggleTheme} onTogglePanel={() => setPanelOpen(!panelOpen)} onInsertChart={() => { setEditingChart(null); setChartOpen(true); }} />
 
       {/* 公式栏 */}
       <FormulaBar />
 
       {/* 主工作区 */}
       <div className="relative flex-1 overflow-hidden" style={{ background: 'var(--ss-bg)' }}>
-        <Spreadsheet isDark={isDark} />
+        <Spreadsheet isDark={isDark} onEditChart={(chart) => { setEditingChart(chart); setChartOpen(true); }} />
       </div>
 
       {/* 底部工作表标签 */}
@@ -255,7 +258,7 @@ export default function App() {
       {/* 查找对话框 */}
       <FindDialog open={findOpen} onClose={() => setFindOpen(false)} />
 
-      {chartOpen && <ChartDialog onClose={() => setChartOpen(false)} />}
+      {chartOpen && <ChartDialog onClose={() => setChartOpen(false)} chart={editingChart} />}
 
       {/* 右侧属性面板 */}
       <PropertyPanel isOpen={panelOpen} onClose={() => setPanelOpen(false)} />

@@ -7,33 +7,39 @@
 import { useMemo, useState } from 'react';
 import { useSpreadsheetStore } from '../store/useSpreadsheetStore';
 import { coordsToCell, colToLetter } from '../utils/cellRef';
-import type { ChartType } from '../types';
-import { BarChart3, LineChart, PieChart, X } from 'lucide-react';
+import type { ChartType, Chart } from '../types';
+import { BarChart3, LineChart, PieChart, Activity, ScatterChart, X } from 'lucide-react';
 
 interface ChartDialogProps {
   onClose: () => void;
+  chart?: Chart | null;
 }
 
 const CHART_TYPES: { type: ChartType; label: string; icon: React.ReactNode }[] = [
   { type: 'bar', label: '柱状图', icon: <BarChart3 size={18} /> },
   { type: 'line', label: '折线图', icon: <LineChart size={18} /> },
+  { type: 'area', label: '面积图', icon: <Activity size={18} /> },
+  { type: 'scatter', label: '散点图', icon: <ScatterChart size={18} /> },
   { type: 'pie', label: '饼图', icon: <PieChart size={18} /> },
 ];
 
-export default function ChartDialog({ onClose }: ChartDialogProps) {
+export default function ChartDialog({ onClose, chart }: ChartDialogProps) {
   const store = useSpreadsheetStore;
   const selection = useSpreadsheetStore((s) => s.selection);
   const sheet = useSpreadsheetStore((s) => s.getActiveSheet());
 
-  const minRow = Math.min(selection.startRow, selection.endRow);
-  const maxRow = Math.max(selection.startRow, selection.endRow);
-  const minCol = Math.min(selection.startCol, selection.endCol);
-  const maxCol = Math.max(selection.startCol, selection.endCol);
+  const editing = chart || null;
+  const range = editing?.range ?? selection;
+  const minRow = Math.min(range.startRow, range.endRow);
+  const maxRow = Math.max(range.startRow, range.endRow);
+  const minCol = Math.min(range.startCol, range.endCol);
+  const maxCol = Math.max(range.startCol, range.endCol);
 
-  const [chartType, setChartType] = useState<ChartType>('bar');
-  const [title, setTitle] = useState('图表');
-  const [categoryCol, setCategoryCol] = useState(0);
+  const [chartType, setChartType] = useState<ChartType>(editing?.type ?? 'bar');
+  const [title, setTitle] = useState(editing?.title ?? '图表');
+  const [categoryCol, setCategoryCol] = useState(editing?.categoryCol ?? 0);
   const [valueCols, setValueCols] = useState<number[]>(() => {
+    if (editing?.valueCols) return editing.valueCols;
     const cols: number[] = [];
     for (let c = minCol; c <= maxCol && c !== minCol + categoryCol; c++) {
       cols.push(c - minCol);
@@ -76,19 +82,30 @@ export default function ChartDialog({ onClose }: ChartDialogProps) {
   };
 
   const handleInsert = () => {
-    const canvas = document.getElementById('spreadsheet-canvas')?.parentElement;
-    const rect = canvas?.getBoundingClientRect();
-    store.getState().addChart({
-      type: chartType,
-      title,
-      range: { startRow: minRow, startCol: minCol, endRow: maxRow, endCol: maxCol },
-      categoryCol,
-      valueCols,
-      x: 120,
-      y: 80,
-      width: Math.min(560, (rect?.width || 560) - 160),
-      height: 320,
-    });
+    const state = store.getState();
+    if (editing) {
+      state.updateChart(editing.id, {
+        type: chartType,
+        title,
+        range: { startRow: minRow, startCol: minCol, endRow: maxRow, endCol: maxCol },
+        categoryCol,
+        valueCols,
+      });
+    } else {
+      const canvas = document.getElementById('spreadsheet-canvas')?.parentElement;
+      const rect = canvas?.getBoundingClientRect();
+      state.addChart({
+        type: chartType,
+        title,
+        range: { startRow: minRow, startCol: minCol, endRow: maxRow, endCol: maxCol },
+        categoryCol,
+        valueCols,
+        x: 120,
+        y: 80,
+        width: Math.min(560, (rect?.width || 560) - 160),
+        height: 320,
+      });
+    }
     onClose();
   };
 
@@ -99,7 +116,7 @@ export default function ChartDialog({ onClose }: ChartDialogProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }}>
       <div className="max-h-[90vh] w-[640px] overflow-auto rounded-xl border p-5 shadow-2xl" style={{ background: 'var(--ss-panel-bg)', borderColor: 'var(--ss-border)' }}>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold" style={{ color: 'var(--ss-text-primary)' }}>插入图表</h2>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--ss-text-primary)' }}>{editing ? '编辑图表' : '插入图表'}</h2>
           <button onClick={onClose} className="rounded p-1 transition-colors hover:bg-[var(--ss-hover-bg)]" style={{ color: 'var(--ss-text-secondary)' }}>
             <X size={18} />
           </button>
@@ -191,7 +208,7 @@ export default function ChartDialog({ onClose }: ChartDialogProps) {
             className="rounded-lg px-4 py-2 text-xs font-medium text-white transition-colors"
             style={{ background: 'var(--ss-selected-border)' }}
           >
-            插入
+            {editing ? '保存' : '插入'}
           </button>
         </div>
       </div>

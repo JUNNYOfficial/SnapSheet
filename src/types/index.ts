@@ -130,7 +130,7 @@ export interface MergeRange {
 }
 
 /** 图表类型 */
-export type ChartType = 'bar' | 'line' | 'pie';
+export type ChartType = 'bar' | 'line' | 'area' | 'scatter' | 'pie';
 
 /** 图表对象 */
 export interface Chart {

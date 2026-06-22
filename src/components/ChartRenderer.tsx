@@ -110,6 +110,57 @@ export default function ChartRenderer({ chart, categories, series }: ChartRender
         </g>
       )}
 
+      {type === 'area' && (
+        <g>
+          {series.map((s, j) => {
+            const points = s.values
+              .map((v, i) => {
+                const x = padding.left + (i + 0.5) * (chartWidth / categories.length);
+                const y = height - padding.bottom - ((v - minValue) / valueRange) * chartHeight;
+                return `${x},${y}`;
+              })
+              .join(' ');
+            const firstX = padding.left + 0.5 * (chartWidth / categories.length);
+            const lastX = padding.left + (categories.length - 0.5) * (chartWidth / categories.length);
+            const baseY = height - padding.bottom - ((0 - minValue) / valueRange) * chartHeight;
+            const areaPath = `M ${firstX} ${baseY} L ${points.split(' ').join(' L ')} L ${lastX} ${baseY} Z`;
+            return (
+              <g key={j}>
+                <path d={areaPath} fill={colors[j % colors.length]} fillOpacity={0.35} stroke="none" />
+                <polyline points={points} fill="none" stroke={colors[j % colors.length]} strokeWidth={2} />
+                {s.values.map((v, i) => {
+                  const x = padding.left + (i + 0.5) * (chartWidth / categories.length);
+                  const y = height - padding.bottom - ((v - minValue) / valueRange) * chartHeight;
+                  return <circle key={i} cx={x} cy={y} r={3} fill={colors[j % colors.length]} />;
+                })}
+              </g>
+            );
+          })}
+          {categories.map((cat, i) => (
+            <text key={i} x={padding.left + (i + 0.5) * (chartWidth / categories.length)} y={height - padding.bottom + 16} textAnchor="middle" style={{ fill: 'var(--ss-text-secondary)', fontSize: 10 }}>
+              {cat}
+            </text>
+          ))}
+        </g>
+      )}
+
+      {type === 'scatter' && (
+        <g>
+          {series.map((s, j) =>
+            s.values.map((v, i) => {
+              const x = padding.left + (i + 0.5) * (chartWidth / categories.length);
+              const y = height - padding.bottom - ((v - minValue) / valueRange) * chartHeight;
+              return <circle key={`${j}-${i}`} cx={x} cy={y} r={4} fill={colors[j % colors.length]} stroke="var(--ss-bg)" strokeWidth={1} />;
+            })
+          )}
+          {categories.map((cat, i) => (
+            <text key={i} x={padding.left + (i + 0.5) * (chartWidth / categories.length)} y={height - padding.bottom + 16} textAnchor="middle" style={{ fill: 'var(--ss-text-secondary)', fontSize: 10 }}>
+              {cat}
+            </text>
+          ))}
+        </g>
+      )}
+
       {type === 'pie' && (
         <g>
           {(() => {
