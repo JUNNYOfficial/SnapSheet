@@ -12,6 +12,7 @@ import { workbookToJSON, workbookFromJSON, downloadFile } from '../utils/json';
 import { exportToExcel, importFromExcel } from '../utils/excel';
 import { coordsToCell } from '../utils/cellRef';
 import { requestDeleteConfirmation } from '../utils/deleteConfirmation';
+import { TEMPLATES } from '../templates';
 
 import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from '../utils/constants';
 import {
@@ -189,7 +190,9 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   };
 
   /** 导出整个工作簿为 Excel 文件 */
-  const handleExportExcel = () => exportToExcel(store.getState().workbook, 'snapsheet.xlsx');
+  const handleExportExcel = async () => {
+    await exportToExcel(store.getState().workbook, 'snapsheet.xlsx');
+  };
 
   /** 从 Excel 文件导入所有工作表数据 */
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -482,6 +485,26 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
               <ToolbarButton onClick={() => store.getState().applyNumberFormat({ type: 'number', decimalPlaces: 2 })} icon={<Hash size={16} />} title="数字" />
               <ToolbarButton onClick={() => store.getState().applyNumberFormat({ type: 'currency', decimalPlaces: 2, currencySymbol: '¥' })} icon={<DollarSign size={16} />} title="货币" />
               <ToolbarButton onClick={() => store.getState().applyNumberFormat({ type: 'date' })} icon={<Calendar size={16} />} title="日期" />
+            </ToolbarGroup>
+            <ToolbarDivider />
+            <ToolbarGroup title="模板">
+              <select
+                value=""
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (!id) return;
+                  if (window.confirm('应用模板会覆盖当前工作表内容，是否继续？')) {
+                    store.getState().applyTemplate(id);
+                  }
+                  e.target.value = '';
+                }}
+                className="h-8 rounded-md border px-2 py-1 text-xs outline-none transition-colors focus:border-[var(--ss-focus-ring)] cursor-pointer"
+                style={{ borderColor: 'var(--ss-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-text-secondary)' }}
+                title="K12 场景模板"
+              >
+                <option value="">K12 模板</option>
+                {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
             </ToolbarGroup>
           </>
         )}

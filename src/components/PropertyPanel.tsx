@@ -42,39 +42,104 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
 
     const nums: number[] = [];
     const strs: string[] = [];
+    // 按列收集，用于推断数据结构
+    const colValues: { numeric: number[]; text: string[] }[] = [];
+    for (let c = minCol; c <= maxCol; c++) colValues.push({ numeric: [], text: [] });
+
     for (let r = minRow; r <= maxRow; r++) {
       for (let c = minCol; c <= maxCol; c++) {
+        const idx = c - minCol;
         const ref = coordsToCell(r, c);
         const cell = sheet.cells.get(ref);
         if (cell) {
           const val = cell.computed !== undefined ? cell.computed : cell.value;
           const parsed = typeof val === 'number' ? val : parseFloat(val as string);
-          if (!isNaN(parsed) && String(val).trim() !== '') nums.push(parsed);
-          else if (typeof val === 'string' && val.trim() !== '') strs.push(val);
+          if (!isNaN(parsed) && String(val).trim() !== '') {
+            nums.push(parsed);
+            colValues[idx].numeric.push(parsed);
+          } else if (typeof val === 'string' && val.trim() !== '') {
+            strs.push(val);
+            colValues[idx].text.push(val);
+          }
         }
       }
     }
 
+    const totalCells = (maxRow - minRow + 1) * (maxCol - minCol + 1);
+    const range = coordsToCell(minRow, minCol) + ':' + coordsToCell(maxRow, maxCol);
     let result = '';
+
+    if (nums.length === 0 && strs.length === 0) {
+      setAiResult('选中区域无数据');
+      return;
+    }
+
+    result += `区域共 ${totalCells} 个单元格\n`;
+    if (nums.length > 0) result += `数值单元格: ${nums.length} 个\n`;
+    if (strs.length > 0) result += `文本单元格: ${strs.length} 个\n`;
+    result += '\n';
+
     if (nums.length > 0) {
       const sum = nums.reduce((a, b) => a + b, 0);
       const avg = sum / nums.length;
+      const sorted = [...nums].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
       const mx = Math.max(...nums);
       const mn = Math.min(...nums);
-      result += '区域共 ' + (maxRow - minRow + 1) * (maxCol - minCol + 1) + ' 个单元格\n';
-      result += '数值单元格: ' + nums.length + ' 个\n';
-      result += 'SUM = ' + sum.toFixed(2) + '\n';
-      result += 'AVG = ' + avg.toFixed(2) + '\n';
-      result += 'MAX = ' + mx + '\n';
-      result += 'MIN = ' + mn + '\n';
-      if (strs.length > 0) result += '文本单元格: ' + strs.length + ' 个\n';
-      result += '\n建议公式: =SUM(' + coordsToCell(minRow, minCol) + ':' + coordsToCell(maxRow, maxCol) + ')';
-    } else if (strs.length > 0) {
-      result += '区域有 ' + strs.length + ' 个文本单元格\n';
-      result += '前 5 个值: ' + strs.slice(0, 5).join(', ');
-    } else {
-      result = '选中区域无数据';
+      const stdev = Math.sqrt(nums.reduce((s, n) => s + Math.pow(n - avg, 2), 0) / nums.length);
+
+      result += '【基础统计】\n';
+      result += `求和 = ${sum.toFixed(2)}\n`;
+      result += `平均值 = ${avg.toFixed(2)}\n`;
+      result += `中位数 = ${median.toFixed(2)}\n`;
+      result += `最大值 = ${mx}\n`;
+      result += `最小值 = ${mn}\n`;
+      result += `标准差 = ${stdev.toFixed(2)}\n`;
+      result += `计数 = ${nums.length}\n`;
+      result += '\n';
+
+      // 智能总结
+      const rangeVal = mx - mn;
+      const variation = avg !== 0 ? (stdev / Math.abs(avg)) : 0;
+      result += '【数据总结】\n';
+      result += `共 ${nums.length} 个有效数值，平均值为 ${avg.toFixed(2)}，`;
+      if (variation < 0.1) {
+        result += '数据分布非常集中；';
+      } else if (variation < 0.3) {
+        result += '数据分布相对集中；';
+      } else {
+        result += '数据分布较为分散；';
+      }
+      if (rangeVal > 0) {
+        result += `最大值与最小值相差 ${rangeVal.toFixed(2)}。`;
+      }
+      result += '\n\n';
     }
+
+    // 图表推荐
+    result += '【图表推荐】\n';
+    const nonEmptyCols = colValues.filter((c) => c.numeric.length > 0 || c.text.length > 0);
+    const textCols = nonEmptyCols.filter((c) => c.text.length >= c.numeric.length);
+    const numericCols = nonEmptyCols.filter((c) => c.numeric.length > c.text.length);
+    if (textCols.length === 1 && numericCols.length === 1) {
+      result += '该数据结构适合用 柱状图/条形图 展示各类别之间的数量对比；';
+      const total = numericCols[0].numeric.reduce((a, b) => a + b, 0);
+      const allPositive = numericCols[0].numeric.every((v) => v >= 0);
+      if (allPositive && total > 0) {
+        result += '若各类别相加等于一个整体，也可使用 饼图/环形图 展示占比。';
+      }
+    } else if (numericCols.length === 1 && textCols.length === 0) {
+      result += '单列数值数据适合用 直方图 观察分布，或用 折线图 展示变化趋势。';
+    } else if (numericCols.length === 2 && textCols.length === 0) {
+      result += '两列数值数据适合用 散点图 观察两个变量之间的相关关系。';
+    } else {
+      result += '当前数据结构较复杂，建议先用 数据透视/汇总表 整理关键指标后再选择图表。';
+    }
+    result += '\n\n';
+
+    result += `【建议公式】\n=求和(${range})\n=平均值(${range})\n=最大值(${range})\n=最小值(${range})`;
+
     setAiResult(result);
   };
 
@@ -87,18 +152,24 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
 
     let formula = '';
     const p = aiPrompt.toLowerCase();
-    if (p.includes('求和') || p.includes('sum') || p.includes('加')) formula = '=SUM(' + range + ')';
-    else if (p.includes('平均') || p.includes('avg') || p.includes('average')) formula = '=AVG(' + range + ')';
-    else if (p.includes('最大') || p.includes('max')) formula = '=MAX(' + range + ')';
-    else if (p.includes('最小') || p.includes('min')) formula = '=MIN(' + range + ')';
-    else if (p.includes('计数') || p.includes('count')) formula = '=COUNT(' + range + ')';
+    if (p.includes('求和') || p.includes('sum') || p.includes('加')) formula = '=求和(' + range + ')';
+    else if (p.includes('平均') || p.includes('avg') || p.includes('average')) formula = '=平均值(' + range + ')';
+    else if (p.includes('最大') || p.includes('max')) formula = '=最大(' + range + ')';
+    else if (p.includes('最小') || p.includes('min')) formula = '=最小(' + range + ')';
+    else if (p.includes('计数') || p.includes('count')) formula = '=计数(' + range + ')';
+    else if (p.includes('中位数') || p.includes('median')) formula = '=中位数(' + range + ')';
+    else if (p.includes('众数') || p.includes('mode')) formula = '=众数(' + range + ')';
+    else if (p.includes('标准差') || p.includes('stdev')) formula = '=标准差(' + range + ')';
+    else if (p.includes('方差') || p.includes('var')) formula = '=方差(' + range + ')';
+    else if (p.includes('排名') || p.includes('rank')) formula = '=排名(' + range + ',,0)';
 
     if (formula) {
-      store.getState().setCellValue(Math.min(sel.endRow + 1, 999), sel.startCol, formula);
-      setAiResult('已生成公式: ' + formula + ' 写入 ' + coordsToCell(Math.min(sel.endRow + 1, 999), sel.startCol));
+      const targetRow = Math.min(sel.endRow + 1, 999);
+      store.getState().setCellValue(targetRow, sel.startCol, formula);
+      setAiResult('已生成公式: ' + formula + ' 写入 ' + coordsToCell(targetRow, sel.startCol));
       setAiPrompt('');
     } else {
-      setAiResult('未能识别请求。请尝试:"求和""平均值""最大值""最小值""计数"等关键词。');
+      setAiResult('未能识别请求。请尝试:"求和""平均值""最大值""最小值""计数""中位数""标准差"等关键词。');
     }
   };
 
@@ -258,7 +329,7 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
 
           {activeTab === 'data' && (
             <>
-              <Section title="数据验证">
+              <Section title="快速验证">
                 <PanelButton
                   onClick={() => {
                     const sel = store.getState().selection;
@@ -269,7 +340,7 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
                     }
                   }}
                   icon={<CheckCircle size={14} />}
-                  label="0-100 数值验证"
+                  label="成绩 0-100"
                 />
                 <PanelButton
                   onClick={() => {
@@ -281,12 +352,12 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
                     }
                   }}
                   icon={<CheckCircle size={14} />}
-                  label="大于 0 验证"
+                  label="正整数"
                 />
                 <PanelButton
                   onClick={() => {
                     const sel = store.getState().selection;
-                    const input = window.prompt('输入下拉选项，用逗号分隔：', '是,否');
+                    const input = window.prompt('输入下拉选项，用逗号分隔：', '男,女');
                     if (input === null) return;
                     const list = input.split(',').map(s => s.trim()).filter(Boolean);
                     if (list.length === 0) return;
@@ -297,7 +368,7 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
                     }
                   }}
                   icon={<List size={14} />}
-                  label="下拉列表"
+                  label="下拉选项"
                 />
                 <PanelButton
                   onClick={() => {
@@ -310,6 +381,85 @@ export default function PropertyPanel({ isOpen, onClose }: PropertyPanelProps) {
                   }}
                   icon={<Trash2 size={14} />}
                   label="清除验证"
+                />
+              </Section>
+
+              <Section title="数据清洗">
+                <PanelButton
+                  onClick={() => {
+                    const sel = store.getState().selection;
+                    const sheet = store.getState().getActiveSheet();
+                    const minRow = Math.min(sel.startRow, sel.endRow);
+                    const maxRow = Math.max(sel.startRow, sel.endRow);
+                    const minCol = Math.min(sel.startCol, sel.endCol);
+                    const maxCol = Math.max(sel.startCol, sel.endCol);
+                    const seen = new Set<string>();
+                    const duplicates: number[] = [];
+                    for (let r = minRow; r <= maxRow; r++) {
+                      const keyParts: string[] = [];
+                      for (let c = minCol; c <= maxCol; c++) {
+                        const ref = coordsToCell(r, c);
+                        const cell = sheet.cells.get(ref);
+                        keyParts.push(cell ? (cell.computed !== undefined ? String(cell.computed) : cell.value) : '');
+                      }
+                      const key = keyParts.join('|');
+                      if (seen.has(key)) duplicates.push(r);
+                      else seen.add(key);
+                    }
+                    if (duplicates.length === 0) {
+                      setAiResult('选中区域内未检测到重复行');
+                      return;
+                    }
+                    duplicates.sort((a, b) => b - a).forEach((r) => store.getState().deleteRow(r));
+                    setAiResult(`已删除 ${duplicates.length} 行重复数据`);
+                  }}
+                  icon={<Trash2 size={14} />}
+                  label="删除重复行"
+                />
+                <PanelButton
+                  onClick={() => {
+                    const sel = store.getState().selection;
+                    const fillValue = window.prompt('用以下值填充空白单元格：', '0');
+                    if (fillValue === null) return;
+                    const cells: { row: number; col: number; value: string }[] = [];
+                    const minRow = Math.min(sel.startRow, sel.endRow);
+                    const maxRow = Math.max(sel.startRow, sel.endRow);
+                    const minCol = Math.min(sel.startCol, sel.endCol);
+                    const maxCol = Math.max(sel.startCol, sel.endCol);
+                    const sheet = store.getState().getActiveSheet();
+                    for (let r = minRow; r <= maxRow; r++) {
+                      for (let c = minCol; c <= maxCol; c++) {
+                        const ref = coordsToCell(r, c);
+                        const cell = sheet.cells.get(ref);
+                        if (!cell || String(cell.value).trim() === '') {
+                          cells.push({ row: r, col: c, value: fillValue });
+                        }
+                      }
+                    }
+                    if (cells.length === 0) {
+                      setAiResult('选中区域内没有空白单元格');
+                      return;
+                    }
+                    store.getState().setCellsBulk(cells);
+                    setAiResult(`已填充 ${cells.length} 个空白单元格`);
+                  }}
+                  icon={<CheckCircle size={14} />}
+                  label="填充空白值"
+                />
+                <PanelButton
+                  onClick={() => {
+                    const sel = store.getState().selection;
+                    store.getState().addConditionalFormat({
+                      range: { startRow: Math.min(sel.startRow, sel.endRow), startCol: Math.min(sel.startCol, sel.endCol), endRow: Math.max(sel.startRow, sel.endRow), endCol: Math.max(sel.startCol, sel.endCol) },
+                      type: 'value',
+                      condition: 'equalTo',
+                      value: '',
+                      bgColor: '#ffefc1',
+                    });
+                    setAiResult('已用浅黄色高亮空白单元格');
+                  }}
+                  icon={<Filter size={14} />}
+                  label="标记空值"
                 />
               </Section>
 

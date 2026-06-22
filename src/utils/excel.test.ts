@@ -53,7 +53,7 @@ describe('excel', () => {
 
   it('round trips workbook through Excel buffer', async () => {
     const original = createTestWorkbook();
-    const buffer = exportToExcelBuffer(original);
+    const buffer = await exportToExcelBuffer(original);
     expect(buffer.byteLength).toBeGreaterThan(0);
 
     const restored = await importFromExcel(buffer);

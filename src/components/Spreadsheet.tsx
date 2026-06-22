@@ -152,18 +152,15 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
   useEffect(() => {
     if (editing && editInputRef.current) {
       setEditInputWidth(0);
-      setTimeout(() => {
-        const input = editInputRef.current;
-        if (!input) return;
-        input.focus();
-        const original = store.getState().editOriginalValue;
-        const current = store.getState().formulaBarValue;
-        if (current === original && current !== '') {
-          input.select();
-        } else {
-          input.setSelectionRange(current.length, current.length);
-        }
-      }, 10);
+      const input = editInputRef.current;
+      input.focus();
+      const original = store.getState().editOriginalValue;
+      const current = store.getState().formulaBarValue;
+      if (current === original && current !== '') {
+        input.select();
+      } else {
+        input.setSelectionRange(current.length, current.length);
+      }
     }
   }, [editing, store]);
 

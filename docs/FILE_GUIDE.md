@@ -64,9 +64,9 @@ SnapSheet/
 │   ├── App.tsx              # 应用根组件
 │   ├── main.tsx             # React 应用入口
 │   └── index.css            # 全局样式与主题变量
-├── website/                 # 产品官网
-│   ├── index.html
-│   └── screenshot.png
+├── index.html               # 产品官网落地页
+├── app/                     # Web 应用入口
+│   └── index.html
 ├── .github/workflows/       # CI/CD
 │   └── deploy.yml           # GitHub Pages 自动部署
 ├── package.json

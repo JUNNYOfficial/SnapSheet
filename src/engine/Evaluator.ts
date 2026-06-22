@@ -17,9 +17,35 @@ export interface EvaluationContext {
 
 export class Evaluator {
   private ctx: EvaluationContext;
+  /** 中文函数别名映射（便于 K12 学生使用母语公式） */
+  private static readonly CN_FUNCTION_ALIASES: Record<string, string> = {
+    '求和': 'SUM',
+    '平均值': 'AVERAGE',
+    '平均': 'AVERAGE',
+    '最大': 'MAX',
+    '最小': 'MIN',
+    '计数': 'COUNT',
+    '非空计数': 'COUNTA',
+    '空值计数': 'COUNTBLANK',
+    '中位数': 'MEDIAN',
+    '众数': 'MODE',
+    '方差': 'VAR',
+    '标准差': 'STDEV',
+    '排名': 'RANK',
+    '百分位': 'PERCENTILE',
+    '四分位': 'QUARTILE',
+  };
 
   constructor(ctx: EvaluationContext) {
     this.ctx = ctx;
+  }
+
+  private normalizeFunctionName(name: string): string {
+    const upper = name.toUpperCase();
+    if (upper in Evaluator.CN_FUNCTION_ALIASES) {
+      return Evaluator.CN_FUNCTION_ALIASES[upper];
+    }
+    return Evaluator.CN_FUNCTION_ALIASES[name] || upper;
   }
 
   evaluate(ast: ASTNode): number | string {
@@ -57,7 +83,8 @@ export class Evaluator {
     return cell.value;
   }
 
-  private evalFunction(name: string, args: ASTNode[]): number | string {
+  private evalFunction(rawName: string, args: ASTNode[]): number | string {
+    const name = this.normalizeFunctionName(rawName);
     const flatValues: (number | string)[] = [];
 
     const addArg = (node: ASTNode) => {

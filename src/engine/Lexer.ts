@@ -166,6 +166,9 @@ export class Lexer {
   }
 
   private isLetter(ch: string): boolean {
-    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+    if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) return true;
+    // 支持中文函数别名，如 =求和(A1:A5)
+    const code = ch.charCodeAt(0);
+    return code >= 0x4e00 && code <= 0x9fa5;
   }
 }

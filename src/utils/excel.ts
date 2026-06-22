@@ -6,9 +6,13 @@
  *              被 Toolbar 组件在导入/导出 Excel 时调用。
  */
 
-import * as XLSX from 'xlsx';
+import type * as XLSX from 'xlsx';
 import type { Workbook, Sheet } from '../types';
 import { cellToCoords } from './cellRef';
+
+async function loadXLSX(): Promise<typeof import('xlsx')> {
+  return import('xlsx');
+}
 
 /**
  * 将内存中的 Workbook 构建为 xlsx 内部 WorkBook 对象。
@@ -16,7 +20,8 @@ import { cellToCoords } from './cellRef';
  * @param workbook SnapSheet 工作簿
  * @returns xlsx 库使用的 WorkBook
  */
-function buildXLSXWorkbook(workbook: Workbook): XLSX.WorkBook {
+async function buildXLSXWorkbook(workbook: Workbook): Promise<XLSX.WorkBook> {
+  const XLSX = await loadXLSX();
   const wb = XLSX.utils.book_new();
 
   workbook.sheets.forEach((sheet) => {
@@ -73,8 +78,9 @@ function buildXLSXWorkbook(workbook: Workbook): XLSX.WorkBook {
  * @param workbook 工作簿对象
  * @returns .xlsx 文件二进制数据
  */
-export function exportToExcelBuffer(workbook: Workbook): ArrayBuffer | Uint8Array {
-  const wb = buildXLSXWorkbook(workbook);
+export async function exportToExcelBuffer(workbook: Workbook): Promise<ArrayBuffer | Uint8Array> {
+  const XLSX = await loadXLSX();
+  const wb = await buildXLSXWorkbook(workbook);
   return XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: false });
 }
 
@@ -83,8 +89,8 @@ export function exportToExcelBuffer(workbook: Workbook): ArrayBuffer | Uint8Arra
  * @param workbook 工作簿对象
  * @param filename 下载文件名，默认 'snapsheet.xlsx'
  */
-export function exportToExcel(workbook: Workbook, filename: string = 'snapsheet.xlsx'): void {
-  const wbout = exportToExcelBuffer(workbook);
+export async function exportToExcel(workbook: Workbook, filename: string = 'snapsheet.xlsx'): Promise<void> {
+  const wbout = await exportToExcelBuffer(workbook);
   const bytes = wbout instanceof ArrayBuffer ? new Uint8Array(wbout) : wbout;
   const blob = new Blob([bytes as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
@@ -101,18 +107,6 @@ export function exportToExcel(workbook: Workbook, filename: string = 'snapsheet.
 export type ImportedCell = { row: number; col: number; value: string | null; formula?: string };
 
 /**
- * 读取二进制或字符串形式的 Excel 数据为 xlsx WorkBook。
- * @param data ArrayBuffer、字符串等 Excel 数据
- * @returns xlsx WorkBook
- */
-function readExcelData(data: ArrayBuffer | string): XLSX.WorkBook {
-  if (typeof data === 'string') {
-    return XLSX.read(data, { type: 'binary', cellDates: true, cellNF: true });
-  }
-  return XLSX.read(data, { type: 'array', cellDates: true, cellNF: true });
-}
-
-/**
  * 从 Excel 文件导入单元格数据。
  * @param file File 对象、ArrayBuffer 或 Uint8Array
  * @returns 包含所有工作表数据的对象
@@ -125,13 +119,16 @@ export function importFromExcel(file: File | ArrayBuffer | Uint8Array): Promise<
   }[];
 }> {
   return new Promise((resolve, reject) => {
-    const parse = (data: ArrayBuffer | string) => {
+    const parse = async (data: ArrayBuffer | string) => {
       try {
         if (typeof data !== 'string' && data.byteLength === 0) {
           reject(new Error('文件为空'));
           return;
         }
-        const wb = readExcelData(data);
+        const XLSX = await loadXLSX();
+        const wb = typeof data === 'string'
+          ? XLSX.read(data, { type: 'binary', cellDates: true, cellNF: true })
+          : XLSX.read(data, { type: 'array', cellDates: true, cellNF: true });
 
         // 检查工作表是否存在
         if (!wb.SheetNames || wb.SheetNames.length === 0) {
@@ -226,10 +223,11 @@ export function importFromExcel(file: File | ArrayBuffer | Uint8Array): Promise<
  * @param sheet 工作表对象
  * @param filename 下载文件名，默认 'sheet.xlsx'
  */
-export function exportSheetToExcel(
+export async function exportSheetToExcel(
   sheet: Sheet,
   filename: string = 'sheet.xlsx'
-): void {
+): Promise<void> {
+  const XLSX = await loadXLSX();
   const ws: XLSX.WorkSheet = {};
 
   // 计算数据边界
