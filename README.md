@@ -137,6 +137,85 @@ npm test
 =ABS(H1)          # 绝对值
 ```
 
+### 工程领域专业公式
+
+SnapSheet 内置 `engineeringFormulas.ts` 工程公式库，涵盖机械、电气、土木、材料与热力学/流体力学四大领域，共 115 个常用公式。
+
+#### 机械工程
+
+```
+=FORCE(10, 9.8)                 # 力 F = m·a，返回 98 N
+=TORQUE(50, 0.2)                # 扭矩 T = F·r，返回 10 N·m
+=STRESS(1000, 0.01)             # 正应力 σ = F/A，返回 100000 Pa
+=YOUNGS_MODULUS(200e6, 0.001)   # 杨氏模量 E = σ/ε，返回 200 GPa
+=CENTRIPETAL_FORCE(2, 10, 0.5)  # 向心力 Fc = m·v²/r，返回 400 N
+=EFFICIENCY(800, 1000)          # 效率 η = Pout/Pin×100%，返回 80%
+```
+
+#### 电气工程
+
+```
+=OHM_V(2, 10)                   # 电压 V = I·R，返回 20 V
+=POWER_ELECTRIC(220, 5)         # 电功率 P = V·I，返回 1100 W
+=RESISTORS_PARALLEL(100, 100)   # 并联电阻，返回 50 Ω
+=RESONANT_FREQ(0.001, 1e-6)     # LC 谐振频率，返回 5032.9 Hz
+=VOLTAGE_DIVIDER(12, 2000, 1000) # 分压器输出，返回 4 V
+=DECIBEL_POWER(10, 1)           # 功率分贝，返回 10 dB
+```
+
+#### 土木工程
+
+```
+=BEAM_MOMENT_CENTRAL(1000, 4)   # 简支梁中点弯矩，返回 1000 N·m
+=BEAM_DEFLECTION_CENTRAL(1000, 4, 200e9, 8.33e-6)  # 中点挠度
+=COLUMN_BUCKLING(200e9, 8.33e-6, 3)  # 欧拉临界荷载
+=MANNING_FLOW(0.015, 2, 0.5, 0.001)  # 曼宁流量，返回约 1.88 m³/s
+=REYNOLDS_NUMBER(1000, 1, 0.1, 0.001) # 雷诺数，返回 100000
+=WIND_PRESSURE(30)              # 基本风压，返回 551.25 Pa
+```
+
+#### 材料、热力学与流体力学
+
+```
+=DENSITY(50, 0.02)              # 密度 ρ = m/V，返回 2500 kg/m³
+=HEAT_CAPACITY(2, 4186, 10)     # 热量 Q = m·c·ΔT，返回 83720 J
+=IDEAL_GAS_PRESSURE(1, 300, 0.0224)  # 理想气体压力，返回约 111339 Pa
+=CARNOT_EFFICIENCY(300, 600)    # 卡诺效率，返回 0.5
+=BERNOULLI_PRESSURE(100000, 2, 4, 1000)  # 伯努利压力，返回 94000 Pa
+=STRESS_INTENSITY(50e6, 0.005)  # 应力强度因子，返回约 6.27e6 Pa·√m
+```
+
+### 工程实际案例
+
+#### 案例 1：齿轮传动系统转速计算
+
+已知主动轮齿数 20，从动轮齿数 60，主动轮转速 1500 rpm：
+
+```
+=GEAR_RATIO(20, 60)             # 传动比 i = 3
+=1500 / 3                       # 从动轮转速 = 500 rpm
+```
+
+#### 案例 2：简支钢梁挠度校核
+
+跨度 4 m 的简支钢梁，中点承受 10 kN 集中荷载，E = 200 GPa，I = 8.33×10⁻⁶ m⁴：
+
+```
+=BEAM_DEFLECTION_CENTRAL(10000, 4, 200e9, 8.33e-6)  # 返回约 0.008 m
+```
+
+若允许挠度为 L/250 = 0.016 m，则实际挠度 8 mm 满足要求。
+
+#### 案例 3：RC 电路时间常数
+
+电阻 10 kΩ 与电容 100 μF 串联：
+
+```
+=RC_TIME_CONSTANT(10000, 100e-6)  # τ = R·C = 1 s
+```
+
+电容充电至约 63% 所需时间约为 1 秒。
+
 ### SnapLang 脚本
 
 SnapSheet 支持使用 SnapLang 脚本批量操作表格：
@@ -228,10 +307,11 @@ SnapSheet/
 │   │   ├── PropertyPanel.tsx # 右侧属性面板
 │   │   └── FindDialog.tsx    # 查找替换对话框
 │   ├── engine/          # 公式计算引擎
-│   │   ├── Lexer.ts     # 词法分析器
-│   │   ├── Parser.ts    # 语法分析器
-│   │   ├── Evaluator.ts # 表达式求值器
-│   │   └── functions.ts # 内置函数定义
+│   │   ├── Lexer.ts            # 词法分析器
+│   │   ├── Parser.ts           # 语法分析器
+│   │   ├── Evaluator.ts        # 表达式求值器
+│   │   ├── engineeringFormulas.ts # 工程领域专业公式库
+│   │   └── FormulaEngine.ts    # 公式引擎入口
 │   ├── snaplang/        # SnapLang 脚本语言
 │   │   ├── grammar.ne   # 语法定义
 │   │   └── adapter.ts   # 与表格交互适配器
