@@ -22,7 +22,8 @@ jobs:
       - name: Build Electron app
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
-        run: npm run build:electron
+        # CI 使用已提交的 icon.icns/icon.png，跳过本地 iconutil 步骤
+        run: npm run build:electron:ci
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
