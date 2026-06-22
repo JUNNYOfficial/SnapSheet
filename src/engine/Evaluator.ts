@@ -853,6 +853,746 @@ export class Evaluator {
         const refText = String(this.evalNode(args[0]));
         return this.evalCell(refText);
       }
+
+      // ==================== 逻辑基础函数 ====================
+      case 'TRUE':
+        return 1;
+      case 'FALSE':
+        return 0;
+      case 'NAND': {
+        if (args.length < 2) return '#VALUE!';
+        return !(this.toLogical(this.evalNode(args[0])) && this.toLogical(this.evalNode(args[1]))) ? 1 : 0;
+      }
+      case 'NOR': {
+        if (args.length < 2) return '#VALUE!';
+        return !(this.toLogical(this.evalNode(args[0])) || this.toLogical(this.evalNode(args[1]))) ? 1 : 0;
+      }
+      case 'XNOR': {
+        if (args.length < 2) return '#VALUE!';
+        return (this.toLogical(this.evalNode(args[0])) === this.toLogical(this.evalNode(args[1]))) ? 1 : 0;
+      }
+      case 'IMPLIES': {
+        if (args.length < 2) return '#VALUE!';
+        return (!this.toLogical(this.evalNode(args[0])) || this.toLogical(this.evalNode(args[1]))) ? 1 : 0;
+      }
+      case 'EQ': {
+        if (args.length < 2) return '#VALUE!';
+        return String(this.evalNode(args[0])) === String(this.evalNode(args[1])) ? 1 : 0;
+      }
+      case 'ISEVEN': {
+        if (args.length < 1) return '#VALUE!';
+        const n = this.toNumber(this.evalNode(args[0]));
+        return isNaN(n) ? '#VALUE!' : (n % 2 === 0 ? 1 : 0);
+      }
+      case 'ISODD': {
+        if (args.length < 1) return '#VALUE!';
+        const n = this.toNumber(this.evalNode(args[0]));
+        return isNaN(n) ? '#VALUE!' : (n % 2 !== 0 ? 1 : 0);
+      }
+      case 'ISLOGICAL': {
+        if (args.length < 1) return '#VALUE!';
+        const v = this.evalNode(args[0]);
+        return (v === 0 || v === 1) ? 1 : 0;
+      }
+      case 'ISNONTEXT': {
+        if (args.length < 1) return '#VALUE!';
+        return typeof this.evalNode(args[0]) === 'number' ? 1 : 0;
+      }
+      case 'ISREF': {
+        if (args.length < 1) return '#VALUE!';
+        const t = args[0].type;
+        return (t === 'cell' || t === 'range') ? 1 : 0;
+      }
+      case 'TYPE': {
+        if (args.length < 1) return '#VALUE!';
+        const v = this.evalNode(args[0]);
+        if (typeof v === 'number') return 1;
+        if (typeof v === 'string' && v.startsWith('#')) return 16;
+        return 2;
+      }
+      case 'NA':
+        return '#N/A';
+      case 'ISERR': {
+        if (args.length < 1) return '#VALUE!';
+        const v = this.evalNode(args[0]);
+        return (typeof v === 'string' && v.startsWith('#') && v !== '#N/A') ? 1 : 0;
+      }
+      case 'ISNA': {
+        if (args.length < 1) return '#VALUE!';
+        return this.evalNode(args[0]) === '#N/A' ? 1 : 0;
+      }
+      case 'ERROR.TYPE': {
+        if (args.length < 1) return '#VALUE!';
+        const v = this.evalNode(args[0]);
+        if (typeof v !== 'string' || !v.startsWith('#')) return '#N/A';
+        const map: Record<string, number> = {
+          '#NULL!': 1, '#DIV/0!': 2, '#VALUE!': 3, '#REF!': 4,
+          '#NAME?': 5, '#NUM!': 6, '#N/A': 7
+        };
+        return map[v] || 8;
+      }
+      case 'ISNULL': {
+        if (args.length < 1) return '#VALUE!';
+        const v = this.evalNode(args[0]);
+        return (v === '' || v === undefined || v === null) ? 1 : 0;
+      }
+      case 'ISDATE': {
+        if (args.length < 1) return '#VALUE!';
+        return !isNaN(new Date(String(this.evalNode(args[0]))).getTime()) ? 1 : 0;
+      }
+      case 'ISEMPTY': {
+        if (args.length < 1) return '#VALUE!';
+        const v = this.evalNode(args[0]);
+        return (v === '' || v === undefined || v === null) ? 1 : 0;
+      }
+      case 'NOTEMPTY': {
+        if (args.length < 1) return '#VALUE!';
+        const v = this.evalNode(args[0]);
+        return (v !== '' && v !== undefined && v !== null) ? 1 : 0;
+      }
+      case 'BOOL': {
+        if (args.length < 1) return '#VALUE!';
+        return this.toLogical(this.evalNode(args[0])) ? 1 : 0;
+      }
+      case 'IN': {
+        if (args.length < 2) return '#VALUE!';
+        const target = String(this.evalNode(args[0]));
+        for (let i = 1; i < args.length; i++) {
+          if (String(this.evalNode(args[i])) === target) return 1;
+        }
+        return 0;
+      }
+      case 'BETWEEN': {
+        if (args.length < 3) return '#VALUE!';
+        const v = this.toNumber(this.evalNode(args[0]));
+        const min = this.toNumber(this.evalNode(args[1]));
+        const max = this.toNumber(this.evalNode(args[2]));
+        if (isNaN(v) || isNaN(min) || isNaN(max)) return '#VALUE!';
+        return (v >= min && v <= max) ? 1 : 0;
+      }
+      case 'COALESCE': {
+        for (const arg of args) {
+          const v = this.evalNode(arg);
+          if (v !== '' && v !== undefined && v !== null) return v;
+        }
+        return '';
+      }
+      case 'ALL': {
+        if (args.length < 2) return '#VALUE!';
+        const range = this.getRangeArg(args[0]);
+        const criteria = this.evalNode(args[1]);
+        if (!range) return '#VALUE!';
+        return this.getRangeValues(range).every(v => this.matchesCriteria(v, criteria)) ? 1 : 0;
+      }
+      case 'ANY': {
+        if (args.length < 2) return '#VALUE!';
+        const range = this.getRangeArg(args[0]);
+        const criteria = this.evalNode(args[1]);
+        if (!range) return '#VALUE!';
+        return this.getRangeValues(range).some(v => this.matchesCriteria(v, criteria)) ? 1 : 0;
+      }
+      case 'SHEET':
+        return 1;
+      case 'SHEETS':
+        return 1;
+
+      // ==================== 数学文本函数 ====================
+      case 'EVAL': {
+        if (args.length < 1) return '#VALUE!';
+        const expr = String(this.evalNode(args[0]));
+        try {
+          const safeExpr = expr.replace(/[^0-9+\-*/().\s]/g, '');
+          if (!safeExpr) return '#VALUE!';
+          const result = new Function(`return (${safeExpr})`)();
+          return typeof result === 'number' && !isNaN(result) ? result : '#VALUE!';
+        } catch {
+          return '#VALUE!';
+        }
+      }
+      case 'EXTRACTNUM': {
+        if (args.length < 1) return '#VALUE!';
+        const text = String(this.evalNode(args[0]));
+        const match = text.match(/-?\d+(\.\d+)?/);
+        return match ? parseFloat(match[0]) : '#VALUE!';
+      }
+      case 'SCI': {
+        if (args.length < 1) return '#VALUE!';
+        const n = this.toNumber(this.evalNode(args[0]));
+        if (isNaN(n)) return '#VALUE!';
+        const digits = args.length >= 2 ? this.toInteger(this.evalNode(args[1])) : 2;
+        return n.toExponential(digits);
+      }
+      case 'ENG': {
+        if (args.length < 1) return '#VALUE!';
+        const n = this.toNumber(this.evalNode(args[0]));
+        if (isNaN(n) || n === 0) return '#VALUE!';
+        const digits = args.length >= 2 ? this.toInteger(this.evalNode(args[1])) : 2;
+        const exp = Math.floor(Math.log10(Math.abs(n)) / 3) * 3;
+        const mantissa = n / Math.pow(10, exp);
+        return `${mantissa.toFixed(digits)}E${exp}`;
+      }
+      case 'CONVERT': {
+        if (args.length < 3) return '#VALUE!';
+        const n = this.toNumber(this.evalNode(args[0]));
+        if (isNaN(n)) return '#VALUE!';
+        const from = String(this.evalNode(args[1])).toLowerCase();
+        const to = String(this.evalNode(args[2])).toLowerCase();
+        const length: Record<string, number> = { m: 1, km: 1000, cm: 0.01, mm: 0.001, in: 0.0254, ft: 0.3048, yd: 0.9144, mi: 1609.344 };
+        if (from in length && to in length) return n * length[from] / length[to];
+        const mass: Record<string, number> = { kg: 1, g: 0.001, mg: 0.000001, lb: 0.45359237, oz: 0.0283495 };
+        if (from in mass && to in mass) return n * mass[from] / mass[to];
+        if (from === 'c' && to === 'f') return n * 9 / 5 + 32;
+        if (from === 'f' && to === 'c') return (n - 32) * 5 / 9;
+        if (from === 'c' && to === 'k') return n + 273.15;
+        if (from === 'k' && to === 'c') return n - 273.15;
+        return '#VALUE!';
+      }
+      case 'BASE': {
+        if (args.length < 2) return '#VALUE!';
+        const n = this.toInteger(this.evalNode(args[0]));
+        const radix = this.toInteger(this.evalNode(args[1]));
+        if (isNaN(n) || isNaN(radix) || radix < 2 || radix > 36) return '#VALUE!';
+        const minLen = args.length >= 3 ? this.toInteger(this.evalNode(args[2])) : 0;
+        let result = n.toString(radix).toUpperCase();
+        while (result.length < minLen) result = '0' + result;
+        return result;
+      }
+      case 'DECIMAL': {
+        if (args.length < 2) return '#VALUE!';
+        const text = String(this.evalNode(args[0]));
+        const radix = this.toInteger(this.evalNode(args[1]));
+        if (isNaN(radix) || radix < 2 || radix > 36) return '#VALUE!';
+        const result = parseInt(text, radix);
+        return isNaN(result) ? '#VALUE!' : result;
+      }
+      case 'ROMAN': {
+        if (args.length < 1) return '#VALUE!';
+        let n = this.toInteger(this.evalNode(args[0]));
+        if (isNaN(n) || n <= 0 || n >= 4000) return '#VALUE!';
+        const values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
+        const symbols = ['M', 'CM', 'D', 'CD', 'C', 'XC', 'L', 'XL', 'X', 'IX', 'V', 'IV', 'I'];
+        let result = '';
+        for (let i = 0; i < values.length; i++) {
+          while (n >= values[i]) {
+            result += symbols[i];
+            n -= values[i];
+          }
+        }
+        return result;
+      }
+      case 'ARABIC': {
+        if (args.length < 1) return '#VALUE!';
+        const text = String(this.evalNode(args[0])).toUpperCase();
+        const map: Record<string, number> = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+        let total = 0;
+        for (let i = 0; i < text.length; i++) {
+          const current = map[text[i]] || 0;
+          const next = map[text[i + 1]] || 0;
+          total += next > current ? -current : current;
+        }
+        return total;
+      }
+      case 'FACTDOUBLE': {
+        if (args.length < 1) return '#VALUE!';
+        const n = this.toInteger(this.evalNode(args[0]));
+        if (isNaN(n) || n < 0 || n > 170) return '#VALUE!';
+        let result = 1;
+        for (let i = n; i >= 1; i -= 2) result *= i;
+        return result;
+      }
+      case 'GCD': {
+        if (args.length < 1) return '#VALUE!';
+        const nums = args.map(a => this.toNumber(this.evalNode(a))).filter(n => !isNaN(n) && n > 0);
+        if (nums.length === 0) return '#VALUE!';
+        const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+        return nums.reduce((a, b) => gcd(a, b));
+      }
+      case 'LCM': {
+        if (args.length < 1) return '#VALUE!';
+        const nums = args.map(a => this.toNumber(this.evalNode(a))).filter(n => !isNaN(n) && n > 0);
+        if (nums.length === 0) return '#VALUE!';
+        const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+        const lcm = (a: number, b: number) => (a * b) / gcd(a, b);
+        return nums.reduce((a, b) => lcm(a, b));
+      }
+      case 'MROUND': {
+        if (args.length < 2) return '#VALUE!';
+        const n = this.toNumber(this.evalNode(args[0]));
+        const m = this.toNumber(this.evalNode(args[1]));
+        if (isNaN(n) || isNaN(m) || m === 0) return '#VALUE!';
+        return Math.round(n / m) * m;
+      }
+      case 'QUOTIENT': {
+        if (args.length < 2) return '#VALUE!';
+        const a = this.toNumber(this.evalNode(args[0]));
+        const b = this.toNumber(this.evalNode(args[1]));
+        if (isNaN(a) || isNaN(b) || b === 0) return '#VALUE!';
+        return Math.trunc(a / b);
+      }
+      case 'SQRTPI': {
+        if (args.length < 1) return '#VALUE!';
+        const n = this.toNumber(this.evalNode(args[0]));
+        return isNaN(n) || n < 0 ? '#VALUE!' : Math.sqrt(n * Math.PI);
+      }
+      case 'SUMSQ': {
+        return numbers.reduce((sum, n) => sum + n * n, 0);
+      }
+      case 'FACT': {
+        if (args.length < 1) return '#VALUE!';
+        const n = this.toInteger(this.evalNode(args[0]));
+        if (isNaN(n) || n < 0 || n > 170) return '#VALUE!';
+        let result = 1;
+        for (let i = 2; i <= n; i++) result *= i;
+        return result;
+      }
+      case 'COMBIN': {
+        if (args.length < 2) return '#VALUE!';
+        const n = this.toInteger(this.evalNode(args[0]));
+        const k = this.toInteger(this.evalNode(args[1]));
+        if (isNaN(n) || isNaN(k) || n < 0 || k < 0 || k > n) return '#VALUE!';
+        let result = 1;
+        for (let i = 1; i <= k; i++) result = (result * (n - k + i)) / i;
+        return result;
+      }
+      case 'PERMUT': {
+        if (args.length < 2) return '#VALUE!';
+        const n = this.toInteger(this.evalNode(args[0]));
+        const k = this.toInteger(this.evalNode(args[1]));
+        if (isNaN(n) || isNaN(k) || n < 0 || k < 0 || k > n) return '#VALUE!';
+        let result = 1;
+        for (let i = 0; i < k; i++) result *= (n - i);
+        return result;
+      }
+      case 'GEOMEAN': {
+        if (numbers.length === 0) return '#NUM!';
+        const product = numbers.reduce((p, n) => p * n, 1);
+        if (product <= 0) return '#NUM!';
+        return Math.pow(product, 1 / numbers.length);
+      }
+      case 'HARMEAN': {
+        if (numbers.length === 0) return '#DIV/0!';
+        const reciprocals = numbers.filter(n => n !== 0);
+        if (reciprocals.length === 0) return '#DIV/0!';
+        return reciprocals.length / reciprocals.reduce((sum, n) => sum + 1 / n, 0);
+      }
+      case 'LARGE': {
+        if (args.length < 2) return '#VALUE!';
+        const k = this.toInteger(this.evalNode(args[1]));
+        if (isNaN(k) || k < 1 || k > numbers.length) return '#VALUE!';
+        return [...numbers].sort((a, b) => b - a)[k - 1];
+      }
+      case 'SMALL': {
+        if (args.length < 2) return '#VALUE!';
+        const k = this.toInteger(this.evalNode(args[1]));
+        if (isNaN(k) || k < 1 || k > numbers.length) return '#VALUE!';
+        return [...numbers].sort((a, b) => a - b)[k - 1];
+      }
+      case 'TRIMMEAN': {
+        if (args.length < 2) return '#VALUE!';
+        const percent = this.toNumber(this.evalNode(args[1]));
+        if (isNaN(percent) || percent < 0 || percent >= 1) return '#NUM!';
+        if (numbers.length === 0) return '#DIV/0!';
+        const sorted = [...numbers].sort((a, b) => a - b);
+        const trimCount = Math.floor(sorted.length * percent / 2);
+        const trimmed = sorted.slice(trimCount, sorted.length - trimCount);
+        return trimmed.reduce((a, b) => a + b, 0) / trimmed.length;
+      }
+      case 'TEXTJOIN': {
+        if (args.length < 3) return '#VALUE!';
+        const delimiter = String(this.evalNode(args[0]));
+        const ignoreEmpty = this.toLogical(this.evalNode(args[1]));
+        const texts = flatValues.slice(2).map(v => String(v)).filter(v => !ignoreEmpty || v !== '');
+        return texts.join(delimiter);
+      }
+      case 'CHAR': {
+        if (args.length < 1) return '#VALUE!';
+        const n = this.toInteger(this.evalNode(args[0]));
+        return isNaN(n) || n < 1 || n > 255 ? '#VALUE!' : String.fromCharCode(n);
+      }
+      case 'CODE': {
+        if (args.length < 1) return '#VALUE!';
+        const text = String(this.evalNode(args[0]));
+        return text.length === 0 ? '#VALUE!' : text.charCodeAt(0);
+      }
+      case 'UNICHAR': {
+        if (args.length < 1) return '#VALUE!';
+        const n = this.toInteger(this.evalNode(args[0]));
+        return isNaN(n) ? '#VALUE!' : String.fromCodePoint(n);
+      }
+      case 'UNICODE': {
+        if (args.length < 1) return '#VALUE!';
+        const text = String(this.evalNode(args[0]));
+        return text.length === 0 ? '#VALUE!' : (text.codePointAt(0) ?? 0);
+      }
+      case 'CLEAN': {
+        if (args.length < 1) return '#VALUE!';
+        return String(this.evalNode(args[0])).replace(/[\x00-\x1F]/g, '');
+      }
+      case 'DOLLAR': {
+        if (args.length < 1) return '#VALUE!';
+        const n = this.toNumber(this.evalNode(args[0]));
+        if (isNaN(n)) return '#VALUE!';
+        const decimals = args.length >= 2 ? this.toInteger(this.evalNode(args[1])) : 2;
+        return '$' + n.toFixed(decimals);
+      }
+      case 'FIXED': {
+        if (args.length < 1) return '#VALUE!';
+        const n = this.toNumber(this.evalNode(args[0]));
+        if (isNaN(n)) return '#VALUE!';
+        const decimals = args.length >= 2 ? this.toInteger(this.evalNode(args[1])) : 2;
+        return n.toFixed(decimals);
+      }
+      case 'VALUE': {
+        if (args.length < 1) return '#VALUE!';
+        const text = String(this.evalNode(args[0])).trim();
+        const n = parseFloat(text.replace(/[$,%]/g, ''));
+        return isNaN(n) ? '#VALUE!' : n;
+      }
+      case 'T': {
+        if (args.length < 1) return '#VALUE!';
+        const v = this.evalNode(args[0]);
+        return typeof v === 'string' ? v : '';
+      }
+      case 'N': {
+        if (args.length < 1) return '#VALUE!';
+        const v = this.evalNode(args[0]);
+        if (typeof v === 'number') return v;
+        const n = parseFloat(String(v));
+        return isNaN(n) ? 0 : n;
+      }
+      case 'WORDCOUNT': {
+        if (args.length < 1) return '#VALUE!';
+        const text = String(this.evalNode(args[0])).trim();
+        return text === '' ? 0 : text.split(/\s+/).length;
+      }
+      case 'SENTENCECOUNT': {
+        if (args.length < 1) return '#VALUE!';
+        const text = String(this.evalNode(args[0])).trim();
+        return text === '' ? 0 : text.split(/[.!?。！？]+/).filter(s => s.trim().length > 0).length;
+      }
+      case 'REVERSE': {
+        if (args.length < 1) return '#VALUE!';
+        return String(this.evalNode(args[0])).split('').reverse().join('');
+      }
+      case 'PADSTART': {
+        if (args.length < 3) return '#VALUE!';
+        const text = String(this.evalNode(args[0]));
+        const len = this.toInteger(this.evalNode(args[1]));
+        const pad = String(this.evalNode(args[2]));
+        if (isNaN(len)) return '#VALUE!';
+        return text.padStart(len, pad);
+      }
+      case 'PADEND': {
+        if (args.length < 3) return '#VALUE!';
+        const text = String(this.evalNode(args[0]));
+        const len = this.toInteger(this.evalNode(args[1]));
+        const pad = String(this.evalNode(args[2]));
+        if (isNaN(len)) return '#VALUE!';
+        return text.padEnd(len, pad);
+      }
+      case 'TRUNCATE': {
+        if (args.length < 2) return '#VALUE!';
+        const text = String(this.evalNode(args[0]));
+        const len = this.toInteger(this.evalNode(args[1]));
+        if (isNaN(len)) return '#VALUE!';
+        return text.slice(0, len);
+      }
+      case 'ELLIPSIS': {
+        if (args.length < 2) return '#VALUE!';
+        const text = String(this.evalNode(args[0]));
+        const maxLen = this.toInteger(this.evalNode(args[1]));
+        if (isNaN(maxLen)) return '#VALUE!';
+        return text.length <= maxLen ? text : text.slice(0, maxLen - 1) + '…';
+      }
+
+      // ==================== 日期时间函数 ====================
+      case 'DATEVALUE': {
+        if (args.length < 1) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        return d ? Math.floor(d.getTime() / (24 * 60 * 60 * 1000)) + 25569 : '#VALUE!';
+      }
+      case 'TIMEVALUE': {
+        if (args.length < 1) return '#VALUE!';
+        const text = String(this.evalNode(args[0]));
+        const parts = text.split(':').map(p => parseFloat(p));
+        if (parts.some(isNaN)) return '#VALUE!';
+        const [h = 0, m = 0, s = 0] = parts;
+        return (h * 3600 + m * 60 + s) / 86400;
+      }
+      case 'DATEDIFF': {
+        if (args.length < 2) return '#VALUE!';
+        const d1 = this.parseDate(this.evalNode(args[0]));
+        const d2 = this.parseDate(this.evalNode(args[1]));
+        if (!d1 || !d2) return '#VALUE!';
+        return Math.floor((d2.getTime() - d1.getTime()) / (24 * 60 * 60 * 1000));
+      }
+      case 'EDATE': {
+        if (args.length < 2) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        const months = this.toInteger(this.evalNode(args[1]));
+        if (!d || isNaN(months)) return '#VALUE!';
+        return this.formatDate(this.addMonths(d, months));
+      }
+      case 'EOMONTH': {
+        if (args.length < 2) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        const months = this.toInteger(this.evalNode(args[1]));
+        if (!d || isNaN(months)) return '#VALUE!';
+        const next = this.addMonths(d, months + 1);
+        next.setDate(0);
+        return this.formatDate(next);
+      }
+      case 'WORKDAY': {
+        if (args.length < 2) return '#VALUE!';
+        const start = this.parseDate(this.evalNode(args[0]));
+        const days = this.toInteger(this.evalNode(args[1]));
+        if (!start || isNaN(days)) return '#VALUE!';
+        const holidays = this.getHolidays(args, 2);
+        let current = new Date(start);
+        let step = days > 0 ? 1 : -1;
+        let remaining = Math.abs(days);
+        while (remaining > 0) {
+          current.setDate(current.getDate() + step);
+          if (!this.isWeekend(current) && !holidays.has(this.formatDate(current))) {
+            remaining--;
+          }
+        }
+        return this.formatDate(current);
+      }
+      case 'NETWORKDAYS': {
+        if (args.length < 2) return '#VALUE!';
+        const start = this.parseDate(this.evalNode(args[0]));
+        const end = this.parseDate(this.evalNode(args[1]));
+        if (!start || !end) return '#VALUE!';
+        const holidays = this.getHolidays(args, 2);
+        let count = 0;
+        const current = new Date(start);
+        const last = new Date(end);
+        const step = start <= end ? 1 : -1;
+        while (true) {
+          if (!this.isWeekend(current) && !holidays.has(this.formatDate(current))) count++;
+          if (this.formatDate(current) === this.formatDate(last)) break;
+          current.setDate(current.getDate() + step);
+        }
+        return count;
+      }
+      case 'YEARFRAC': {
+        if (args.length < 2) return '#VALUE!';
+        const start = this.parseDate(this.evalNode(args[0]));
+        const end = this.parseDate(this.evalNode(args[1]));
+        if (!start || !end) return '#VALUE!';
+        return (end.getTime() - start.getTime()) / (365 * 24 * 60 * 60 * 1000);
+      }
+      case 'DAYS': {
+        if (args.length < 2) return '#VALUE!';
+        const start = this.parseDate(this.evalNode(args[0]));
+        const end = this.parseDate(this.evalNode(args[1]));
+        if (!start || !end) return '#VALUE!';
+        return Math.floor((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+      }
+      case 'DAYS360': {
+        if (args.length < 2) return '#VALUE!';
+        const start = this.parseDate(this.evalNode(args[0]));
+        const end = this.parseDate(this.evalNode(args[1]));
+        if (!start || !end) return '#VALUE!';
+        const method = args.length >= 3 ? String(this.evalNode(args[2])).toLowerCase() : 'us';
+        let d1 = start.getDate();
+        let d2 = end.getDate();
+        if (method === 'us') {
+          if (d1 === 31) d1 = 30;
+          if (d2 === 31 && d1 === 30) d2 = 30;
+        } else {
+          if (d1 === 31) d1 = 30;
+          if (d2 === 31) d2 = 30;
+        }
+        return ((end.getFullYear() - start.getFullYear()) * 360 +
+          (end.getMonth() - start.getMonth()) * 30 +
+          (d2 - d1));
+      }
+      case 'ISOWEEKNUM': {
+        if (args.length < 1) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        if (!d) return '#VALUE!';
+        const target = new Date(d.valueOf());
+        const dayNr = (d.getDay() + 6) % 7;
+        target.setDate(target.getDate() - dayNr + 3);
+        const firstThursday = target.valueOf();
+        target.setMonth(0, 1);
+        if (target.getDay() !== 4) {
+          target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+        }
+        return 1 + Math.ceil((firstThursday - target.valueOf()) / (7 * 24 * 60 * 60 * 1000));
+      }
+      case 'MONTHNAME': {
+        if (args.length < 1) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        if (!d) return '#VALUE!';
+        const names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        return names[d.getMonth()];
+      }
+      case 'DAYNAME': {
+        if (args.length < 1) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        if (!d) return '#VALUE!';
+        const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        return names[d.getDay()];
+      }
+      case 'DAYSINMONTH': {
+        if (args.length < 1) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        if (!d) return '#VALUE!';
+        return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      }
+      case 'DAYSINYEAR': {
+        if (args.length < 1) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        if (!d) return '#VALUE!';
+        const year = d.getFullYear();
+        return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 366 : 365;
+      }
+      case 'LEAPYEAR': {
+        if (args.length < 1) return '#VALUE!';
+        const year = this.toInteger(this.evalNode(args[0]));
+        if (isNaN(year)) {
+          const d = this.parseDate(this.evalNode(args[0]));
+          if (!d) return '#VALUE!';
+          const y = d.getFullYear();
+          return ((y % 4 === 0 && y % 100 !== 0) || y % 400 === 0) ? 1 : 0;
+        }
+        return ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0) ? 1 : 0;
+      }
+      case 'AGE': {
+        if (args.length < 2) return '#VALUE!';
+        const birth = this.parseDate(this.evalNode(args[0]));
+        const now = this.parseDate(this.evalNode(args[1]));
+        if (!birth || !now) return '#VALUE!';
+        let years = now.getFullYear() - birth.getFullYear();
+        const m = now.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) years--;
+        return years;
+      }
+      case 'ADDDAYS': {
+        if (args.length < 2) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        const days = this.toInteger(this.evalNode(args[1]));
+        if (!d || isNaN(days)) return '#VALUE!';
+        const result = new Date(d);
+        result.setDate(result.getDate() + days);
+        return this.formatDate(result);
+      }
+      case 'ADDMONTHS': {
+        if (args.length < 2) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        const months = this.toInteger(this.evalNode(args[1]));
+        if (!d || isNaN(months)) return '#VALUE!';
+        return this.formatDate(this.addMonths(d, months));
+      }
+      case 'ADDYEARS': {
+        if (args.length < 2) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        const years = this.toInteger(this.evalNode(args[1]));
+        if (!d || isNaN(years)) return '#VALUE!';
+        return this.formatDate(this.addYears(d, years));
+      }
+      case 'STARTOFMONTH': {
+        if (args.length < 1) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        if (!d) return '#VALUE!';
+        return this.formatDate(new Date(d.getFullYear(), d.getMonth(), 1));
+      }
+      case 'STARTOFYEAR': {
+        if (args.length < 1) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        if (!d) return '#VALUE!';
+        return this.formatDate(new Date(d.getFullYear(), 0, 1));
+      }
+      case 'ENDOFMONTH': {
+        if (args.length < 1) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        if (!d) return '#VALUE!';
+        return this.formatDate(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+      }
+      case 'ENDOFYEAR': {
+        if (args.length < 1) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        if (!d) return '#VALUE!';
+        return this.formatDate(new Date(d.getFullYear(), 11, 31));
+      }
+      case 'NTHWEEKDAY': {
+        if (args.length < 3) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        const weekday = this.toInteger(this.evalNode(args[1]));
+        const n = this.toInteger(this.evalNode(args[2]));
+        if (!d || isNaN(weekday) || isNaN(n) || weekday < 1 || weekday > 7) return '#VALUE!';
+        const first = new Date(d.getFullYear(), d.getMonth(), 1);
+        const diff = (weekday - 1 - first.getDay() + 7) % 7;
+        const result = new Date(first);
+        result.setDate(first.getDate() + diff + (n - 1) * 7);
+        return this.formatDate(result);
+      }
+      case 'LASTWEEKDAY': {
+        if (args.length < 2) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        const weekday = this.toInteger(this.evalNode(args[1]));
+        if (!d || isNaN(weekday) || weekday < 1 || weekday > 7) return '#VALUE!';
+        const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+        const diff = (last.getDay() - (weekday - 1) + 7) % 7;
+        last.setDate(last.getDate() - diff);
+        return this.formatDate(last);
+      }
+      case 'ISHOLIDAY': {
+        if (args.length < 1) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        if (!d) return '#VALUE!';
+        const holidays = this.getHolidays(args, 1);
+        return holidays.has(this.formatDate(d)) ? 1 : 0;
+      }
+      case 'NEXTWORKDAY': {
+        if (args.length < 1) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        if (!d) return '#VALUE!';
+        const holidays = this.getHolidays(args, 1);
+        const current = new Date(d);
+        do {
+          current.setDate(current.getDate() + 1);
+        } while (this.isWeekend(current) || holidays.has(this.formatDate(current)));
+        return this.formatDate(current);
+      }
+      case 'PREVWORKDAY': {
+        if (args.length < 1) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        if (!d) return '#VALUE!';
+        const holidays = this.getHolidays(args, 1);
+        const current = new Date(d);
+        do {
+          current.setDate(current.getDate() - 1);
+        } while (this.isWeekend(current) || holidays.has(this.formatDate(current)));
+        return this.formatDate(current);
+      }
+      case 'DATEFORMAT': {
+        if (args.length < 2) return '#VALUE!';
+        const d = this.parseDate(this.evalNode(args[0]));
+        const fmt = String(this.evalNode(args[1]));
+        if (!d) return '#VALUE!';
+        const y = d.getFullYear();
+        const m = d.getMonth() + 1;
+        const day = d.getDate();
+        const h = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        const s = String(d.getSeconds()).padStart(2, '0');
+        return fmt
+          .replace('yyyy', String(y))
+          .replace('yy', String(y).slice(-2))
+          .replace('MM', String(m).padStart(2, '0'))
+          .replace('M', String(m))
+          .replace('dd', String(day).padStart(2, '0'))
+          .replace('d', String(day))
+          .replace('HH', h)
+          .replace('H', String(d.getHours()))
+          .replace('mm', min)
+          .replace('ss', s);
+      }
+
       default:
         return '#NAME?';
     }
@@ -870,6 +1610,76 @@ export class Evaluator {
 
   private getRangeValues(refs: string[]): (number | string)[] {
     return refs.map(ref => this.evalCell(ref));
+  }
+
+  private toNumber(value: number | string): number {
+    return typeof value === 'number' ? value : parseFloat(value);
+  }
+
+  private toInteger(value: number | string): number {
+    return typeof value === 'number' ? value : parseInt(value, 10);
+  }
+
+  private toLogical(value: number | string): boolean {
+    if (typeof value === 'number') return value !== 0;
+    const lower = value.toLowerCase();
+    if (lower === 'true') return true;
+    if (lower === 'false' || value === '' || value === '0') return false;
+    const n = parseFloat(value);
+    return !isNaN(n) && n !== 0;
+  }
+
+  private parseDate(value: number | string): Date | null {
+    if (typeof value === 'number') {
+      if (value < 0 || value > 50000) return null;
+      const date = new Date((value - 25569) * 24 * 60 * 60 * 1000);
+      return isNaN(date.getTime()) ? null : date;
+    }
+    const date = new Date(String(value));
+    return isNaN(date.getTime()) ? null : date;
+  }
+
+  private formatDate(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  private addMonths(date: Date, months: number): Date {
+    const result = new Date(date);
+    result.setMonth(result.getMonth() + months);
+    return result;
+  }
+
+  private addYears(date: Date, years: number): Date {
+    const result = new Date(date);
+    result.setFullYear(result.getFullYear() + years);
+    return result;
+  }
+
+  private isWeekend(date: Date): boolean {
+    const day = date.getDay();
+    return day === 0 || day === 6;
+  }
+
+  private getHolidays(args: ASTNode[], startIndex: number): Set<string> {
+    const holidays = new Set<string>();
+    for (let i = startIndex; i < args.length; i++) {
+      const range = this.getRangeArg(args[i]);
+      if (range) {
+        for (const ref of range) {
+          const v = this.evalCell(ref);
+          const d = this.parseDate(v);
+          if (d) holidays.add(this.formatDate(d));
+        }
+      } else {
+        const v = this.evalNode(args[i]);
+        const d = this.parseDate(v);
+        if (d) holidays.add(this.formatDate(d));
+      }
+    }
+    return holidays;
   }
 
   private matchesCriteria(value: number | string, criteria: number | string): boolean {
