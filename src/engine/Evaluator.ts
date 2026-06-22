@@ -1,4 +1,5 @@
 import { getCellsInRange, parseRange, coordsToCell } from '../utils/cellRef';
+import { engineeringFormulas } from './engineeringFormulas';
 import type { ASTNode, Cell } from '../types';
 
 export interface EvaluationContext {
@@ -1593,8 +1594,20 @@ export class Evaluator {
           .replace('ss', s);
       }
 
-      default:
+      // ==================== 工程领域专业公式 ====================
+      default: {
+        const handler = engineeringFormulas.get(name);
+        if (handler) {
+          return handler(args, {
+            evalNode: this.evalNode.bind(this),
+            evalCell: this.evalCell.bind(this),
+            getRangeArg: this.getRangeArg.bind(this),
+            toNumber: this.toNumber.bind(this),
+            toInteger: this.toInteger.bind(this),
+          });
+        }
         return '#NAME?';
+      }
     }
   }
 
