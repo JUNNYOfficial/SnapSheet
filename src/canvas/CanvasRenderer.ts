@@ -99,6 +99,14 @@ export class CanvasRenderer {
   private _textMetricsCache = new Map<string, TextMetrics>();
   /** 已注册的事件监听器，用于销毁时统一移除 */
   private _listeners: Array<{ target: EventTarget; type: string; listener: EventListener }> = [];
+  /** 拖拽调整行高时的临时高度，避免频繁写入 store/历史栈 */
+  private _tempRowHeights = new Map<number, number>();
+  /** 拖拽调整列宽时的临时宽度，避免频繁写入 store/历史栈 */
+  private _tempColWidths = new Map<number, number>();
+  /** 原始行高读取回调 */
+  private _originalGetRowHeight: ((row: number) => number) | null = null;
+  /** 原始列宽读取回调 */
+  private _originalGetColWidth: ((col: number) => number) | null = null;
 
   /**
    * 创建 CanvasRenderer 实例。
@@ -111,8 +119,19 @@ export class CanvasRenderer {
     const ctx = opts.canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas 2D context not available');
     this.ctx = ctx;
+    this._wrapDimensionGetters();
     this.resize();
     this.bindEvents();
+  }
+
+  /**
+   * 用临时宽高包装原始 getter，使拖拽调整时不触发 store 与历史栈更新。
+   */
+  private _wrapDimensionGetters(): void {
+    this._originalGetRowHeight = this.opts.getRowHeight;
+    this._originalGetColWidth = this.opts.getColWidth;
+    this.opts.getRowHeight = (row: number) => this._tempRowHeights.get(row) ?? this._originalGetRowHeight!(row);
+    this.opts.getColWidth = (col: number) => this._tempColWidths.get(col) ?? this._originalGetColWidth!(col);
   }
 
   /**
@@ -130,12 +149,12 @@ export class CanvasRenderer {
   private bindEvent<K extends keyof HTMLElementEventMap>(
     target: HTMLElement,
     type: K,
-    listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any
+    listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => void
   ): void;
   private bindEvent<K extends keyof WindowEventMap>(
     target: Window,
     type: K,
-    listener: (this: Window, ev: WindowEventMap[K]) => any
+    listener: (this: Window, ev: WindowEventMap[K]) => void
   ): void;
   private bindEvent(target: EventTarget, type: string, listener: EventListener): void {
     target.addEventListener(type, listener);
@@ -1196,8 +1215,9 @@ export class CanvasRenderer {
         const delta = e.clientX - this.lastMouseX;
         const currentWidth = this.opts.getColWidth(this.resizingCol);
         const newWidth = Math.max(40, currentWidth + delta);
-        this.opts.setColWidth(this.resizingCol, newWidth);
+        this._tempColWidths.set(this.resizingCol, newWidth);
         this.lastMouseX = e.clientX;
+        this.render();
         return;
       }
 
@@ -1205,8 +1225,9 @@ export class CanvasRenderer {
         const delta = e.clientY - this.lastMouseY;
         const currentHeight = this.opts.getRowHeight(this.resizingRow);
         const newHeight = Math.max(20, currentHeight + delta);
-        this.opts.setRowHeight(this.resizingRow, newHeight);
+        this._tempRowHeights.set(this.resizingRow, newHeight);
         this.lastMouseY = e.clientY;
+        this.render();
         return;
       }
 
@@ -1264,6 +1285,14 @@ export class CanvasRenderer {
           { startRow: tMinRow, startCol: tMinCol, endRow: tMaxRow, endCol: tMaxCol }
         );
         this.opts.onSelection({ startRow: tMinRow, startCol: tMinCol, endRow: tMaxRow, endCol: tMaxCol });
+      }
+      if (this.resizingCol !== null && this._tempColWidths.has(this.resizingCol)) {
+        this.opts.setColWidth(this.resizingCol, this._tempColWidths.get(this.resizingCol)!);
+        this._tempColWidths.delete(this.resizingCol);
+      }
+      if (this.resizingRow !== null && this._tempRowHeights.has(this.resizingRow)) {
+        this.opts.setRowHeight(this.resizingRow, this._tempRowHeights.get(this.resizingRow)!);
+        this._tempRowHeights.delete(this.resizingRow);
       }
       this.mouseDown = false;
       this.dragStart = null;

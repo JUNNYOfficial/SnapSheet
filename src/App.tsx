@@ -114,13 +114,14 @@ export default function App() {
   };
 
   /**
-   * 自动保存订阅：状态变更后延迟 800ms 序列化工作簿到 localStorage。
-   * 超过 4MB 时跳过保存并提示用户。
+   * 自动保存订阅：状态变更后延迟 3000ms 序列化工作簿到 localStorage。
+   * 超过 4MB 时跳过保存并提示用户；无未保存变更时不触发序列化。
    */
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const MAX_LOCAL_STORAGE_SIZE = 4 * 1024 * 1024; // 4MB 阈值
     const unsubscribe = store.subscribe((state) => {
+      if (!state.isDirty) return;
       setSaveStatus('unsaved');
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
@@ -138,7 +139,7 @@ export default function App() {
           setSaveStatus('unsaved');
           console.error('[AutoSave] Failed to save workbook:', err);
         }
-      }, 800);
+      }, 3000);
     });
     return () => {
       if (timeout) clearTimeout(timeout);
