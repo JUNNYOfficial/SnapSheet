@@ -78,12 +78,9 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
       onEdit: (row, col) => store.getState().setEditing(row, col),
       onEditWithChar: (row, col, ch) => {
         const current = store.getState().editing;
-        console.log('onEditWithChar', row, col, ch, current);
         if (current && current.row === row && current.col === col) {
           // 输入框尚未获得焦点时，后续字符仍可能由 Canvas 派发，直接追加
-          const next = store.getState().formulaBarValue + ch;
-          console.log('append', next);
-          store.getState().setFormulaBarValue(next);
+          store.getState().setFormulaBarValue(store.getState().formulaBarValue + ch);
         } else {
           store.getState().setEditing(row, col);
           store.getState().setFormulaBarValue(ch);
@@ -123,7 +120,11 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
     };
 
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      renderer.destroy();
+      rendererRef.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

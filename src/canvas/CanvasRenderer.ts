@@ -97,6 +97,8 @@ export class CanvasRenderer {
   private _scrollFrame: number | null = null;
   /** 文本测量缓存，key 为 font|text */
   private _textMetricsCache = new Map<string, TextMetrics>();
+  /** 已注册的事件监听器，用于销毁时统一移除 */
+  private _listeners: Array<{ target: EventTarget; type: string; listener: EventListener }> = [];
 
   /**
    * 创建 CanvasRenderer 实例。
@@ -119,6 +121,46 @@ export class CanvasRenderer {
    */
   setTheme(isDark: boolean): void {
     this.theme = getThemeColors(isDark);
+  }
+
+  /**
+   * 注册事件监听器并记录，便于组件卸载时统一移除。
+   * 重载以保留 DOM/Window 事件的准确类型推断。
+   */
+  private bindEvent<K extends keyof HTMLElementEventMap>(
+    target: HTMLElement,
+    type: K,
+    listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any
+  ): void;
+  private bindEvent<K extends keyof WindowEventMap>(
+    target: Window,
+    type: K,
+    listener: (this: Window, ev: WindowEventMap[K]) => any
+  ): void;
+  private bindEvent(target: EventTarget, type: string, listener: EventListener): void {
+    target.addEventListener(type, listener);
+    this._listeners.push({ target, type, listener });
+  }
+
+  /**
+   * 销毁渲染器实例。
+   * 移除所有事件监听、取消未执行的动画帧，避免 React StrictMode 双挂载导致的事件重复。
+   */
+  destroy(): void {
+    for (const { target, type, listener } of this._listeners) {
+      target.removeEventListener(type, listener);
+    }
+    this._listeners = [];
+    if (this._renderFrame !== null) {
+      cancelAnimationFrame(this._renderFrame);
+      this._renderFrame = null;
+    }
+    if (this._scrollFrame !== null) {
+      cancelAnimationFrame(this._scrollFrame);
+      this._scrollFrame = null;
+    }
+    this._pendingRender = false;
+    this._pendingScroll = null;
   }
 
   /**
@@ -1107,7 +1149,7 @@ export class CanvasRenderer {
   private bindEvents(): void {
     const canvas = this.opts.canvas;
 
-    canvas.addEventListener('mousedown', (e) => {
+    this.bindEvent(canvas, 'mousedown', (e) => {
       if (this.getFillHandleAt(e.clientX, e.clientY)) {
         this.fillHandleDragging = true;
         this.fillHandleSource = {
@@ -1149,7 +1191,7 @@ export class CanvasRenderer {
       }
     });
 
-    canvas.addEventListener('mousemove', (e) => {
+    this.bindEvent(canvas, 'mousemove', (e) => {
       if (this.mouseDown && this.resizingCol !== null) {
         const delta = e.clientX - this.lastMouseX;
         const currentWidth = this.opts.getColWidth(this.resizingCol);
@@ -1209,7 +1251,7 @@ export class CanvasRenderer {
       }
     });
 
-    window.addEventListener('mouseup', () => {
+    this.bindEvent(window, 'mouseup', () => {
       if (this.fillHandleDragging && this.fillHandleSource && this.fillHandleTarget) {
         const source = this.fillHandleSource;
         const target = this.fillHandleTarget;
@@ -1233,7 +1275,7 @@ export class CanvasRenderer {
       canvas.style.cursor = 'cell';
     });
 
-    canvas.addEventListener('contextmenu', (e) => {
+    this.bindEvent(canvas, 'contextmenu', (e) => {
       e.preventDefault();
       const cell = this.getCellAtPoint(e.clientX, e.clientY);
       if (cell) {
@@ -1243,7 +1285,7 @@ export class CanvasRenderer {
       }
     });
 
-    canvas.addEventListener('dblclick', (e) => {
+    this.bindEvent(canvas, 'dblclick', (e) => {
       const resizeCol = this.getColResizeAt(e.clientX);
       if (resizeCol !== null) {
         const textPadding = 12;
@@ -1276,7 +1318,7 @@ export class CanvasRenderer {
       }
     });
 
-    canvas.addEventListener('wheel', (e) => {
+    this.bindEvent(canvas, 'wheel', (e) => {
       e.preventDefault();
       const maxLeft = this.computeMaxScrollLeft();
       const maxTop = this.computeMaxScrollTop();
@@ -1296,7 +1338,7 @@ export class CanvasRenderer {
       });
     });
 
-    window.addEventListener('keydown', (e) => {
+    this.bindEvent(window, 'keydown', (e) => {
       if (e.target && (e.target as HTMLElement).tagName === 'INPUT') return;
       if (e.target && (e.target as HTMLElement).tagName === 'TEXTAREA') return;
 
