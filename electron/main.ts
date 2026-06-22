@@ -59,6 +59,74 @@ function createWindow() {
   });
 }
 
+/** 比较两个 semver 版本号，返回 true 表示 latest 比 current 新 */
+function isNewerVersion(latest: string, current: string): boolean {
+  const normalize = (v: string) => v.replace(/^v/i, '').split('.').map(Number);
+  const l = normalize(latest);
+  const c = normalize(current);
+  for (let i = 0; i < Math.max(l.length, c.length); i++) {
+    const lv = l[i] || 0;
+    const cv = c[i] || 0;
+    if (lv > cv) return true;
+    if (lv < cv) return false;
+  }
+  return false;
+}
+
+const UPDATE_TIMEOUT_MS = 5000;
+const RELEASE_API_URL = 'https://api.github.com/repos/JUNNYOfficial/SnapSheet/releases/latest';
+const RELEASE_PAGE_URL = 'https://github.com/JUNNYOfficial/SnapSheet/releases/latest';
+
+/** 检查 GitHub Releases 是否有新版本 */
+async function checkForUpdates(manual = false) {
+  const currentVersion = app.getVersion();
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), UPDATE_TIMEOUT_MS);
+    const res = await fetch(RELEASE_API_URL, {
+      signal: controller.signal,
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': `SnapSheet/${currentVersion}` },
+    });
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const latestVersion = (data.tag_name as string).replace(/^v/i, '');
+    if (isNewerVersion(latestVersion, currentVersion)) {
+      const { response } = await dialog.showMessageBox({
+        type: 'info',
+        title: '发现新版本',
+        message: `SnapSheet ${latestVersion} 已发布`,
+        detail: `当前版本：${currentVersion}\n最新版本：${latestVersion}\n\n建议更新以获得最新功能和修复。`,
+        buttons: ['前往下载', '忽略', '稍后再说'],
+        defaultId: 0,
+        cancelId: 2,
+      });
+      if (response === 0) {
+        shell.openExternal(RELEASE_PAGE_URL);
+      }
+    } else if (manual) {
+      dialog.showMessageBox({
+        type: 'info',
+        title: '已是最新版本',
+        message: `当前 SnapSheet ${currentVersion} 已是最新版本。`,
+        buttons: ['确定'],
+        defaultId: 0,
+      });
+    }
+  } catch (err) {
+    if (manual) {
+      dialog.showMessageBox({
+        type: 'warning',
+        title: '检查更新失败',
+        message: '无法连接到 GitHub Releases。',
+        detail: `当前版本：${currentVersion}\n错误信息：${(err as Error).message}`,
+        buttons: ['确定'],
+        defaultId: 0,
+      });
+    }
+  }
+}
+
 /** 设置 macOS 原生应用菜单为中文 */
 function setAppMenu() {
   if (process.platform !== 'darwin') return;
@@ -68,6 +136,7 @@ function setAppMenu() {
       label: 'SnapSheet',
       submenu: [
         { label: '关于 SnapSheet', role: 'about' },
+        { label: '检查更新…', click: () => checkForUpdates(true) },
         { type: 'separator' },
         { label: '偏好设置…', accelerator: 'CmdOrCtrl+,', click: () => win?.webContents.send('menu:preferences') },
         { type: 'separator' },
@@ -126,6 +195,8 @@ function setAppMenu() {
     {
       label: '帮助',
       submenu: [
+        { label: '检查更新…', click: () => checkForUpdates(true) },
+        { type: 'separator' },
         { label: 'SnapSheet 帮助', click: () => shell.openExternal('https://github.com/snapsheet/snapsheet') },
       ],
     },
@@ -136,10 +207,11 @@ function setAppMenu() {
 
 /** 配置“关于”面板信息 */
 function setAboutPanel() {
+  const version = app.getVersion();
   app.setAboutPanelOptions({
     applicationName: 'SnapSheet',
-    applicationVersion: '0.0.0',
-    version: '0.0.0',
+    applicationVersion: version,
+    version,
     copyright: '版权所有 © 2026 SnapSheet',
     credits: 'SnapSheet 团队',
   });
@@ -151,6 +223,8 @@ app.on('ready', () => {
   setAppMenu();
   setAboutPanel();
   createWindow();
+  // 启动 3 秒后静默检查更新；失败不打扰用户
+  setTimeout(() => checkForUpdates(false), 3000);
 });
 
 /** 所有窗口关闭后退出应用（Windows/Linux） */
