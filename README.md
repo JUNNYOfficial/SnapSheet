@@ -514,10 +514,22 @@ npm run build:electron
 
 ## 📝 更新日志
 
+### v0.1.0 (2026-06-22)
+- 🎨 优化应用图标毛玻璃效果，提升视觉清晰度与对比度
+- 🌐 顶部工具栏与 macOS 原生菜单全面中文化
+- 🖥️ 修复 macOS 桌面端应用名称显示为 "trae-project" 的问题
+- 🏗️ 新增 SnapSheet 产品官网（`website/` 目录），支持在线试用与 Mac 下载
+- 📚 重写 README 文档，统一以 SnapSheet 为主题
+- 🧹 清理 Git 历史中的 Electron 构建产物，仓库体积从约 3GB 降至 MB 级
+- ⚙️ 修复 GitHub Pages 自动部署 workflow
+- 🧮 函数库系统性扩充：新增逻辑基础、数学文本、日期时间函数 86 个
+- 🔧 新增工程领域专业公式库（`src/engine/engineeringFormulas.ts`），涵盖机械、电气、土木、材料与热力学/流体力学，共 115 个公式
+- 📖 在 README 中补充工程公式使用说明与 3 个实际案例
+
 ### v0.0.0 (2026-06-21)
 - 🎉 初始版本发布
 - ✨ React + TypeScript + Canvas 表格核心
-- ✨ 260+ 公式函数与依赖追踪
+- ✨ 公式函数与依赖追踪
 - ✨ 多工作表管理
 - ✨ Excel / CSV / JSON 导入导出
 - ✨ AI 数据分析与自然语言公式生成
