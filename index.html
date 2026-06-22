@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SnapSheet - 高性能电子表格</title>
-  <meta name="description" content="SnapSheet 是一款基于 Canvas 的高性能电子表格，支持公式计算、多工作表、导入导出与 AI 数据分析。" />
+  <meta name="description" content="SnapSheet 是一款基于 Canvas 的高性能电子表格，支持 260+ 公式函数、公式自动补全、XLOOKUP、自动筛选、图表插入、多工作表与导入导出。" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -121,7 +121,7 @@
       </h1>
 
       <p class="opacity-0 animate-fade-up delay-200 text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-        基于 Canvas 渲染的高性能表格工具。支持公式计算、多工作表、Excel / CSV 导入导出，以及 AI 驱动的数据分析。
+        基于 Canvas 渲染的高性能表格工具。支持 260+ 公式函数、公式自动补全、XLOOKUP、自动筛选、图表插入、多工作表与 Excel / CSV 导入导出。
       </p>
 
       <div class="opacity-0 animate-fade-up delay-300 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -152,13 +152,37 @@
         <p class="text-slate-600">从数据录入到复杂分析，SnapSheet 在每个环节都提供流畅、可预期的操作体验。</p>
       </div>
 
-      <div class="grid md:grid-cols-3 gap-8">
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
         <div class="reveal p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:border-snap-200 hover:shadow-lg hover:shadow-snap-900/5 transition-all group">
           <div class="w-12 h-12 rounded-xl bg-snap-100 text-snap-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
             <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 3.666V14m-4.416-.797l-3.6 3.6M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           </div>
-          <h3 class="text-lg font-semibold text-slate-900 mb-2">公式与计算</h3>
-          <p class="text-slate-600 text-sm leading-relaxed">支持 50+ 公式函数，自动依赖追踪与缓存，实时重算。</p>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">公式与自动补全</h3>
+          <p class="text-slate-600 text-sm leading-relaxed">支持 260+ 公式函数，输入 = 即可看到函数列表与中英文说明，自动依赖追踪、实时重算。</p>
+        </div>
+
+        <div class="reveal p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:border-snap-200 hover:shadow-lg hover:shadow-snap-900/5 transition-all group" style="transition-delay: 100ms;">
+          <div class="w-12 h-12 rounded-xl bg-snap-100 text-snap-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          </div>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">XLOOKUP 与查找</h3>
+          <p class="text-slate-600 text-sm leading-relaxed">内置现代查找函数 XLOOKUP，支持精确匹配、近似匹配及自定义未找到返回值。</p>
+        </div>
+
+        <div class="reveal p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:border-snap-200 hover:shadow-lg hover:shadow-snap-900/5 transition-all group" style="transition-delay: 200ms;">
+          <div class="w-12 h-12 rounded-xl bg-snap-100 text-snap-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+          </div>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">筛选与隐藏行列</h3>
+          <p class="text-slate-600 text-sm leading-relaxed">一键开启自动筛选，通过下拉菜单勾选显示值；同时支持手动隐藏/显示任意行或列。</p>
+        </div>
+
+        <div class="reveal p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:border-snap-200 hover:shadow-lg hover:shadow-snap-900/5 transition-all group">
+          <div class="w-12 h-12 rounded-xl bg-snap-100 text-snap-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+          </div>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">图表可视化</h3>
+          <p class="text-slate-600 text-sm leading-relaxed">支持柱状图、折线图、面积图、散点图、饼图，可拖拽移动、缩放并双击编辑。</p>
         </div>
 
         <div class="reveal p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:border-snap-200 hover:shadow-lg hover:shadow-snap-900/5 transition-all group" style="transition-delay: 100ms;">
