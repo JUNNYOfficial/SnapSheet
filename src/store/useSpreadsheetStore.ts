@@ -24,6 +24,10 @@ interface SpreadsheetState {
   scrollLeft: number;
   scrollTop: number;
   isDirty: boolean;
+  /** 格式刷源样式 */
+  formatPainterStyle: CellStyle | null;
+  /** 格式刷是否持续模式 */
+  formatPainterPersistent: boolean;
 
   getActiveSheet: () => Sheet;
   setActiveSheet: (id: string) => void;
@@ -39,6 +43,9 @@ interface SpreadsheetState {
   setCellStyle: (row: number, col: number, style: CellStyle) => void;
   applyStyleToSelection: (style: Partial<CellStyle>) => void;
   clearFormatSelection: () => void;
+  copyFormatPainter: () => void;
+  applyFormatPainter: () => void;
+  clearFormatPainter: () => void;
 
   setSelection: (selection: Selection) => void;
   setEditing: (row: number, col: number | null) => void;
@@ -299,6 +306,8 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     /** 垂直滚动偏移 */
     scrollTop: 0,
     isDirty: false,
+    formatPainterStyle: null,
+    formatPainterPersistent: false,
 
     /** 获取当前激活的工作表 */
     getActiveSheet: () => {
@@ -621,6 +630,40 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       pushHistory();
       set({ workbook: { ...get().workbook }, isDirty: true });
     },
+
+    /** 复制当前选择区域首个单元格的样式到格式刷 */
+    copyFormatPainter: () => {
+      const state = get();
+      const sel = state.selection;
+      const sheet = state.getActiveSheet();
+      const minRow = Math.min(sel.startRow, sel.endRow);
+      const maxRow = Math.max(sel.startRow, sel.endRow);
+      const minCol = Math.min(sel.startCol, sel.endCol);
+      const maxCol = Math.max(sel.startCol, sel.endCol);
+      for (let r = minRow; r <= maxRow; r++) {
+        for (let c = minCol; c <= maxCol; c++) {
+          const cell = sheet.cells.get(coordsToCell(r, c));
+          if (cell?.style && Object.keys(cell.style).length > 0) {
+            set({ formatPainterStyle: { ...cell.style }, formatPainterPersistent: false });
+            return;
+          }
+        }
+      }
+      set({ formatPainterStyle: {}, formatPainterPersistent: false });
+    },
+
+    /** 将格式刷样式应用到当前选择区域，并清空格式刷 */
+    applyFormatPainter: () => {
+      const state = get();
+      if (!state.formatPainterStyle) return;
+      state.applyStyleToSelection(state.formatPainterStyle);
+      if (!state.formatPainterPersistent) {
+        set({ formatPainterStyle: null });
+      }
+    },
+
+    /** 清空格式刷状态 */
+    clearFormatPainter: () => set({ formatPainterStyle: null, formatPainterPersistent: false }),
 
     /**
      * 设置当前选择区域，并自动限制在工作表边界内。

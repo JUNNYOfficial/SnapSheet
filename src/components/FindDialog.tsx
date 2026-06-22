@@ -21,6 +21,8 @@ export default function FindDialog({ open, onClose }: FindDialogProps) {
   const [message, setMessage] = useState('');
   const [currentMatch, setCurrentMatch] = useState(0);
   const [totalMatches, setTotalMatches] = useState(0);
+  const [caseSensitive, setCaseSensitive] = useState(false);
+  const [wholeCell, setWholeCell] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -30,6 +32,8 @@ export default function FindDialog({ open, onClose }: FindDialogProps) {
       setMessage('');
       setCurrentMatch(0);
       setTotalMatches(0);
+      setCaseSensitive(false);
+      setWholeCell(false);
     }
   }, [open]);
 
@@ -41,14 +45,21 @@ export default function FindDialog({ open, onClose }: FindDialogProps) {
     const matches: { row: number; col: number; value: string }[] = [];
     for (const [ref, cell] of sheet.cells.entries()) {
       const value = cell.computed !== undefined && cell.formula ? String(cell.computed) : cell.value;
-      if (String(value).toLowerCase().includes(q.toLowerCase())) {
+      const str = String(value);
+      let isMatch = false;
+      if (wholeCell) {
+        isMatch = caseSensitive ? str === q : str.toLowerCase() === q.toLowerCase();
+      } else {
+        isMatch = caseSensitive ? str.includes(q) : str.toLowerCase().includes(q.toLowerCase());
+      }
+      if (isMatch) {
         const coords = cellToCoords(ref);
-        if (coords) matches.push({ row: coords.row, col: coords.col, value: String(value) });
+        if (coords) matches.push({ row: coords.row, col: coords.col, value: str });
       }
     }
     matches.sort((a, b) => (a.row - b.row) || (a.col - b.col));
     return matches;
-  }, [query, store]);
+  }, [query, store, caseSensitive, wholeCell]);
 
   useEffect(() => {
     if (open) {
@@ -93,9 +104,20 @@ export default function FindDialog({ open, onClose }: FindDialogProps) {
     if (!cell) return;
     const value = cell.computed !== undefined && cell.formula ? String(cell.computed) : cell.value;
     const q = query.trim();
-    if (!q || !String(value).toLowerCase().includes(q.toLowerCase())) return;
+    if (!q) return;
 
-    const newValue = String(value).replace(new RegExp(escapeRegExp(q), 'gi'), replaceText);
+    const str = String(value);
+    let isMatch = false;
+    if (wholeCell) {
+      isMatch = caseSensitive ? str === q : str.toLowerCase() === q.toLowerCase();
+    } else {
+      isMatch = caseSensitive ? str.includes(q) : str.toLowerCase().includes(q.toLowerCase());
+    }
+    if (!isMatch) return;
+
+    const newValue = wholeCell
+      ? replaceText
+      : str.replace(new RegExp(escapeRegExp(q), caseSensitive ? 'g' : 'gi'), replaceText);
     store.getState().setCellValue(sel.startRow, sel.startCol, newValue);
     setMessage('已替换当前单元格');
   };
@@ -113,7 +135,9 @@ export default function FindDialog({ open, onClose }: FindDialogProps) {
       const cell = sheet.cells.get(ref);
       if (!cell) continue;
       const value = cell.computed !== undefined && cell.formula ? String(cell.computed) : cell.value;
-      const newValue = String(value).replace(new RegExp(escapeRegExp(q), 'gi'), replaceText);
+      const newValue = wholeCell
+        ? replaceText
+        : String(value).replace(new RegExp(escapeRegExp(q), caseSensitive ? 'g' : 'gi'), replaceText);
       store.getState().setCellValue(match.row, match.col, newValue);
     }
     setMessage(`已替换 ${matches.length} 个单元格`);
@@ -165,7 +189,7 @@ export default function FindDialog({ open, onClose }: FindDialogProps) {
       </div>
 
       {/* 替换输入 */}
-      <div className="mb-3">
+      <div className="mb-2">
         <div className="relative">
           <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-medium" style={{ color: 'var(--ss-header-text)' }}>替</span>
           <input
@@ -178,6 +202,30 @@ export default function FindDialog({ open, onClose }: FindDialogProps) {
             style={{ borderColor: 'var(--ss-border-strong)', background: 'var(--ss-input-bg)', color: 'var(--ss-text-primary)' }}
           />
         </div>
+      </div>
+
+      {/* 选项 */}
+      <div className="mb-3 flex items-center gap-4">
+        <label className="flex cursor-pointer items-center gap-1.5 text-xs" style={{ color: 'var(--ss-text-secondary)' }}>
+          <input
+            type="checkbox"
+            checked={caseSensitive}
+            onChange={(e) => { setCaseSensitive(e.target.checked); setCurrentMatch(0); }}
+            className="h-3.5 w-3.5 rounded border accent-[var(--ss-selected-border)]"
+            style={{ borderColor: 'var(--ss-border-strong)' }}
+          />
+          区分大小写
+        </label>
+        <label className="flex cursor-pointer items-center gap-1.5 text-xs" style={{ color: 'var(--ss-text-secondary)' }}>
+          <input
+            type="checkbox"
+            checked={wholeCell}
+            onChange={(e) => { setWholeCell(e.target.checked); setCurrentMatch(0); }}
+            className="h-3.5 w-3.5 rounded border accent-[var(--ss-selected-border)]"
+            style={{ borderColor: 'var(--ss-border-strong)' }}
+          />
+          整单元格匹配
+        </label>
       </div>
 
       {/* 操作按钮 */}

@@ -10,15 +10,15 @@ import { useSpreadsheetStore } from '../store/useSpreadsheetStore';
 import { toCSV, parseCSV } from '../utils/csv';
 import { workbookToJSON, workbookFromJSON, downloadFile } from '../utils/json';
 import { exportToExcel, importFromExcel } from '../utils/excel';
-import { coordsToCell } from '../utils/cellRef';
+import { coordsToCell, colToLetter } from '../utils/cellRef';
 import { requestDeleteConfirmation } from '../utils/deleteConfirmation';
 import { TEMPLATES } from '../templates';
 
-import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from '../utils/constants';
+import { FONT_OPTIONS, FONT_SIZE_OPTIONS, FONT_FAMILY, FONT_SIZE, DEFAULT_ROW_HEIGHT, MIN_ROW_HEIGHT, MIN_COL_WIDTH, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../utils/constants';
 import { FileText, Upload, Download, Bold, Italic, Underline, Strikethrough, AlignLeft, AlignCenter, AlignRight,
   AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd,
   Type, Paintbrush, Palette, Minus, Plus, Merge, Split,
-  Percent, Hash, DollarSign, Calendar,
+  Percent, Hash, DollarSign, Calendar, WrapText, ArrowLeftRight, ArrowUpDown,
   MessageSquare, Eraser, Undo2, Redo2, Sun, Moon, ChevronLeft, ChevronRight,
   Eye, Home, SortAsc, SortDesc,
   Lock, Unlock, PanelRight, Save, FolderOpen, Wand2, Sparkles, Grid3x3
@@ -274,6 +274,86 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   const handleBgColor = (color: string) => store.getState().applyStyleToSelection({ bgColor: color });
   /** 清除格式 */
   const handleClearFormat = () => store.getState().clearFormatSelection();
+  /** 格式刷 */
+  const formatPainterStyle = store((s) => s.formatPainterStyle);
+  const handleFormatPainter = () => {
+    if (formatPainterStyle) {
+      store.getState().applyFormatPainter();
+    } else {
+      store.getState().copyFormatPainter();
+    }
+  };
+  /** 自动换行 */
+  const handleWrapText = () => store.getState().applyStyleToSelection({ wrap: !getFirstCellStyle('wrap') });
+  /** 自动调整列宽 */
+  const handleAutoFitCols = () => {
+    const state = store.getState();
+    const sheet = state.getActiveSheet();
+    const sel = state.selection;
+    const minCol = Math.min(sel.startCol, sel.endCol);
+    const maxCol = Math.max(sel.startCol, sel.endCol);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    for (let c = minCol; c <= maxCol; c++) {
+      let maxWidth = MIN_COL_WIDTH;
+      ctx.font = `${FONT_SIZE}px ${FONT_FAMILY}`;
+      const headerWidth = ctx.measureText(colToLetter(c)).width + 24;
+      maxWidth = Math.max(maxWidth, headerWidth);
+      for (let r = 0; r < SHEET_ROW_COUNT; r++) {
+        const cell = sheet.cells.get(coordsToCell(r, c));
+        if (!cell || !cell.value) continue;
+        const display = cell.computed !== undefined && cell.formula ? String(cell.computed) : cell.value;
+        const fontSize = cell.style?.fontSize || FONT_SIZE;
+        const fontFamily = cell.style?.fontFamily || FONT_FAMILY;
+        ctx.font = `${cell.style?.bold ? 'bold ' : ''}${cell.style?.italic ? 'italic ' : ''}${fontSize}px ${fontFamily}`;
+        const w = ctx.measureText(display).width + 12;
+        if (w > maxWidth) maxWidth = w;
+      }
+      state.setColWidth(c, Math.min(maxWidth, 600));
+    }
+  };
+  /** 自动调整行高 */
+  const handleAutoFitRows = () => {
+    const state = store.getState();
+    const sheet = state.getActiveSheet();
+    const sel = state.selection;
+    const minRow = Math.min(sel.startRow, sel.endRow);
+    const maxRow = Math.max(sel.startRow, sel.endRow);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    for (let r = minRow; r <= maxRow; r++) {
+      let maxHeight = DEFAULT_ROW_HEIGHT;
+      for (let c = 0; c < SHEET_COL_COUNT; c++) {
+        const cell = sheet.cells.get(coordsToCell(r, c));
+        if (!cell || !cell.value) continue;
+        if (cell.style?.wrap) {
+          const display = cell.computed !== undefined && cell.formula ? String(cell.computed) : cell.value;
+          const fontSize = cell.style?.fontSize || FONT_SIZE;
+          const fontFamily = cell.style?.fontFamily || FONT_FAMILY;
+          ctx.font = `${cell.style?.bold ? 'bold ' : ''}${cell.style?.italic ? 'italic ' : ''}${fontSize}px ${fontFamily}`;
+          const colWidth = state.getColWidth(c);
+          const maxTextWidth = Math.max(0, colWidth - 12);
+          const words = String(display).split('');
+          let line = '';
+          let lines = 1;
+          for (const word of words) {
+            const test = line + word;
+            if (ctx.measureText(test).width > maxTextWidth && line) {
+              lines++;
+              line = word;
+            } else {
+              line = test;
+            }
+          }
+          const h = lines * (fontSize + 3) + 8;
+          if (h > maxHeight) maxHeight = h;
+        }
+      }
+      state.setRowHeight(r, Math.min(maxHeight, 400));
+    }
+  };
   /** 左对齐 */
   const handleAlignLeft = () => store.getState().applyStyleToSelection({ align: 'left' });
   /** 居中对齐 */
@@ -524,6 +604,16 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
               <ToolbarButton onClick={() => handleBorder('left')} icon={<Minus size={16} className="-rotate-90" />} title="左框线" />
               <ToolbarButton onClick={() => handleBorder('right')} icon={<Minus size={16} className="-rotate-90" />} title="右框线" />
               <ToolbarButton onClick={() => handleBorder('none')} icon={<Eraser size={16} />} title="清除边框" />
+            </ToolbarGroup>
+            <ToolbarDivider />
+            <ToolbarGroup title="格式">
+              <ToolbarButton onClick={handleFormatPainter} icon={<Paintbrush size={16} />} title={formatPainterStyle ? '应用格式刷' : '复制格式'} active={!!formatPainterStyle} />
+              <ToolbarButton onClick={handleWrapText} icon={<WrapText size={16} />} title="自动换行" active={getFirstCellStyle('wrap')} />
+            </ToolbarGroup>
+            <ToolbarDivider />
+            <ToolbarGroup title="单元格大小">
+              <ToolbarButton onClick={handleAutoFitCols} icon={<ArrowLeftRight size={16} />} title="自动调整列宽" />
+              <ToolbarButton onClick={handleAutoFitRows} icon={<ArrowUpDown size={16} />} title="自动调整行高" />
             </ToolbarGroup>
             <ToolbarDivider />
             <ToolbarGroup title="数字">
