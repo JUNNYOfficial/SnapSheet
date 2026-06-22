@@ -30,6 +30,8 @@ jobs:
         run: npx tsc -b
       - name: Build for production
         run: npx vite build --base ./
+      - name: Copy CNAME for custom domain
+        run: cp CNAME dist/CNAME
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist/
