@@ -150,6 +150,9 @@ export function cellsFromCSV(rows: string[][], startRow: number, startCol: numbe
     rowHeights: new Map(),
     frozenRows: 0,
     frozenCols: 0,
+    hiddenRows: [],
+    hiddenCols: [],
+    autoFilter: null,
     conditionalFormats: [],
     mergedCells: new Map(),
   };

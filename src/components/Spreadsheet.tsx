@@ -17,6 +17,7 @@ import {
 import ContextMenu from './ContextMenu';
 import HeaderContextMenu from './HeaderContextMenu';
 import FormulaAutocomplete from './FormulaAutocomplete';
+import AutoFilterDropdown from './AutoFilterDropdown';
 import { requestDeleteConfirmation } from '../utils/deleteConfirmation';
 
 /** 测量文本渲染宽度，用于编辑框自适应 */
@@ -53,8 +54,12 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
   const [headerContextMenu, setHeaderContextMenu] = useState<{ type: 'row' | 'col'; index: number; x: number; y: number } | null>(null);
   /** 公式编辑光标位置，用于自动补全 */
   const [editCaret, setEditCaret] = useState(0);
+  /** 当前打开的自动筛选下拉列，null 表示未打开 */
+  const [openFilter, setOpenFilter] = useState<{ col: number; left: number; top: number; width: number; height: number } | null>(null);
   /** 编辑输入框自适应宽度 */
   const [editInputWidth, setEditInputWidth] = useState<number>(0);
+
+  const autoFilter = store((s) => s.getActiveSheet().autoFilter);
 
   /**
    * 初始化 CanvasRenderer，并绑定单元格读取、选择、编辑、粘贴、滚动等回调。
@@ -111,6 +116,8 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
         void index;
         setHeaderContextMenu({ type, index, x, y });
       },
+      isRowHidden: (row) => store.getState().isRowHidden(row),
+      isColHidden: (col) => store.getState().isColHidden(col),
       getMergedRange: (row, col) => store.getState().getMergedRange(row, col),
       getConditionalFormats: () => store.getState().getActiveSheet().conditionalFormats,
       onScrollChange: (left, top) => store.getState().setScroll(left, top),
@@ -256,6 +263,50 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
   return (
     <div className="relative flex-1 overflow-hidden" style={{ background: 'var(--ss-bg)' }}>
       <canvas ref={canvasRef} className="w-full h-full cursor-cell" style={{ display: 'block' }} />
+      {autoFilter && rendererRef.current && canvasRef.current && (
+        <div className="pointer-events-none absolute inset-0">
+          {(() => {
+            const rect = canvasRef.current!.getBoundingClientRect();
+            const frozenRows = store.getState().getActiveSheet().frozenRows;
+            const frozenCols = store.getState().getActiveSheet().frozenCols;
+            const buttons: JSX.Element[] = [];
+            for (let c = autoFilter.startCol; c <= autoFilter.endCol; c++) {
+              const pos = rendererRef.current!.getCellPosition(autoFilter.headerRow, c, frozenRows, frozenCols);
+              const width = store.getState().getColWidth(c);
+              if (width <= 0) continue;
+              buttons.push(
+                <button
+                  key={c}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenFilter({
+                      col: c,
+                      left: rect.left + pos.x,
+                      top: rect.top,
+                      width,
+                      height: HEADER_ROW_HEIGHT,
+                    });
+                  }}
+                  className="pointer-events-auto absolute flex items-end justify-end p-0.5"
+                  style={{
+                    left: pos.x,
+                    top: 0,
+                    width,
+                    height: HEADER_ROW_HEIGHT,
+                    color: openFilter?.col === c ? 'var(--ss-selected-border)' : 'var(--ss-text-secondary)',
+                  }}
+                  title="筛选"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 4h18l-7 8.5V20l-4-2v-5.5L3 4z" />
+                  </svg>
+                </button>
+              );
+            }
+            return buttons;
+          })()}
+        </div>
+      )}
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
@@ -287,6 +338,23 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
           x={headerContextMenu.x}
           y={headerContextMenu.y}
           onClose={() => setHeaderContextMenu(null)}
+        />
+      )}
+      {openFilter && autoFilter && (
+        <AutoFilterDropdown
+          col={openFilter.col}
+          allValues={autoFilter.filters[openFilter.col] || []}
+          visibleValues={autoFilter.filters[openFilter.col] || []}
+          position={{
+            left: openFilter.left,
+            top: openFilter.top,
+            width: openFilter.width,
+            height: openFilter.height,
+          }}
+          onChange={(visibleValues) => {
+            store.getState().setAutoFilterColumn(openFilter.col, visibleValues);
+          }}
+          onClose={() => setOpenFilter(null)}
         />
       )}
       {editing && (

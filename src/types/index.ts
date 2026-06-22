@@ -149,10 +149,27 @@ export interface Sheet {
   frozenRows: number;
   /** 冻结列数 */
   frozenCols: number;
+  /** 隐藏行索引列表 */
+  hiddenRows: number[];
+  /** 隐藏列索引列表 */
+  hiddenCols: number[];
+  /** 自动筛选配置 */
+  autoFilter: AutoFilter | null;
   /** 条件格式列表 */
   conditionalFormats: ConditionalFormat[];
   /** 合并单元格映射，key 为左上角单元格引用 */
   mergedCells: Map<string, MergeRange>;
+}
+
+/** 自动筛选配置 */
+export interface AutoFilter {
+  /** 表头行索引 */
+  headerRow: number;
+  /** 参与筛选的列范围 */
+  startCol: number;
+  endCol: number;
+  /** 每列的可见值集合，key 为列索引 */
+  filters: Record<number, string[]>;
 }
 
 /** 工作簿：包含多张工作表及当前激活表 */

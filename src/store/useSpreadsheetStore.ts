@@ -46,6 +46,28 @@ interface SpreadsheetState {
   copyFormatPainter: () => void;
   applyFormatPainter: () => void;
   clearFormatPainter: () => void;
+  /** 隐藏指定行 */
+  hideRows: (rows: number[]) => void;
+  /** 取消隐藏指定行 */
+  unhideRows: (rows: number[]) => void;
+  /** 隐藏指定列 */
+  hideCols: (cols: number[]) => void;
+  /** 取消隐藏指定列 */
+  unhideCols: (cols: number[]) => void;
+  /** 取消所有隐藏 */
+  unhideAll: () => void;
+  /** 行是否隐藏 */
+  isRowHidden: (row: number) => boolean;
+  /** 列是否隐藏 */
+  isColHidden: (col: number) => boolean;
+  /** 应用/切换自动筛选 */
+  applyAutoFilter: () => void;
+  /** 设置某列的筛选值 */
+  setAutoFilterColumn: (col: number, visibleValues: string[]) => void;
+  /** 清除自动筛选 */
+  clearAutoFilter: () => void;
+  /** 根据自动筛选配置刷新隐藏行（内部使用） */
+  refreshAutoFilterHiddenRows: () => void;
 
   setSelection: (selection: Selection) => void;
   setEditing: (row: number, col: number | null) => void;
@@ -117,6 +139,9 @@ function createSheet(name: string, id: string): Sheet {
     rowHeights: new Map<number, number>(),
     frozenRows: 0,
     frozenCols: 0,
+    hiddenRows: [],
+    hiddenCols: [],
+    autoFilter: null,
     conditionalFormats: [],
     mergedCells: new Map<string, MergeRange>(),
   };
@@ -664,6 +689,155 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
 
     /** 清空格式刷状态 */
     clearFormatPainter: () => set({ formatPainterStyle: null, formatPainterPersistent: false }),
+
+    /** 隐藏指定行 */
+    hideRows: (rows: number[]) => {
+      const state = get();
+      const sheet = state.getActiveSheet();
+      const setHidden = new Set(sheet.hiddenRows);
+      for (const r of rows) {
+        setHidden.add(r);
+        state.setRowHeight(r, 0);
+      }
+      sheet.hiddenRows = Array.from(setHidden).sort((a, b) => a - b);
+      set({ workbook: { ...state.workbook }, isDirty: true });
+    },
+    /** 取消隐藏指定行 */
+    unhideRows: (rows: number[]) => {
+      const state = get();
+      const sheet = state.getActiveSheet();
+      const setHidden = new Set(sheet.hiddenRows);
+      for (const r of rows) {
+        if (setHidden.has(r)) {
+          setHidden.delete(r);
+          state.setRowHeight(r, DEFAULT_ROW_HEIGHT);
+        }
+      }
+      sheet.hiddenRows = Array.from(setHidden).sort((a, b) => a - b);
+      set({ workbook: { ...state.workbook }, isDirty: true });
+    },
+    /** 隐藏指定列 */
+    hideCols: (cols: number[]) => {
+      const state = get();
+      const sheet = state.getActiveSheet();
+      const setHidden = new Set(sheet.hiddenCols);
+      for (const c of cols) {
+        setHidden.add(c);
+        state.setColWidth(c, 0);
+      }
+      sheet.hiddenCols = Array.from(setHidden).sort((a, b) => a - b);
+      set({ workbook: { ...state.workbook }, isDirty: true });
+    },
+    /** 取消隐藏指定列 */
+    unhideCols: (cols: number[]) => {
+      const state = get();
+      const sheet = state.getActiveSheet();
+      const setHidden = new Set(sheet.hiddenCols);
+      for (const c of cols) {
+        if (setHidden.has(c)) {
+          setHidden.delete(c);
+          state.setColWidth(c, DEFAULT_COL_WIDTH);
+        }
+      }
+      sheet.hiddenCols = Array.from(setHidden).sort((a, b) => a - b);
+      set({ workbook: { ...state.workbook }, isDirty: true });
+    },
+    /** 取消所有隐藏 */
+    unhideAll: () => {
+      const state = get();
+      const sheet = state.getActiveSheet();
+      for (const r of sheet.hiddenRows) state.setRowHeight(r, DEFAULT_ROW_HEIGHT);
+      for (const c of sheet.hiddenCols) state.setColWidth(c, DEFAULT_COL_WIDTH);
+      sheet.hiddenRows = [];
+      sheet.hiddenCols = [];
+      set({ workbook: { ...state.workbook }, isDirty: true });
+    },
+    /** 行是否隐藏 */
+    isRowHidden: (row: number) => get().getActiveSheet().hiddenRows.includes(row),
+    /** 列是否隐藏 */
+    isColHidden: (col: number) => get().getActiveSheet().hiddenCols.includes(col),
+
+    /** 应用或取消自动筛选，根据当前选择区域确定表头行和列范围 */
+    applyAutoFilter: () => {
+      const state = get();
+      const sheet = state.getActiveSheet();
+      const sel = state.selection;
+      const minRow = Math.min(sel.startRow, sel.endRow);
+      const maxRow = Math.max(sel.startRow, sel.endRow);
+      const minCol = Math.min(sel.startCol, sel.endCol);
+      const maxCol = Math.max(sel.startCol, sel.endCol);
+
+      // 再次点击已存在且范围相同的筛选则清除
+      if (sheet.autoFilter && sheet.autoFilter.headerRow === minRow && sheet.autoFilter.startCol === minCol && sheet.autoFilter.endCol === maxCol) {
+        state.clearAutoFilter();
+        return;
+      }
+
+      // 默认以选择区域的首行作为表头
+      const filters: Record<number, string[]> = {};
+      for (let c = minCol; c <= maxCol; c++) {
+        const values = new Set<string>();
+        for (let r = minRow + 1; r <= maxRow && r < SHEET_ROW_COUNT; r++) {
+          const cell = sheet.cells.get(coordsToCell(r, c));
+          values.add(cell ? String(cell.computed !== undefined && cell.formula ? cell.computed : cell.value) : '');
+        }
+        filters[c] = Array.from(values);
+      }
+      sheet.autoFilter = { headerRow: minRow, startCol: minCol, endCol: maxCol, filters };
+      state.refreshAutoFilterHiddenRows();
+      pushHistory();
+      set({ workbook: { ...state.workbook }, isDirty: true });
+    },
+
+    /** 设置某列的可见值并刷新隐藏行 */
+    setAutoFilterColumn: (col: number, visibleValues: string[]) => {
+      const state = get();
+      const sheet = state.getActiveSheet();
+      if (!sheet.autoFilter) return;
+      sheet.autoFilter.filters[col] = visibleValues;
+      state.refreshAutoFilterHiddenRows();
+      pushHistory();
+      set({ workbook: { ...state.workbook }, isDirty: true });
+    },
+
+    /** 清除自动筛选 */
+    clearAutoFilter: () => {
+      const state = get();
+      const sheet = state.getActiveSheet();
+      sheet.autoFilter = null;
+      // 恢复所有由筛选导致的隐藏行
+      const hiddenByFilter = new Set(sheet.hiddenRows);
+      for (const r of sheet.hiddenRows) state.setRowHeight(r, DEFAULT_ROW_HEIGHT);
+      sheet.hiddenRows = [];
+      set({ workbook: { ...state.workbook }, isDirty: true });
+    },
+
+    /** 根据当前自动筛选配置刷新隐藏行 */
+    refreshAutoFilterHiddenRows: () => {
+      const state = get();
+      const sheet = state.getActiveSheet();
+      if (!sheet.autoFilter) return;
+      const { headerRow, startCol, endCol, filters } = sheet.autoFilter;
+      const newHidden = new Set<number>();
+      for (let r = headerRow + 1; r < SHEET_ROW_COUNT; r++) {
+        let hide = false;
+        for (let c = startCol; c <= endCol; c++) {
+          const visible = filters[c];
+          if (!visible || visible.length === 0) continue;
+          const cell = sheet.cells.get(coordsToCell(r, c));
+          const value = cell ? String(cell.computed !== undefined && cell.formula ? cell.computed : cell.value) : '';
+          if (!visible.includes(value)) {
+            hide = true;
+            break;
+          }
+        }
+        if (hide) newHidden.add(r);
+      }
+      // 先取消所有行的隐藏，再重新设置
+      for (const r of sheet.hiddenRows) state.setRowHeight(r, DEFAULT_ROW_HEIGHT);
+      for (const r of newHidden) state.setRowHeight(r, 0);
+      sheet.hiddenRows = Array.from(newHidden).sort((a, b) => a - b);
+    },
 
     /**
      * 设置当前选择区域，并自动限制在工作表边界内。

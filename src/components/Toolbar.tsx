@@ -21,7 +21,7 @@ import { FileText, Upload, Download, Bold, Italic, Underline, Strikethrough, Ali
   Type, Paintbrush, Palette, Minus, Plus, Merge, Split,
   Percent, Hash, DollarSign, Calendar, WrapText, ArrowLeftRight, ArrowUpDown,
   MessageSquare, Eraser, Undo2, Redo2, Sun, Moon, ChevronLeft, ChevronRight,
-  Eye, Home, SortAsc, SortDesc,
+  Eye, Home, SortAsc, SortDesc, Filter,
   Lock, Unlock, PanelRight, Save, FolderOpen, Wand2, Sparkles, Grid3x3
 } from 'lucide-react';
 
@@ -652,6 +652,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
             <ToolbarGroup title="排序">
               <ToolbarButton onClick={() => store.getState().sortByColumn(selection.startCol, 'asc')} icon={<SortAsc size={16} />} title="升序" />
               <ToolbarButton onClick={() => store.getState().sortByColumn(selection.startCol, 'desc')} icon={<SortDesc size={16} />} title="降序" />
+              <ToolbarButton onClick={() => store.getState().applyAutoFilter()} icon={<Filter size={16} />} title="自动筛选" />
             </ToolbarGroup>
           </>
         )}

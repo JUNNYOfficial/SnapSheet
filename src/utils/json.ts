@@ -93,6 +93,9 @@ export function workbookFromJSON(json: string): Workbook {
     ),
     frozenRows: (s as SerializableSheet & { frozenRows?: number }).frozenRows || 0,
     frozenCols: (s as SerializableSheet & { frozenCols?: number }).frozenCols || 0,
+    hiddenRows: (s as SerializableSheet & { hiddenRows?: number[] }).hiddenRows || [],
+    hiddenCols: (s as SerializableSheet & { hiddenCols?: number[] }).hiddenCols || [],
+    autoFilter: (s as SerializableSheet & { autoFilter?: Sheet['autoFilter'] }).autoFilter || null,
     conditionalFormats: (s as SerializableSheet & { conditionalFormats?: Sheet['conditionalFormats'] }).conditionalFormats || [],
     mergedCells: new Map<string, { startRow: number; startCol: number; endRow: number; endCol: number }>(
       Object.entries(s.mergedCells || {}),
