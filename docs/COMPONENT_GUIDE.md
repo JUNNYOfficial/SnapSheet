@@ -346,24 +346,8 @@ export default function MyComponent({ isOpen, onClose }: MyComponentProps) {
 ### 样式规范
 
 - 使用 Tailwind CSS 进行样式开发
-- 使用 CSS 变量定义主题颜色
+- 使用 CSS 变量定义主题颜色，具体 Token 定义参见 `docs/design-system.md`
 - 避免使用内联样式（除非必要）
-
-**主题变量**：
-
-| 变量 | 说明 |
-|------|------|
-| `--ss-bg` | 背景色 |
-| `--ss-toolbar-bg` | 工具栏背景色 |
-| `--ss-cell-text` | 单元格文字颜色 |
-| `--ss-toolbar-text` | 工具栏文字颜色 |
-| `--ss-header-text` | 表头文字颜色 |
-| `--ss-input-bg` | 输入框背景色 |
-| `--ss-input-border` | 输入框边框颜色 |
-| `--ss-selected-bg` | 选中背景色 |
-| `--ss-selected-border` | 选中边框颜色 |
-| `--ss-toolbar-border` | 工具栏边框颜色 |
-| `--ss-toolbar-hover` | 工具栏悬停颜色 |
 
 ### 状态管理
 
@@ -438,60 +422,6 @@ try {
 }
 ```
 
-## 通信模式
-
-### 组件间通信
-
-| 方式 | 适用场景 | 示例 |
-|------|----------|------|
-| **状态管理** | 全局状态共享 | 使用 Zustand store |
-| **Props** | 父子组件通信 | 父传子 |
-| **Context** | 深层组件通信 | ThemeContext |
-| **回调函数** | 子组件通知父组件 | onClose, onToggle |
-
-### 事件总线
-
-使用 Zustand store 作为事件总线：
-
-```typescript
-// 定义事件
-interface EventBus {
-  emit: (event: string, payload?: any) => void;
-  on: (event: string, handler: (payload?: any) => void) => void;
-}
-
-// 使用
-store.getState().emit('cellUpdated', { row, col, value });
-```
-
-## 最佳实践
-
-### 单一职责原则
-
-每个组件只负责一个功能：
-
-- Toolbar：只负责工具栏操作
-- Spreadsheet：只负责表格渲染和交互
-- PropertyPanel：只负责属性设置
-
-### 可复用性
-
-- 将通用逻辑提取为 Hooks
-- 将通用 UI 提取为组件
-- 使用 props 传递配置
-
-### 可测试性
-
-- 组件逻辑与 UI 分离
-- 使用纯函数
-- 提供测试用例
-
-### 可访问性
-
-- 使用语义化 HTML 标签
-- 提供键盘导航
-- 提供 ARIA 属性
-
 ## 扩展指南
 
 ### 添加新功能到 Toolbar
@@ -553,10 +483,3 @@ A: 使用原生的 mousedown/mousemove/mouseup 事件，或使用拖拽库。
 A: 使用 CSS transitions 或 React 动画库。
 
 ---
-
-## 参考资料
-
-- [React 官方文档](https://react.dev/)
-- [Tailwind CSS 文档](https://tailwindcss.com/)
-- [Zustand 文档](https://zustand-demo.pmnd.rs/)
-- [Lucide React 文档](https://lucide.dev/)

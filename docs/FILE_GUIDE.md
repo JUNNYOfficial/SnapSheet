@@ -6,9 +6,12 @@
 
 ```
 SnapSheet/
-├── docs/                    # 项目文档
-│   ├── FILE_GUIDE.md        # 本文件：文件维护指南
-│   └── engineering-formulas.md  # 工程公式详细说明（可选）
+├── docs/                 # 项目文档
+│   ├── FILE_GUIDE.md     # 本文件：文件维护指南
+│   ├── COMPONENT_GUIDE.md   # 组件开发指南
+│   ├── FORMULA_ENGINE.md    # 公式引擎说明
+│   ├── design-system.md     # UI 设计规范
+│   └── snaplang-design.md   # SnapLang 集成指南
 ├── electron/                # Electron 桌面端
 │   ├── main.ts              # 主进程入口：窗口、菜单、文件对话框
 │   └── preload.ts           # 预加载脚本：安全暴露 IPC 接口
@@ -38,11 +41,10 @@ SnapSheet/
 │   │   └── useTheme.ts      # 主题切换
 │   ├── lib/                 # 工具库（如 shadcn 相关）
 │   │   └── utils.ts
-│   ├── snaplang/            # SnapLang 脚本语言
-│   │   ├── grammar.ne       # 语法定义
-│   │   ├── adapter.ts       # 与表格交互适配器
-│   │   ├── snaplang-wrapper.ts
-│   │   └── index.ts
+│   ├── snaplang/          # SnapLang 公式/脚本适配层
+│   │   ├── adapter.ts     # 公式预处理与原生函数注册
+│   │   ├── snaplang-wrapper.ts  # SnapLang 运行时 ES 模块包装
+│   │   └── index.ts       # 适配层入口
 │   ├── store/               # Zustand 全局状态
 │   │   └── useSpreadsheetStore.ts
 │   ├── templates/           # 工作表模板
@@ -149,7 +151,7 @@ export function cellToCoords(ref: string): { row: number; col: number } { ... }
 1. **通用/数学/逻辑/文本/日期函数**：在 `src/engine/Evaluator.ts` 的对应分类区块中添加 case。
 2. **工程领域公式**：优先添加到 `src/engine/engineeringFormulas.ts`，然后在 `Evaluator.ts` default 分支中通过 Map 调用。
 3. 在 `README.md` 的「公式使用」或「工程领域专业公式」章节补充示例。
-4. 如函数行为复杂，请在 `docs/engineering-formulas.md` 中补充推导与应用场景。
+4. 如函数行为复杂，请在 README.md 的「工程领域专业公式」章节补充推导与应用场景。
 5. 为关键路径添加单元测试。
 
 ### 添加新 UI 组件

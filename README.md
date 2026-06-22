@@ -228,7 +228,7 @@ for (let i = 1; i <= 10; i++) {
 setCell('A11', '=SUM(A1:A10)');
 ```
 
-脚本支持变量、函数定义、条件判断与循环，具体语法可参考 `src/snaplang/grammar.ne`。
+脚本支持变量、函数定义、条件判断与循环，集成方式与原生函数注册可参考 `docs/snaplang-design.md`。
 
 ### 单元格选择
 
@@ -292,7 +292,11 @@ setCell('A11', '=SUM(A1:A10)');
 ```
 SnapSheet/
 ├── docs/                # 项目文档
-│   └── FILE_GUIDE.md    # 文件维护指南
+│   ├── FILE_GUIDE.md    # 文件维护指南
+│   ├── COMPONENT_GUIDE.md  # 组件开发指南
+│   ├── FORMULA_ENGINE.md   # 公式引擎说明
+│   ├── design-system.md    # UI 设计规范
+│   └── snaplang-design.md  # SnapLang 集成指南
 ├── electron/            # Electron 桌面端
 │   ├── main.ts          # 主进程入口
 │   └── preload.ts       # 预加载脚本
@@ -314,9 +318,10 @@ SnapSheet/
 │   │   ├── Evaluator.ts        # 表达式求值器
 │   │   ├── engineeringFormulas.ts # 工程领域专业公式库
 │   │   └── FormulaEngine.ts    # 公式引擎入口
-│   ├── snaplang/        # SnapLang 脚本语言
-│   │   ├── grammar.ne   # 语法定义
-│   │   └── adapter.ts   # 与表格交互适配器
+│   ├── snaplang/         # SnapLang 公式/脚本适配层
+│   │   ├── adapter.ts    # 公式预处理与原生函数注册
+│   │   ├── snaplang-wrapper.ts  # SnapLang 运行时 ES 模块包装
+│   │   └── index.ts      # 适配层入口
 │   ├── store/           # Zustand 状态管理
 │   │   └── useSpreadsheetStore.ts
 │   ├── hooks/           # 自定义 Hooks
