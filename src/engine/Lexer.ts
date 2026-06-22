@@ -1,3 +1,11 @@
+/**
+ * @file engine/Lexer.ts
+ * @description 公式词法分析器。
+ *              将形如 "=SUM(A1:B5)+10" 的公式字符串拆分为 Token 序列。
+ *              支持的 Token 类型包括数字、字符串、单元格引用、函数名、运算符、括号及 EOF。
+ *              被 Parser.ts 调用以生成语法树。
+ */
+
 import type { Token } from '../types';
 
 export class Lexer {

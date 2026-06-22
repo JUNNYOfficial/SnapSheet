@@ -1,3 +1,11 @@
+/**
+ * @file engine/Parser.ts
+ * @description 公式语法分析器。
+ *              基于递归下降算法将 Lexer 生成的 Token 序列解析为 AST。
+ *              支持四则运算、比较运算、函数调用、单元格引用与区域引用。
+ *              被 Evaluator.ts 调用以执行公式求值。
+ */
+
 import { Lexer } from './Lexer';
 import type { Token, TokenType, ASTNode } from '../types';
 

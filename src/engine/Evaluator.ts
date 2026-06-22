@@ -1,3 +1,12 @@
+/**
+ * @file engine/Evaluator.ts
+ * @description 公式表达式求值器。
+ *              遍历 Parser 生成的 AST 节点，执行数值、文本、日期、逻辑及工程公式计算。
+ *              所有内置函数通过 switch-case 注册；工程领域公式委托至 engineeringFormulas Map。
+ *              负责单元格引用求值、范围展开及统一错误码（如 #VALUE!、#NAME?、#REF!）。
+ *              被 engine/index.ts 与 FormulaEngine.ts 间接使用。
+ */
+
 import { getCellsInRange, parseRange, coordsToCell } from '../utils/cellRef';
 import { engineeringFormulas } from './engineeringFormulas';
 import type { ASTNode, Cell } from '../types';

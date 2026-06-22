@@ -1,3 +1,10 @@
+/**
+ * @file templates/index.ts
+ * @description 工作表模板库。
+ *              提供月度预算、待办清单、简单日历等预设模板。
+ *              用户新建工作表时可通过 Toolbar 调用 applyTemplateToSheet 填充初始数据。
+ */
+
 import type { Cell, Sheet } from '../types';
 import { coordsToCell } from '../utils/cellRef';
 
