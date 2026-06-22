@@ -16,6 +16,7 @@ import {
 } from '../utils/constants';
 import ContextMenu from './ContextMenu';
 import HeaderContextMenu from './HeaderContextMenu';
+import FormulaAutocomplete from './FormulaAutocomplete';
 import { requestDeleteConfirmation } from '../utils/deleteConfirmation';
 
 /** 测量文本渲染宽度，用于编辑框自适应 */
@@ -50,6 +51,8 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   /** 表头右键菜单状态 */
   const [headerContextMenu, setHeaderContextMenu] = useState<{ type: 'row' | 'col'; index: number; x: number; y: number } | null>(null);
+  /** 公式编辑光标位置，用于自动补全 */
+  const [editCaret, setEditCaret] = useState(0);
   /** 编辑输入框自适应宽度 */
   const [editInputWidth, setEditInputWidth] = useState<number>(0);
 
@@ -302,7 +305,12 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
             overflow: 'hidden',
           }}
           value={formulaBarValue}
-          onChange={(e) => store.getState().setFormulaBarValue(e.target.value)}
+          onChange={(e) => {
+            store.getState().setFormulaBarValue(e.target.value);
+            setEditCaret(e.target.selectionStart);
+          }}
+          onKeyUp={(e) => setEditCaret((e.target as HTMLTextAreaElement).selectionStart)}
+          onClick={(e) => setEditCaret((e.target as HTMLTextAreaElement).selectionStart)}
           onInput={(e) => {
             const el = e.target as HTMLTextAreaElement;
             el.style.height = 'auto';
@@ -353,6 +361,29 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
                 }
               }
             }
+          }}
+        />
+      )}
+      {editing && formulaBarValue.startsWith('=') && editInputRef.current && (
+        <FormulaAutocomplete
+          value={formulaBarValue}
+          caret={editCaret}
+          inputRect={editInputRef.current.getBoundingClientRect()}
+          onSelect={(insert, replaceLength) => {
+            const current = store.getState().formulaBarValue;
+            const before = current.slice(0, editCaret - replaceLength);
+            const after = current.slice(editCaret);
+            const next = before + insert + after;
+            store.getState().setFormulaBarValue(next);
+            const pos = before.length + insert.length;
+            setEditCaret(pos);
+            requestAnimationFrame(() => {
+              const el = editInputRef.current;
+              if (el) {
+                el.focus();
+                el.setSelectionRange(pos, pos);
+              }
+            });
           }}
         />
       )}

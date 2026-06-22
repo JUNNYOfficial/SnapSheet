@@ -844,6 +844,8 @@ export class Evaluator {
         return this.evalMatch(args);
       case 'INDEX':
         return this.evalIndex(args);
+      case 'XLOOKUP':
+        return this.evalXLookup(args);
       case 'SUMPRODUCT': {
         if (args.length < 2) return '#VALUE!';
         const ranges: string[][] = [];
@@ -1950,6 +1952,57 @@ export class Evaluator {
     const actualCol = parsed.startCol + col - 1;
     if (actualRow > parsed.endRow || actualCol > parsed.endCol) return '#REF!';
     return this.evalCell(coordsToCell(actualRow, actualCol));
+  }
+
+  private evalXLookup(args: ASTNode[]): number | string {
+    if (args.length < 3) return '#VALUE!';
+    const lookupValue = this.evalNode(args[0]);
+    const lookupArray = this.getRangeArg(args[1]);
+    const returnArray = this.getRangeArg(args[2]);
+    if (!lookupArray || !returnArray) return '#VALUE!';
+    if (lookupArray.length !== returnArray.length) return '#VALUE!';
+
+    const ifNotFound = args.length >= 4 ? this.evalNode(args[3]) : '#N/A';
+    const matchModeRaw = args.length >= 5 ? this.evalNode(args[4]) : 0;
+    const matchMode = typeof matchModeRaw === 'number' ? matchModeRaw : parseInt(matchModeRaw as string, 10);
+    if (isNaN(matchMode)) return '#VALUE!';
+
+    const lookupStr = String(lookupValue);
+    const lookupNum = typeof lookupValue === 'number' ? lookupValue : parseFloat(lookupValue as string);
+    const isNumericLookup = !isNaN(lookupNum);
+
+    const lookupValues = this.getRangeValues(lookupArray);
+
+    // 精确匹配
+    if (matchMode === 0) {
+      const idx = lookupValues.findIndex((v) => String(v) === lookupStr);
+      return idx === -1 ? ifNotFound : this.evalCell(returnArray[idx]);
+    }
+
+    if (!isNumericLookup) return ifNotFound;
+
+    // 近似匹配：-1 查找下一个较小的项，1 查找下一个较大的项
+    let bestIdx = -1;
+    let bestDiff = Infinity;
+    for (let i = 0; i < lookupValues.length; i++) {
+      const raw = lookupValues[i];
+      const n = typeof raw === 'number' ? raw : parseFloat(raw as string);
+      if (isNaN(n)) continue;
+      if (matchMode > 0 && n >= lookupNum) {
+        const diff = n - lookupNum;
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestIdx = i;
+        }
+      } else if (matchMode < 0 && n <= lookupNum) {
+        const diff = lookupNum - n;
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestIdx = i;
+        }
+      }
+    }
+    return bestIdx === -1 ? ifNotFound : this.evalCell(returnArray[bestIdx]);
   }
 
   private evalBinary(op: '+' | '-' | '*' | '/' | '&', left: ASTNode, right: ASTNode): number | string {
