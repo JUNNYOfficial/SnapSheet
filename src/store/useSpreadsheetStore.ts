@@ -66,7 +66,7 @@ interface SpreadsheetState {
 
   sortByColumn: (col: number, direction: 'asc' | 'desc') => void;
   applyNumberFormat: (format: Partial<NumberFormat> | null) => void;
-  applyBorderSelection: (side: 'top' | 'bottom' | 'left' | 'right' | 'all' | 'none', style?: BorderStyle) => void;
+  applyBorderSelection: (side: 'top' | 'bottom' | 'left' | 'right' | 'all' | 'outside' | 'none', style?: BorderStyle) => void;
   mergeCells: () => void;
   unmergeCells: () => void;
   getMergedRange: (row: number, col: number) => MergeRange | null;
@@ -1117,7 +1117,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       const maxCol = Math.max(0, Math.min(SHEET_COL_COUNT - 1, Math.max(sel.startCol, sel.endCol)));
 
       const sides: Array<'borderTop' | 'borderBottom' | 'borderLeft' | 'borderRight'> = [];
-      if (side === 'all') {
+      if (side === 'all' || side === 'outside') {
         sides.push('borderTop', 'borderBottom', 'borderLeft', 'borderRight');
       } else if (side === 'top') {
         sides.push('borderTop');

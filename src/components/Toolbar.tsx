@@ -15,12 +15,13 @@ import { requestDeleteConfirmation } from '../utils/deleteConfirmation';
 import { TEMPLATES } from '../templates';
 
 import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from '../utils/constants';
-import {
-  FileText, Upload, Download, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
-  Percent, Hash, DollarSign, Calendar, Minus, Plus, Merge, Split,
+import { FileText, Upload, Download, Bold, Italic, Underline, Strikethrough, AlignLeft, AlignCenter, AlignRight,
+  AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd,
+  Type, Paintbrush, Palette, Minus, Plus, Merge, Split,
+  Percent, Hash, DollarSign, Calendar,
   MessageSquare, Eraser, Undo2, Redo2, Sun, Moon, ChevronLeft, ChevronRight,
   Eye, Home, SortAsc, SortDesc,
-  Lock, Unlock, PanelRight, Save, FolderOpen, Wand2, Sparkles
+  Lock, Unlock, PanelRight, Save, FolderOpen, Wand2, Sparkles, Grid3x3
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -265,12 +266,24 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   const handleItalic = () => store.getState().applyStyleToSelection({ italic: !getFirstCellStyle('italic') });
   /** 下划线开关 */
   const handleUnderline = () => store.getState().applyStyleToSelection({ underline: !getFirstCellStyle('underline') });
+  /** 删除线开关 */
+  const handleStrikethrough = () => store.getState().applyStyleToSelection({ strikethrough: !getFirstCellStyle('strikethrough') });
+  /** 字体颜色 */
+  const handleFontColor = (color: string) => store.getState().applyStyleToSelection({ color });
+  /** 背景颜色 */
+  const handleBgColor = (color: string) => store.getState().applyStyleToSelection({ bgColor: color });
+  /** 清除格式 */
+  const handleClearFormat = () => store.getState().clearFormatSelection();
   /** 左对齐 */
   const handleAlignLeft = () => store.getState().applyStyleToSelection({ align: 'left' });
   /** 居中对齐 */
   const handleAlignCenter = () => store.getState().applyStyleToSelection({ align: 'center' });
   /** 右对齐 */
   const handleAlignRight = () => store.getState().applyStyleToSelection({ align: 'right' });
+  /** 垂直对齐 */
+  const handleVerticalAlign = (align: 'top' | 'middle' | 'bottom') => store.getState().applyStyleToSelection({ verticalAlign: align });
+  /** 边框 */
+  const handleBorder = (side: 'all' | 'outside' | 'top' | 'bottom' | 'left' | 'right' | 'none') => store.getState().applyBorderSelection(side);
   /** 清空选择区域内容 */
   const handleClear = () =>
     requestDeleteConfirmation(() => store.getState().clearSelection(), '清除内容');
@@ -452,6 +465,25 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
               <ToolbarButton onClick={handleBold} icon={<Bold size={16} />} title="加粗" shortcut="Ctrl+B" active={getFirstCellStyle('bold')} />
               <ToolbarButton onClick={handleItalic} icon={<Italic size={16} />} title="斜体" shortcut="Ctrl+I" active={getFirstCellStyle('italic')} />
               <ToolbarButton onClick={handleUnderline} icon={<Underline size={16} />} title="下划线" shortcut="Ctrl+U" active={getFirstCellStyle('underline')} />
+              <ToolbarButton onClick={handleStrikethrough} icon={<Strikethrough size={16} />} title="删除线" active={getFirstCellStyle('strikethrough')} />
+              <label className="relative inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border text-[var(--ss-text-secondary)] transition-colors hover:bg-[var(--ss-hover-bg)]" style={{ borderColor: 'var(--ss-border)' }} title="字体颜色">
+                <Type size={16} style={{ color: getFirstCellStyle('color') ? (() => {
+                  const sel = store.getState().selection;
+                  const sheet = store.getState().getActiveSheet();
+                  for (let r = Math.min(sel.startRow, sel.endRow); r <= Math.max(sel.startRow, sel.endRow); r++) {
+                    for (let c = Math.min(sel.startCol, sel.endCol); c <= Math.max(sel.startCol, sel.endCol); c++) {
+                      const cell = sheet.cells.get(coordsToCell(r, c));
+                      if (cell?.style?.color) return cell.style.color;
+                    }
+                  }
+                  return 'var(--ss-text-secondary)';
+                })() : 'var(--ss-text-secondary)' }} />
+                <input type="color" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleFontColor(e.target.value)} />
+              </label>
+              <label className="relative inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border text-[var(--ss-text-secondary)] transition-colors hover:bg-[var(--ss-hover-bg)]" style={{ borderColor: 'var(--ss-border)' }} title="背景颜色">
+                <Palette size={16} />
+                <input type="color" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleBgColor(e.target.value)} />
+              </label>
               <select
                 value=""
                 onChange={(e) => { if (e.target.value) { store.getState().applyStyleToSelection({ fontFamily: e.target.value }); e.target.value = ''; } }}
@@ -472,12 +504,26 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
                 <option value="">字号</option>
                 {FONT_SIZE_OPTIONS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
               </select>
+              <ToolbarButton onClick={handleClearFormat} icon={<Eraser size={16} />} title="清除格式" />
             </ToolbarGroup>
             <ToolbarDivider />
             <ToolbarGroup title="对齐">
               <ToolbarButton onClick={handleAlignLeft} icon={<AlignLeft size={16} />} title="左对齐" />
               <ToolbarButton onClick={handleAlignCenter} icon={<AlignCenter size={16} />} title="居中" />
               <ToolbarButton onClick={handleAlignRight} icon={<AlignRight size={16} />} title="右对齐" />
+              <ToolbarButton onClick={() => handleVerticalAlign('top')} icon={<AlignVerticalJustifyStart size={16} />} title="顶端对齐" />
+              <ToolbarButton onClick={() => handleVerticalAlign('middle')} icon={<AlignVerticalJustifyCenter size={16} />} title="垂直居中" />
+              <ToolbarButton onClick={() => handleVerticalAlign('bottom')} icon={<AlignVerticalJustifyEnd size={16} />} title="底端对齐" />
+            </ToolbarGroup>
+            <ToolbarDivider />
+            <ToolbarGroup title="边框">
+              <ToolbarButton onClick={() => handleBorder('all')} icon={<Grid3x3 size={16} />} title="所有框线" />
+              <ToolbarButton onClick={() => handleBorder('outside')} icon={<Minus size={16} />} title="外侧框线" />
+              <ToolbarButton onClick={() => handleBorder('top')} icon={<Minus size={16} className="-rotate-0" />} title="上框线" />
+              <ToolbarButton onClick={() => handleBorder('bottom')} icon={<Minus size={16} />} title="下框线" />
+              <ToolbarButton onClick={() => handleBorder('left')} icon={<Minus size={16} className="-rotate-90" />} title="左框线" />
+              <ToolbarButton onClick={() => handleBorder('right')} icon={<Minus size={16} className="-rotate-90" />} title="右框线" />
+              <ToolbarButton onClick={() => handleBorder('none')} icon={<Eraser size={16} />} title="清除边框" />
             </ToolbarGroup>
             <ToolbarDivider />
             <ToolbarGroup title="数字">

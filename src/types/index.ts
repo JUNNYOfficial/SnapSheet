@@ -21,8 +21,12 @@ export interface CellStyle {
   italic?: boolean;
   /** 是否下划线 */
   underline?: boolean;
+  /** 是否删除线 */
+  strikethrough?: boolean;
   /** 水平对齐方式 */
   align?: 'left' | 'center' | 'right';
+  /** 垂直对齐方式 */
+  verticalAlign?: 'top' | 'middle' | 'bottom';
   /** 字体颜色 */
   color?: string;
   /** 背景颜色 */

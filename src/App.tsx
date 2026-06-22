@@ -12,6 +12,7 @@ import Spreadsheet from './components/Spreadsheet';
 import SheetTabs from './components/SheetTabs';
 import FindDialog from './components/FindDialog';
 import PropertyPanel from './components/PropertyPanel';
+import StatusBar from './components/StatusBar';
 import ConfirmDialog from './components/ConfirmDialog';
 import { useSpreadsheetStore } from './store/useSpreadsheetStore';
 import { useTheme } from './hooks/useTheme';
@@ -244,6 +245,9 @@ export default function App() {
 
       {/* 底部工作表标签 */}
       <SheetTabs />
+
+      {/* 底部状态栏 */}
+      <StatusBar />
 
       {/* 查找对话框 */}
       <FindDialog open={findOpen} onClose={() => setFindOpen(false)} />

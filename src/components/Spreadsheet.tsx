@@ -34,7 +34,7 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
   /** Canvas DOM 引用 */
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /** 单元格编辑输入框引用 */
-  const editInputRef = useRef<HTMLInputElement>(null);
+  const editInputRef = useRef<HTMLTextAreaElement>(null);
   /** CanvasRenderer 实例引用 */
   const rendererRef = useRef<CanvasRenderer | null>(null);
 
@@ -271,10 +271,9 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
         />
       )}
       {editing && (
-        <input
+        <textarea
           ref={editInputRef}
-          type="text"
-          className="absolute z-10 border-2 px-1.5 outline-none"
+          className="absolute z-10 border-2 px-1.5 py-0 outline-none resize-none"
           style={{
             ...getEditInputStyle(),
             borderColor: 'var(--ss-selected-border)',
@@ -282,9 +281,17 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
             color: 'var(--ss-text-primary)',
             fontFamily: getEditCell()?.style?.fontFamily || 'monospace',
             fontSize: `${getEditCell()?.style?.fontSize || FONT_SIZE}px`,
+            lineHeight: `${(getEditCell()?.style?.fontSize || FONT_SIZE) + 3}px`,
+            whiteSpace: 'pre',
+            overflow: 'hidden',
           }}
           value={formulaBarValue}
           onChange={(e) => store.getState().setFormulaBarValue(e.target.value)}
+          onInput={(e) => {
+            const el = e.target as HTMLTextAreaElement;
+            el.style.height = 'auto';
+            el.style.height = `${Math.max(el.scrollHeight, el.offsetHeight)}px`;
+          }}
           onBlur={(e) => {
             // 若 Esc 已取消编辑，则失焦不再提交
             if (store.getState().editing) {
@@ -292,13 +299,23 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
             }
           }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.altKey && !e.shiftKey) {
               e.preventDefault();
               const curEditing = store.getState().editing;
-              (e.target as HTMLInputElement).blur();
+              (e.target as HTMLTextAreaElement).blur();
               if (curEditing) {
-                const delta = e.shiftKey ? -1 : 1;
-                const newRow = curEditing.row + delta;
+                const newRow = curEditing.row + 1;
+                const newCol = curEditing.col;
+                if (newRow >= 0 && newRow < SHEET_ROW_COUNT) {
+                  store.getState().setSelection({ startRow: newRow, startCol: newCol, endRow: newRow, endCol: newCol });
+                }
+              }
+            } else if (e.key === 'Enter' && e.shiftKey && !e.altKey) {
+              e.preventDefault();
+              const curEditing = store.getState().editing;
+              (e.target as HTMLTextAreaElement).blur();
+              if (curEditing) {
+                const newRow = curEditing.row - 1;
                 const newCol = curEditing.col;
                 if (newRow >= 0 && newRow < SHEET_ROW_COUNT) {
                   store.getState().setSelection({ startRow: newRow, startCol: newCol, endRow: newRow, endCol: newCol });
@@ -310,7 +327,7 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
             } else if (e.key === 'Tab') {
               e.preventDefault();
               const curEditing = store.getState().editing;
-              (e.target as HTMLInputElement).blur();
+              (e.target as HTMLTextAreaElement).blur();
               if (curEditing) {
                 const delta = e.shiftKey ? -1 : 1;
                 const newRow = curEditing.row;

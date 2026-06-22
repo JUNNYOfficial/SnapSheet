@@ -553,7 +553,8 @@ export class CanvasRenderer {
       const hasExplicitAlign = cell.style?.align !== undefined;
       ctx.font = this.buildCellFont(cell.style);
       ctx.fillStyle = isError ? this.themeColor('errorText') : (cell.style?.color || this.themeColor('cellText'));
-      ctx.textBaseline = 'middle';
+      const vAlign = cell.style?.verticalAlign || 'middle';
+      ctx.textBaseline = vAlign === 'top' ? 'top' : vAlign === 'bottom' ? 'bottom' : 'middle';
       ctx.textAlign = hasExplicitAlign
         ? cell.style!.align === 'right'
           ? 'right'
@@ -570,14 +571,27 @@ export class CanvasRenderer {
       if (ctx.textAlign === 'center') textX = x + width / 2;
 
       const text = formattedDisplay;
-      const maxTextWidth = width - textPadding * 2;
+      const maxTextWidth = Math.max(0, width - textPadding * 2);
+
+      // 按单元格边界裁剪文本，防止溢出到相邻单元格
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(Math.floor(x) + 0.5, Math.floor(y) + 0.5, Math.ceil(width) - 1, Math.ceil(height) - 1);
+      ctx.clip();
 
       if (cell.style?.wrap) {
         const fontSize = cell.style?.fontSize || FONT_SIZE;
         const lines = this.wrapText(ctx, text, maxTextWidth);
         const lineHeight = fontSize + 3;
         const totalHeight = lines.length * lineHeight;
-        const startY = y + Math.max(textPadding, (height - totalHeight) / 2 + lineHeight / 2);
+        let startY: number;
+        if (vAlign === 'top') {
+          startY = y + textPadding + lineHeight / 2;
+        } else if (vAlign === 'bottom') {
+          startY = y + height - textPadding - totalHeight + lineHeight / 2;
+        } else {
+          startY = y + (height - totalHeight) / 2 + lineHeight / 2;
+        }
         for (let i = 0; i < lines.length; i++) {
           const ly = startY + i * lineHeight;
           if (ly - lineHeight / 2 < y + height - textPadding && ly + lineHeight / 2 > y + textPadding) {
@@ -585,20 +599,42 @@ export class CanvasRenderer {
           }
         }
       } else {
+        let textY: number;
+        if (vAlign === 'top') {
+          textY = y + textPadding;
+        } else if (vAlign === 'bottom') {
+          textY = y + height - textPadding;
+        } else {
+          textY = y + height / 2;
+        }
         const truncated = this.truncateText(ctx, text, maxTextWidth);
-        ctx.fillText(truncated, textX, y + height / 2);
+        ctx.fillText(truncated, textX, textY);
         // Draw underline
-        if (cell.style?.underline) {
+        if (cell.style?.underline || cell.style?.strikethrough) {
           const metrics = ctx.measureText(truncated);
-          const underlineY = y + height / 2 + (cell.style?.fontSize || FONT_SIZE) / 2 + 1;
-          ctx.beginPath();
-          ctx.moveTo(textX - (ctx.textAlign === 'center' ? metrics.width / 2 : ctx.textAlign === 'right' ? metrics.width : 0), underlineY);
-          ctx.lineTo(textX + (ctx.textAlign === 'center' ? metrics.width / 2 : ctx.textAlign === 'right' ? 0 : metrics.width), underlineY);
+          const textW = metrics.width;
+          const lineXStart = textX - (ctx.textAlign === 'center' ? textW / 2 : ctx.textAlign === 'right' ? textW : 0);
+          const lineXEnd = textX + (ctx.textAlign === 'center' ? textW / 2 : ctx.textAlign === 'right' ? 0 : textW);
           ctx.strokeStyle = ctx.fillStyle;
           ctx.lineWidth = 1;
-          ctx.stroke();
+          if (cell.style?.underline) {
+            const underlineY = textY + (cell.style?.fontSize || FONT_SIZE) / 2 + 1;
+            ctx.beginPath();
+            ctx.moveTo(lineXStart, underlineY);
+            ctx.lineTo(lineXEnd, underlineY);
+            ctx.stroke();
+          }
+          if (cell.style?.strikethrough) {
+            const strikeY = textY + (vAlign === 'middle' ? 0 : (vAlign === 'top' ? (cell.style?.fontSize || FONT_SIZE) / 2 : -(cell.style?.fontSize || FONT_SIZE) / 2));
+            ctx.beginPath();
+            ctx.moveTo(lineXStart, strikeY);
+            ctx.lineTo(lineXEnd, strikeY);
+            ctx.stroke();
+          }
         }
       }
+
+      ctx.restore();
     }
 
     if (cell?.comment) {
@@ -976,18 +1012,41 @@ export class CanvasRenderer {
   }
 
   private wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-    if (this.measureText(ctx, text).width <= maxWidth) return [text];
+    if (maxWidth <= 0 || this.measureText(ctx, text).width <= maxWidth) return [text];
+
+    // 将文本拆分为“单元”：CJK 按字拆分，英文/数字按单词拆分
+    const segments = text.match(/[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]|[^\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef\s]+|\s+/g) || [text];
     const lines: string[] = [];
     let current = '';
-    for (const char of text) {
-      const test = current + char;
+
+    for (const seg of segments) {
+      // 单个片段过长（如长英文单词）：按字符强制折断
+      if (this.measureText(ctx, seg).width > maxWidth) {
+        if (current) {
+          lines.push(current);
+          current = '';
+        }
+        for (const char of seg) {
+          const test = current + char;
+          if (this.measureText(ctx, test).width > maxWidth && current !== '') {
+            lines.push(current);
+            current = char;
+          } else {
+            current = test;
+          }
+        }
+        continue;
+      }
+
+      const test = current + seg;
       if (this.measureText(ctx, test).width > maxWidth && current !== '') {
         lines.push(current);
-        current = char;
+        current = seg;
       } else {
         current = test;
       }
     }
+
     if (current) lines.push(current);
     return lines.length === 0 ? [text] : lines;
   }
