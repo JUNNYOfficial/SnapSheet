@@ -34,14 +34,6 @@ const num = (args: ASTNode[], idx: number, ctx: FormulaContext): number => {
   return typeof v === 'number' ? v : parseFloat(v);
 };
 
-const int = (args: ASTNode[], idx: number, ctx: FormulaContext): number => {
-  const v = ctx.evalNode(args[idx]);
-  return typeof v === 'number' ? v : parseInt(v, 10);
-};
-
-const str = (args: ASTNode[], idx: number, ctx: FormulaContext): string =>
-  String(ctx.evalNode(args[idx]));
-
 // ==================== 机械工程公式（30个）====================
 
 const mechanicalFormulas: Array<[string, FormulaHandler]> = [

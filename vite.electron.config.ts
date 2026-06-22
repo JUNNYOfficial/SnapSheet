@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type ViteDevServer } from 'vite'
 import react from '@vitejs/plugin-react'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import { spawn } from 'node:child_process'
@@ -13,7 +13,7 @@ let electronProcess: ReturnType<typeof spawn> | null = null
 function electronDevPlugin() {
   return {
     name: 'electron-dev',
-    configureServer(server: any) {
+    configureServer(server: ViteDevServer) {
       server.httpServer?.once('listening', () => {
         const address = server.httpServer.address()
         const port = typeof address === 'object' && address ? address.port : 5173

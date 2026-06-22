@@ -68,11 +68,28 @@ export class DependencyGraph {
 
   /**
    * 获取受 changedCells 影响的所有单元格的拓扑排序。
+   * 排序范围包含变化单元格本身及其所有下游依赖单元格，确保公式按依赖顺序重算。
    * 若检测到循环引用，则抛出 CycleError。
    * @param changedCells 发生变化的单元格引用
    * @returns 按依赖顺序排列的单元格引用数组
    */
   getTopologicalOrder(changedCells: string[]): string[] {
+    // 收集变化单元格及其所有下游依赖（通过反向依赖图遍历）
+    const nodes = new Set<string>(changedCells);
+    const queue = [...changedCells];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      const dependents = this.dependents.get(current);
+      if (dependents) {
+        for (const dep of dependents) {
+          if (!nodes.has(dep)) {
+            nodes.add(dep);
+            queue.push(dep);
+          }
+        }
+      }
+    }
+
     const visited = new Set<string>();
     const result: string[] = [];
     const stack: Set<string> = new Set();
@@ -88,9 +105,7 @@ export class DependencyGraph {
       const deps = this.dependencies.get(cell);
       if (deps) {
         for (const dep of deps) {
-          if (changedCells.includes(dep) || this.isInSubgraph(dep, changedCells)) {
-            visit(dep);
-          }
+          if (nodes.has(dep)) visit(dep);
         }
       }
       stack.delete(cell);
@@ -98,10 +113,8 @@ export class DependencyGraph {
       result.push(cell);
     };
 
-    for (const changed of changedCells) {
-      for (const dep of this.getAllAffected([changed])) {
-        visit(dep);
-      }
+    for (const node of nodes) {
+      visit(node);
     }
 
     if (cycleCells.size > 0) {
@@ -109,52 +122,6 @@ export class DependencyGraph {
     }
 
     return result;
-  }
-
-  /**
-   * 判断某个单元格是否在给定根节点的依赖子图中。
-   * @param cell 待判断单元格
-   * @param roots 根单元格引用数组
-   * @returns 是否在子图中
-   */
-  private isInSubgraph(cell: string, roots: string[]): boolean {
-    const visited = new Set<string>();
-    const queue = [...roots];
-    while (queue.length > 0) {
-      const current = queue.shift()!;
-      if (current === cell) return true;
-      if (visited.has(current)) continue;
-      visited.add(current);
-      const deps = this.dependents.get(current);
-      if (deps) queue.push(...deps);
-    }
-    return false;
-  }
-
-  /**
-   * 获取所有受 changedCells 影响的下游单元格（包括自身）。
-   * @param changedCells 发生变化的单元格引用
-   * @returns 受影响的单元格引用数组
-   */
-  private getAllAffected(changedCells: string[]): string[] {
-    const affected: string[] = [];
-    const visited = new Set<string>();
-    const queue = [...changedCells];
-    while (queue.length > 0) {
-      const current = queue.shift()!;
-      if (visited.has(current)) continue;
-      visited.add(current);
-      const dependents = this.dependents.get(current);
-      if (dependents) {
-        for (const dep of dependents) {
-          if (!visited.has(dep)) {
-            affected.push(dep);
-            queue.push(dep);
-          }
-        }
-      }
-    }
-    return affected;
   }
 }
 
@@ -226,7 +193,9 @@ export class FormulaEngine {
     } catch (err) {
       if (err instanceof CycleError) {
         const cycleValue = '#CYCLE!';
-        for (const ref of changedRefs) {
+        const affected = new Set<string>(changedRefs);
+        for (const ref of err.cells) affected.add(ref);
+        for (const ref of affected) {
           const cell = this.ctx.getCell(ref);
           if (cell && cell.formula) {
             results.set(ref, cycleValue);

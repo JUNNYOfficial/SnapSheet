@@ -89,8 +89,12 @@ export class CanvasRenderer {
   private theme: ThemeColors;
   /** 是否有待渲染帧 */
   private _pendingRender = false;
-  /** requestAnimationFrame 帧 ID */
+  /** requestAnimationFrame 渲染帧 ID */
   private _renderFrame: number | null = null;
+  /** 待处理的滚动目标偏移 */
+  private _pendingScroll: { left: number; top: number } | null = null;
+  /** requestAnimationFrame 滚动帧 ID */
+  private _scrollFrame: number | null = null;
   /** 文本测量缓存，key 为 font|text */
   private _textMetricsCache = new Map<string, TextMetrics>();
 
@@ -403,6 +407,8 @@ export class CanvasRenderer {
     ctx.rect(clip.x, clip.y, clip.w, clip.h);
     ctx.clip();
 
+    const frozenRows = this.opts.frozenRows ?? 0;
+    const frozenCols = this.opts.frozenCols ?? 0;
     const sel = this.selection;
     const minRow = Math.min(sel.startRow, sel.endRow);
     const maxRow = Math.max(sel.startRow, sel.endRow);
@@ -413,121 +419,153 @@ export class CanvasRenderer {
 
     for (const r of rows) {
       for (const c of cols) {
-        const cell = this.opts.getCell(r.row, c.col);
-        const isSelected = r.row >= minRow && r.row <= maxRow && c.col >= minCol && c.col <= maxCol;
-
         const merge = this.opts.getMergedRange(r.row, c.col);
         const isMergeMain = merge && merge.startRow === r.row && merge.startCol === c.col;
         const isMergedChild = merge && !isMergeMain;
-        const mergeKey = merge ? `${merge.startRow},${merge.startCol}` : `${r.row},${c.col}`;
 
-        if (isMergedChild) continue;
-
-        const renderX = c.x;
-        const renderY = r.y;
-        let renderWidth = c.width;
-        let renderHeight = r.height;
-
-        if (isMergeMain && !renderedMerges.has(mergeKey)) {
-          renderedMerges.add(mergeKey);
-          let totalWidth = 0;
-          let totalHeight = 0;
-          for (let cc = merge.startCol; cc <= merge.endCol; cc++) {
-            totalWidth += this.opts.getColWidth(cc);
-          }
-          for (let rr = merge.startRow; rr <= merge.endRow; rr++) {
-            totalHeight += this.opts.getRowHeight(rr);
-          }
-          renderWidth = totalWidth;
-          renderHeight = totalHeight;
+        if (isMergedChild) {
+          // 当合并单元格主单元格不在当前可见范围内时，子单元格负责触发主单元格渲染
+          const mainKey = `${merge.startRow},${merge.startCol}`;
+          if (renderedMerges.has(mainKey)) continue;
+          renderedMerges.add(mainKey);
+          this.renderMergedCell(ctx, merge, frozenRows, frozenCols, minRow, maxRow, minCol, maxCol);
+          continue;
         }
 
-        if (cell?.style?.bgColor && !isSelected) {
-          ctx.fillStyle = cell.style.bgColor;
-          ctx.fillRect(renderX, renderY, renderWidth, renderHeight);
+        if (isMergeMain) {
+          const mainKey = `${merge.startRow},${merge.startCol}`;
+          if (renderedMerges.has(mainKey)) continue;
+          renderedMerges.add(mainKey);
         }
 
-        const conditionalBg = this.getConditionalBgColor(r.row, c.col, cell);
-        if (conditionalBg) {
-          ctx.fillStyle = conditionalBg;
-          ctx.fillRect(renderX, renderY, renderWidth, renderHeight);
-        }
-
-        if (isSelected) {
-          ctx.fillStyle = this.themeColor('selectedBg');
-          ctx.fillRect(renderX, renderY, renderWidth, renderHeight);
-        }
-
-        if (cell && cell.value) {
-          const display = cell.computed !== undefined && cell.formula ? String(cell.computed) : cell.value;
-          const isError = display.startsWith('#');
-          const formattedDisplay = isError ? display : this.formatCellValue(display, cell.numberFormat);
-          const isNumeric = !isError && !isNaN(parseFloat(display)) && !cell.formula;
-          const hasExplicitAlign = cell.style?.align !== undefined;
-          ctx.font = this.buildCellFont(cell.style);
-          ctx.fillStyle = isError ? this.themeColor('errorText') : (cell.style?.color || this.themeColor('cellText'));
-          ctx.textBaseline = 'middle';
-          ctx.textAlign = hasExplicitAlign
-            ? cell.style!.align === 'right'
-              ? 'right'
-              : cell.style!.align === 'center'
-                ? 'center'
-                : 'left'
-            : isNumeric
-              ? 'right'
-              : 'left';
-
-          const textPadding = 6;
-          let textX = renderX + textPadding;
-          if (ctx.textAlign === 'right') textX = renderX + renderWidth - textPadding;
-          if (ctx.textAlign === 'center') textX = renderX + renderWidth / 2;
-
-          const text = formattedDisplay;
-          const maxTextWidth = renderWidth - textPadding * 2;
-
-          if (cell.style?.wrap) {
-            const fontSize = cell.style?.fontSize || FONT_SIZE;
-            const lines = this.wrapText(ctx, text, maxTextWidth);
-            const lineHeight = fontSize + 3;
-            const totalHeight = lines.length * lineHeight;
-            const startY = renderY + Math.max(textPadding, (renderHeight - totalHeight) / 2 + lineHeight / 2);
-            for (let i = 0; i < lines.length; i++) {
-              const y = startY + i * lineHeight;
-              if (y - lineHeight / 2 < renderY + renderHeight - textPadding && y + lineHeight / 2 > renderY + textPadding) {
-                ctx.fillText(lines[i], textX, y);
-              }
-            }
-          } else {
-            const truncated = this.truncateText(ctx, text, maxTextWidth);
-            ctx.fillText(truncated, textX, renderY + renderHeight / 2);
-            // Draw underline
-            if (cell.style?.underline) {
-              const metrics = ctx.measureText(truncated);
-              const underlineY = renderY + renderHeight / 2 + (cell.style?.fontSize || FONT_SIZE) / 2 + 1;
-              ctx.beginPath();
-              ctx.moveTo(textX - (ctx.textAlign === 'center' ? metrics.width / 2 : ctx.textAlign === 'right' ? metrics.width : 0), underlineY);
-              ctx.lineTo(textX + (ctx.textAlign === 'center' ? metrics.width / 2 : ctx.textAlign === 'right' ? 0 : metrics.width), underlineY);
-              ctx.strokeStyle = ctx.fillStyle;
-              ctx.lineWidth = 1;
-              ctx.stroke();
-            }
-          }
-        }
-
-        if (cell?.comment) {
-          const markerSize = 6;
-          ctx.fillStyle = this.themeColor('commentMarker');
-          ctx.beginPath();
-          ctx.moveTo(renderX + renderWidth - markerSize, renderY);
-          ctx.lineTo(renderX + renderWidth, renderY);
-          ctx.lineTo(renderX + renderWidth, renderY + markerSize);
-          ctx.closePath();
-          ctx.fill();
-        }
+        const cell = this.opts.getCell(r.row, c.col);
+        const isSelected = r.row >= minRow && r.row <= maxRow && c.col >= minCol && c.col <= maxCol;
+        this.renderSingleCell(ctx, r.row, c.col, c.x, r.y, c.width, r.height, cell, isSelected);
       }
     }
 
     ctx.restore();
+  }
+
+  /**
+   * 渲染单个单元格（含背景、条件格式、选中态、文本、注释标记）。
+   * 坐标已包含滚动/冻结偏移，直接按像素绘制。
+   */
+  private renderSingleCell(
+    ctx: CanvasRenderingContext2D,
+    row: number,
+    col: number,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    cell: Cell | undefined,
+    isSelected: boolean
+  ): void {
+    if (cell?.style?.bgColor && !isSelected) {
+      ctx.fillStyle = cell.style.bgColor;
+      ctx.fillRect(Math.floor(x), Math.floor(y), Math.ceil(width), Math.ceil(height));
+    }
+
+    const conditionalBg = this.getConditionalBgColor(row, col, cell);
+    if (conditionalBg) {
+      ctx.fillStyle = conditionalBg;
+      ctx.fillRect(Math.floor(x), Math.floor(y), Math.ceil(width), Math.ceil(height));
+    }
+
+    if (isSelected) {
+      ctx.fillStyle = this.themeColor('selectedBg');
+      ctx.fillRect(Math.floor(x), Math.floor(y), Math.ceil(width), Math.ceil(height));
+    }
+
+    if (cell && cell.value) {
+      const display = cell.computed !== undefined && cell.formula ? String(cell.computed) : cell.value;
+      const isError = display.startsWith('#');
+      const formattedDisplay = isError ? display : this.formatCellValue(display, cell.numberFormat);
+      const isNumeric = !isError && !isNaN(parseFloat(display)) && !cell.formula;
+      const hasExplicitAlign = cell.style?.align !== undefined;
+      ctx.font = this.buildCellFont(cell.style);
+      ctx.fillStyle = isError ? this.themeColor('errorText') : (cell.style?.color || this.themeColor('cellText'));
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = hasExplicitAlign
+        ? cell.style!.align === 'right'
+          ? 'right'
+          : cell.style!.align === 'center'
+            ? 'center'
+            : 'left'
+        : isNumeric
+          ? 'right'
+          : 'left';
+
+      const textPadding = 6;
+      let textX = x + textPadding;
+      if (ctx.textAlign === 'right') textX = x + width - textPadding;
+      if (ctx.textAlign === 'center') textX = x + width / 2;
+
+      const text = formattedDisplay;
+      const maxTextWidth = width - textPadding * 2;
+
+      if (cell.style?.wrap) {
+        const fontSize = cell.style?.fontSize || FONT_SIZE;
+        const lines = this.wrapText(ctx, text, maxTextWidth);
+        const lineHeight = fontSize + 3;
+        const totalHeight = lines.length * lineHeight;
+        const startY = y + Math.max(textPadding, (height - totalHeight) / 2 + lineHeight / 2);
+        for (let i = 0; i < lines.length; i++) {
+          const ly = startY + i * lineHeight;
+          if (ly - lineHeight / 2 < y + height - textPadding && ly + lineHeight / 2 > y + textPadding) {
+            ctx.fillText(lines[i], textX, ly);
+          }
+        }
+      } else {
+        const truncated = this.truncateText(ctx, text, maxTextWidth);
+        ctx.fillText(truncated, textX, y + height / 2);
+        // Draw underline
+        if (cell.style?.underline) {
+          const metrics = ctx.measureText(truncated);
+          const underlineY = y + height / 2 + (cell.style?.fontSize || FONT_SIZE) / 2 + 1;
+          ctx.beginPath();
+          ctx.moveTo(textX - (ctx.textAlign === 'center' ? metrics.width / 2 : ctx.textAlign === 'right' ? metrics.width : 0), underlineY);
+          ctx.lineTo(textX + (ctx.textAlign === 'center' ? metrics.width / 2 : ctx.textAlign === 'right' ? 0 : metrics.width), underlineY);
+          ctx.strokeStyle = ctx.fillStyle;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+    }
+
+    if (cell?.comment) {
+      const markerSize = 6;
+      ctx.fillStyle = this.themeColor('commentMarker');
+      ctx.beginPath();
+      ctx.moveTo(x + width - markerSize, y);
+      ctx.lineTo(x + width, y);
+      ctx.lineTo(x + width, y + markerSize);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  /**
+   * 渲染合并单元格主单元格，覆盖整个合并区域。
+   * 即使主单元格部分或全部不在当前 clip 内，只要与 clip 相交就会绘制。
+   */
+  private renderMergedCell(
+    ctx: CanvasRenderingContext2D,
+    merge: MergeRange,
+    frozenRows: number,
+    frozenCols: number,
+    minRow: number,
+    maxRow: number,
+    minCol: number,
+    maxCol: number
+  ): void {
+    const { x, y } = this.getCellPosition(merge.startRow, merge.startCol, frozenRows, frozenCols);
+    const { width, height } = this.getRangeSize(merge.startRow, merge.endRow, merge.startCol, merge.endCol);
+
+    const isSelected = merge.startRow >= minRow && merge.startRow <= maxRow && merge.startCol >= minCol && merge.startCol <= maxCol;
+    const cell = this.opts.getCell(merge.startRow, merge.startCol);
+    this.renderSingleCell(ctx, merge.startRow, merge.startCol, x, y, width, height, cell, isSelected);
   }
 
   private renderGridLines(
@@ -539,16 +577,19 @@ export class CanvasRenderer {
   ): void {
     ctx.strokeStyle = this.themeColor('grid');
     ctx.lineWidth = 1;
+    // 1px 线条对齐到像素中心，避免亚像素模糊
     for (const c of cols) {
+      const x = Math.round(c.x + c.width) + 0.5;
       ctx.beginPath();
-      ctx.moveTo(c.x + c.width, 0);
-      ctx.lineTo(c.x + c.width, height);
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
       ctx.stroke();
     }
     for (const r of rows) {
+      const y = Math.round(r.y + r.height) + 0.5;
       ctx.beginPath();
-      ctx.moveTo(0, r.y + r.height);
-      ctx.lineTo(width, r.y + r.height);
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
       ctx.stroke();
     }
   }
@@ -596,7 +637,8 @@ export class CanvasRenderer {
       y -= this.scrollTop;
     }
 
-    return { x, y };
+    // 像素对齐：返回整数坐标，便于后续 +0.5 绘制 1px/2px 线条
+    return { x: Math.round(x), y: Math.round(y) };
   }
 
   private getRangeSize(startRow: number, endRow: number, startCol: number, endCol: number): { width: number; height: number } {
@@ -617,24 +659,44 @@ export class CanvasRenderer {
     ctx: CanvasRenderingContext2D,
     sel: Selection
   ): void {
-    const minRow = Math.min(sel.startRow, sel.endRow);
-    const maxRow = Math.max(sel.startRow, sel.endRow);
-    const minCol = Math.min(sel.startCol, sel.endCol);
-    const maxCol = Math.max(sel.startCol, sel.endCol);
+    let minRow = Math.min(sel.startRow, sel.endRow);
+    let maxRow = Math.max(sel.startRow, sel.endRow);
+    let minCol = Math.min(sel.startCol, sel.endCol);
+    let maxCol = Math.max(sel.startCol, sel.endCol);
     const frozenRows = this.opts.frozenRows ?? 0;
     const frozenCols = this.opts.frozenCols ?? 0;
 
-    const { x: leftX, y: topY } = this.getCellPosition(minRow, minCol, frozenRows, frozenCols);
+    // 扩展选区边界以覆盖区域内所有合并单元格的完整范围
+    let expanded = true;
+    while (expanded) {
+      expanded = false;
+      for (let r = minRow; r <= maxRow; r++) {
+        for (let c = minCol; c <= maxCol; c++) {
+          const merge = this.opts.getMergedRange(r, c);
+          if (merge) {
+            if (merge.startRow < minRow) { minRow = merge.startRow; expanded = true; }
+            if (merge.endRow > maxRow) { maxRow = merge.endRow; expanded = true; }
+            if (merge.startCol < minCol) { minCol = merge.startCol; expanded = true; }
+            if (merge.endCol > maxCol) { maxCol = merge.endCol; expanded = true; }
+          }
+        }
+      }
+    }
+
+    const { x: rawLeftX, y: rawTopY } = this.getCellPosition(minRow, minCol, frozenRows, frozenCols);
     const { width: selWidth, height: selHeight } = this.getRangeSize(minRow, maxRow, minCol, maxCol);
+    const leftX = Math.round(rawLeftX);
+    const topY = Math.round(rawTopY);
 
     ctx.save();
     ctx.strokeStyle = this.themeColor('selectedBorder');
     ctx.lineWidth = 2;
-    ctx.strokeRect(leftX + 1, topY + 1, selWidth - 2, selHeight - 2);
+    // 2px 边框：从整数坐标 +0.5 开始，覆盖两个像素
+    ctx.strokeRect(leftX + 0.5, topY + 0.5, Math.round(selWidth) - 1, Math.round(selHeight) - 1);
     ctx.restore();
 
-    const handleX = leftX + selWidth - 4;
-    const handleY = topY + selHeight - 4;
+    const handleX = leftX + Math.round(selWidth) - 5;
+    const handleY = topY + Math.round(selHeight) - 5;
     ctx.save();
     ctx.fillStyle = this.themeColor('fillHandleBg');
     ctx.strokeStyle = this.themeColor('fillHandleBorder');
@@ -651,28 +713,32 @@ export class CanvasRenderer {
       const fMinCol = Math.min(sel.startCol, sel.endCol, tCol);
       const fMaxCol = Math.max(sel.startCol, sel.endCol, tCol);
 
-      const { x: fx, y: fy } = this.getCellPosition(fMinRow, fMinCol, frozenRows, frozenCols);
+      const { x: rawFx, y: rawFy } = this.getCellPosition(fMinRow, fMinCol, frozenRows, frozenCols);
       const { width: fw, height: fh } = this.getRangeSize(fMinRow, fMaxRow, fMinCol, fMaxCol);
+      const fx = Math.round(rawFx);
+      const fy = Math.round(rawFy);
 
       ctx.save();
       ctx.fillStyle = this.themeColor('fillAreaBg');
-      ctx.fillRect(fx, fy, fw, fh);
+      ctx.fillRect(fx, fy, Math.ceil(fw), Math.ceil(fh));
       ctx.strokeStyle = this.themeColor('fillAreaBorder');
       ctx.setLineDash([4, 4]);
-      ctx.strokeRect(fx + 1, fy + 1, fw - 2, fh - 2);
+      ctx.strokeRect(fx + 0.5, fy + 0.5, Math.round(fw) - 1, Math.round(fh) - 1);
       ctx.setLineDash([]);
       ctx.restore();
     }
 
     if (sel.startRow !== sel.endRow || sel.startCol !== sel.endCol) {
-      const { x: activeColX, y: activeRowY } = this.getCellPosition(sel.startRow, sel.startCol, frozenRows, frozenCols);
+      const { x: rawActiveX, y: rawActiveY } = this.getCellPosition(sel.startRow, sel.startCol, frozenRows, frozenCols);
+      const activeColX = Math.round(rawActiveX);
+      const activeRowY = Math.round(rawActiveY);
 
       ctx.save();
       ctx.strokeStyle = this.themeColor('fillAreaBorder');
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
-      ctx.strokeRect(activeColX + 1.5, activeRowY + 1.5, 
-        this.opts.getColWidth(sel.startCol) - 3, this.opts.getRowHeight(sel.startRow) - 3);
+      ctx.strokeRect(activeColX + 0.5, activeRowY + 0.5,
+        this.opts.getColWidth(sel.startCol) - 1, this.opts.getRowHeight(sel.startRow) - 1);
       ctx.setLineDash([]);
       ctx.restore();
     }
@@ -767,10 +833,10 @@ export class CanvasRenderer {
         const cell = this.opts.getCell(r.row, c.col);
         if (!cell?.style) continue;
         const borders = [
-          { side: cell.style.borderTop, x: c.x, y: r.y, x2: c.x + c.width, y2: r.y },
-          { side: cell.style.borderBottom, x: c.x, y: r.y + r.height, x2: c.x + c.width, y2: r.y + r.height },
-          { side: cell.style.borderLeft, x: c.x, y: r.y, x2: c.x, y2: r.y + r.height },
-          { side: cell.style.borderRight, x: c.x + c.width, y: r.y, x2: c.x + c.width, y2: r.y + r.height },
+          { side: cell.style.borderTop, x: Math.round(c.x), y: Math.round(r.y), x2: Math.round(c.x + c.width), y2: Math.round(r.y) },
+          { side: cell.style.borderBottom, x: Math.round(c.x), y: Math.round(r.y + r.height), x2: Math.round(c.x + c.width), y2: Math.round(r.y + r.height) },
+          { side: cell.style.borderLeft, x: Math.round(c.x), y: Math.round(r.y), x2: Math.round(c.x), y2: Math.round(r.y + r.height) },
+          { side: cell.style.borderRight, x: Math.round(c.x + c.width), y: Math.round(r.y), x2: Math.round(c.x + c.width), y2: Math.round(r.y + r.height) },
         ];
         for (const b of borders) {
           if (!b.side) continue;
@@ -778,6 +844,7 @@ export class CanvasRenderer {
           ctx.strokeStyle = b.side.color;
           ctx.lineWidth = b.side.style === 'thick' ? 3 : b.side.style === 'medium' ? 2 : 1;
           ctx.beginPath();
+          // 1px 边框对齐像素中心
           ctx.moveTo(b.x + 0.5, b.y + 0.5);
           ctx.lineTo(b.x2 + 0.5, b.y2 + 0.5);
           ctx.stroke();
@@ -1207,9 +1274,20 @@ export class CanvasRenderer {
       e.preventDefault();
       const maxLeft = this.computeMaxScrollLeft();
       const maxTop = this.computeMaxScrollTop();
-      const newLeft = Math.min(Math.max(0, this.scrollLeft + e.deltaX), maxLeft);
-      const newTop = Math.min(Math.max(0, this.scrollTop + e.deltaY), maxTop);
-      this.opts.onScrollChange(newLeft, newTop);
+      const targetLeft = Math.round(Math.min(Math.max(0, this.scrollLeft + e.deltaX), maxLeft));
+      const targetTop = Math.round(Math.min(Math.max(0, this.scrollTop + e.deltaY), maxTop));
+
+      // 使用 requestAnimationFrame 合并高频滚轮事件，避免每帧重复同步状态
+      this._pendingScroll = { left: targetLeft, top: targetTop };
+      if (this._scrollFrame !== null) return;
+      this._scrollFrame = requestAnimationFrame(() => {
+        this._scrollFrame = null;
+        if (this._pendingScroll) {
+          const { left, top } = this._pendingScroll;
+          this._pendingScroll = null;
+          this.opts.onScrollChange(left, top);
+        }
+      });
     });
 
     window.addEventListener('keydown', (e) => {

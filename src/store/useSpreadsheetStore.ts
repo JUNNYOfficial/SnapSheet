@@ -18,6 +18,8 @@ interface SpreadsheetState {
   workbook: Workbook;
   selection: Selection;
   editing: { row: number; col: number } | null;
+  /** 进入编辑时保存的原始值，用于 Esc 取消恢复 */
+  editOriginalValue: string;
   formulaBarValue: string;
   scrollLeft: number;
   scrollTop: number;
@@ -26,10 +28,13 @@ interface SpreadsheetState {
   setActiveSheet: (id: string) => void;
   addSheet: () => void;
   deleteSheet: (id: string) => void;
+  renameSheet: (id: string, name: string) => void;
 
   setCellValue: (row: number, col: number, value: string) => void;
   setCellsBulk: (cells: { row: number; col: number; value: string }[]) => void;
   commitEdit: (value: string) => void;
+  /** 取消当前编辑并恢复原始值 */
+  cancelEdit: () => void;
   setCellStyle: (row: number, col: number, style: CellStyle) => void;
   applyStyleToSelection: (style: Partial<CellStyle>) => void;
   clearFormatSelection: () => void;
@@ -283,6 +288,8 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     selection: { startRow: 0, startCol: 0, endRow: 0, endCol: 0 },
     /** 当前正在编辑的单元格 */
     editing: null,
+    /** 进入编辑时保存的原始值 */
+    editOriginalValue: '',
     /** 公式栏当前值 */
     formulaBarValue: '',
     /** 水平滚动偏移 */
@@ -318,6 +325,16 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
           },
           selection: { startRow: 0, startCol: 0, endRow: 0, endCol: 0 },
         };
+      });
+    },
+
+    /** 重命名指定工作表 */
+    renameSheet: (id: string, name: string) => {
+      set((state) => {
+        const sheet = state.workbook.sheets.find((s) => s.id === id);
+        if (!sheet || !name.trim()) return state;
+        sheet.name = name.trim();
+        return { workbook: { ...state.workbook } };
       });
     },
 
@@ -450,6 +467,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
 
     /**
      * 提交当前编辑单元格的值，并进行数据验证。
+     * 若当前选择区域包含多个单元格，则将该值批量填充到整个区域。
      * @param value 用户输入值
      */
     commitEdit: (value: string) => {
@@ -467,8 +485,55 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
           return;
         }
       }
-      state.setCellValue(row, col, value);
-      set({ editing: null, formulaBarValue: '' });
+
+      const sel = state.selection;
+      const minRow = Math.min(sel.startRow, sel.endRow);
+      const maxRow = Math.max(sel.startRow, sel.endRow);
+      const minCol = Math.min(sel.startCol, sel.endCol);
+      const maxCol = Math.max(sel.startCol, sel.endCol);
+      const isMultiCell = maxRow > minRow || maxCol > minCol;
+
+      if (isMultiCell && value !== '') {
+        const cells: { row: number; col: number; value: string }[] = [];
+        for (let r = minRow; r <= maxRow; r++) {
+          for (let c = minCol; c <= maxCol; c++) {
+            cells.push({ row: r, col: c, value });
+          }
+        }
+        state.setCellsBulk(cells);
+      } else {
+        state.setCellValue(row, col, value);
+      }
+
+      set({ editing: null, formulaBarValue: '', editOriginalValue: '' });
+    },
+
+    /**
+     * 取消当前编辑并恢复进入编辑前的原始值。
+     * 不生成新的撤销点，避免 Esc 成为一次可撤销操作。
+     */
+    cancelEdit: () => {
+      const state = get();
+      if (!state.editing) return;
+      const { row, col } = state.editing;
+      const originalValue = state.editOriginalValue;
+      const sheet = state.getActiveSheet();
+      const ref = coordsToCell(row, col);
+
+      if (originalValue === '') {
+        sheet.cells.delete(ref);
+      } else {
+        const existing = sheet.cells.get(ref);
+        const cell: Cell = { value: originalValue, style: existing?.style };
+        if (originalValue.startsWith('=')) {
+          const engine = initEngine(true);
+          cell.formula = originalValue;
+          cell.computed = engine ? engine.evaluate(ref, originalValue) : '#ERR';
+        }
+        sheet.cells.set(ref, cell);
+      }
+
+      set({ workbook: { ...get().workbook }, editing: null, formulaBarValue: '', editOriginalValue: '' });
     },
 
     /**
@@ -583,7 +648,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       const ref = coordsToCell(row, col);
       const cell = sheet.cells.get(ref);
       const value = cell?.formula || cell?.value || '';
-      set({ editing: { row, col }, formulaBarValue: value });
+      set({ editing: { row, col }, formulaBarValue: value, editOriginalValue: value });
     },
 
     /** 设置公式栏显示值 */

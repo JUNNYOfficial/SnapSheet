@@ -8,10 +8,11 @@
 
 import * as XLSX from 'xlsx';
 import type { Workbook, Sheet } from '../types';
-import { coordsToCell, cellToCoords } from './cellRef';
+import { cellToCoords } from './cellRef';
 
 /**
  * 将内存中的 Workbook 构建为 xlsx 内部 WorkBook 对象。
+ * 保留公式单元格的公式表达式，普通单元格导出原始值或计算值。
  * @param workbook SnapSheet 工作簿
  * @returns xlsx 库使用的 WorkBook
  */
@@ -19,7 +20,7 @@ function buildXLSXWorkbook(workbook: Workbook): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
 
   workbook.sheets.forEach((sheet) => {
-    const data: (string | number | null)[][] = [];
+    const ws: XLSX.WorkSheet = {};
 
     // 计算数据边界，避免导出全量空单元格
     let maxRow = 0;
@@ -30,34 +31,37 @@ function buildXLSXWorkbook(workbook: Workbook): XLSX.WorkBook {
       if (col > maxCol) maxCol = col;
     });
 
-    // 创建二维数组
-    for (let r = 0; r <= maxRow; r++) {
-      const rowData: (string | number | null)[] = [];
-      for (let c = 0; c <= maxCol; c++) {
-        const ref = coordsToCell(r, c);
-        const cell = sheet.cells.get(ref);
-        if (cell) {
-          // 优先使用公式计算结果，否则回退到原始值
-          if (cell.computed !== undefined && cell.computed !== null) {
-            rowData.push(cell.computed as string | number);
-          } else if (cell.value !== undefined && cell.value !== null) {
-            rowData.push(cell.value as string | number);
-          } else {
-            rowData.push(null);
-          }
+    if (sheet.cells.size === 0) {
+      // 空表时仍保留至少一个单元格的引用范围，避免 xlsx 报错
+      ws['!ref'] = 'A1';
+    } else {
+      ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxRow, c: maxCol } });
+    }
+
+    sheet.cells.forEach((cell, ref) => {
+      const { row, col } = cellToCoords(ref);
+      const addr = XLSX.utils.encode_cell({ r: row, c: col });
+      const xlsxCell: XLSX.CellObject = { t: 's', v: '' };
+
+      if (cell.formula) {
+        // 导出公式时去掉开头的 '='，xlsx 内部格式不需要
+        xlsxCell.f = cell.formula.slice(1);
+        xlsxCell.t = 'n';
+        xlsxCell.v = typeof cell.computed === 'number' ? cell.computed : 0;
+      } else if (cell.value !== undefined && cell.value !== null) {
+        const num = Number(cell.value);
+        if (!isNaN(num) && cell.value.trim() !== '' && !isNaN(parseFloat(cell.value))) {
+          xlsxCell.t = 'n';
+          xlsxCell.v = num;
         } else {
-          rowData.push(null);
+          xlsxCell.t = 's';
+          xlsxCell.v = cell.value;
         }
       }
-      data.push(rowData);
-    }
 
-    // 如果没有数据，创建一个空行避免 xlsx 报错
-    if (data.length === 0) {
-      data.push([]);
-    }
+      ws[addr] = xlsxCell;
+    });
 
-    const ws = XLSX.utils.aoa_to_sheet(data);
     XLSX.utils.book_append_sheet(wb, ws, sheet.name);
   });
 
@@ -145,29 +149,34 @@ export function importFromExcel(file: File | ArrayBuffer | Uint8Array): Promise<
           if (!ws) {
             return;
           }
-          
-          // 使用 sheet_to_json 进行转换，设置 defval: null 处理空单元格
-          const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false }) as (string | number | null | Date)[][];
 
           const cells: ImportedCell[] = [];
+          const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
 
-          json.forEach((row, rowIndex) => {
-            if (!row) return;
-            row.forEach((cell, colIndex) => {
-              // 处理日期对象
+          for (let r = range.s.r; r <= range.e.r; r++) {
+            for (let c = range.s.c; c <= range.e.c; c++) {
+              const addr = XLSX.utils.encode_cell({ r, c });
+              const xlsxCell = ws[addr];
+              if (!xlsxCell) continue;
+
+              // 优先保留公式
+              if (xlsxCell.f) {
+                cells.push({ row: r, col: c, value: '=' + String(xlsxCell.f), formula: '=' + String(xlsxCell.f) });
+                continue;
+              }
+
               let value: string | null = null;
-              if (cell instanceof Date) {
-                value = cell.toISOString().slice(0, 10);
-              } else if (cell !== null && cell !== undefined) {
-                value = String(cell);
+              if (xlsxCell.v instanceof Date) {
+                value = xlsxCell.v.toISOString().slice(0, 10);
+              } else if (xlsxCell.v !== undefined && xlsxCell.v !== null) {
+                value = String(xlsxCell.v);
               }
-              
-              // 只添加非空单元格
+
               if (value !== null && value !== undefined && value !== '') {
-                cells.push({ row: rowIndex, col: colIndex, value });
+                cells.push({ row: r, col: c, value });
               }
-            });
-          });
+            }
+          }
 
           sheets.push({
             name: sheetName,
@@ -221,7 +230,7 @@ export function exportSheetToExcel(
   sheet: Sheet,
   filename: string = 'sheet.xlsx'
 ): void {
-  const data: (string | number | null)[][] = [];
+  const ws: XLSX.WorkSheet = {};
 
   // 计算数据边界
   let maxRow = 0;
@@ -232,32 +241,35 @@ export function exportSheetToExcel(
     if (col > maxCol) maxCol = col;
   });
 
-  // 创建二维数组
-  for (let r = 0; r <= maxRow; r++) {
-    const rowData: (string | number | null)[] = [];
-    for (let c = 0; c <= maxCol; c++) {
-      const ref = coordsToCell(r, c);
-      const cell = sheet.cells.get(ref);
-      if (cell) {
-        if (cell.computed !== undefined && cell.computed !== null) {
-          rowData.push(cell.computed as string | number);
-        } else if (cell.value !== undefined && cell.value !== null) {
-          rowData.push(cell.value as string | number);
-        } else {
-          rowData.push(null);
-        }
+  if (sheet.cells.size === 0) {
+    ws['!ref'] = 'A1';
+  } else {
+    ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxRow, c: maxCol } });
+  }
+
+  sheet.cells.forEach((cell, ref) => {
+    const { row, col } = cellToCoords(ref);
+    const addr = XLSX.utils.encode_cell({ r: row, c: col });
+    const xlsxCell: XLSX.CellObject = { t: 's', v: '' };
+
+    if (cell.formula) {
+      xlsxCell.f = cell.formula.slice(1);
+      xlsxCell.t = 'n';
+      xlsxCell.v = typeof cell.computed === 'number' ? cell.computed : 0;
+    } else if (cell.value !== undefined && cell.value !== null) {
+      const num = Number(cell.value);
+      if (!isNaN(num) && cell.value.trim() !== '' && !isNaN(parseFloat(cell.value))) {
+        xlsxCell.t = 'n';
+        xlsxCell.v = num;
       } else {
-        rowData.push(null);
+        xlsxCell.t = 's';
+        xlsxCell.v = cell.value;
       }
     }
-    data.push(rowData);
-  }
 
-  if (data.length === 0) {
-    data.push([]);
-  }
+    ws[addr] = xlsxCell;
+  });
 
-  const ws = XLSX.utils.aoa_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, sheet.name);
 

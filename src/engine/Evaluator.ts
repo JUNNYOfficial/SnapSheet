@@ -1236,6 +1236,7 @@ export class Evaluator {
       }
       case 'CLEAN': {
         if (args.length < 1) return '#VALUE!';
+        // eslint-disable-next-line no-control-regex
         return String(this.evalNode(args[0])).replace(/[\x00-\x1F]/g, '');
       }
       case 'DOLLAR': {
@@ -1358,8 +1359,8 @@ export class Evaluator {
         const days = this.toInteger(this.evalNode(args[1]));
         if (!start || isNaN(days)) return '#VALUE!';
         const holidays = this.getHolidays(args, 2);
-        let current = new Date(start);
-        let step = days > 0 ? 1 : -1;
+        const current = new Date(start);
+        const step = days > 0 ? 1 : -1;
         let remaining = Math.abs(days);
         while (remaining > 0) {
           current.setDate(current.getDate() + step);

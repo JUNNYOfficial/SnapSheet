@@ -20,6 +20,7 @@ src/snaplang/vendor/snaplang.esm.js
 release
 .dbg
 debug-*.md
+/SnapSheet.app
 
 # Editor directories and files
 .vscode/*

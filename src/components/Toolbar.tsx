@@ -18,7 +18,7 @@ import {
   Percent, Hash, DollarSign, Calendar, Minus, Plus, Merge, Split,
   MessageSquare, Eraser, Undo2, Redo2, Sun, Moon, ChevronLeft, ChevronRight,
   Eye, Home, SortAsc, SortDesc,
-  Lock, Unlock, PanelRight, Save, FolderOpen
+  Lock, Unlock, PanelRight, Save, FolderOpen, Wand2, Sparkles
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -27,7 +27,7 @@ interface ToolbarProps {
   onTogglePanel?: () => void;
 }
 
-type RibbonTab = 'file' | 'home' | 'insert' | 'view';
+type RibbonTab = 'file' | 'home' | 'insert' | 'view' | 'ai';
 
 interface ToolbarButtonProps {
   onClick: () => void;
@@ -100,6 +100,10 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   const [activeTab, setActiveTab] = useState<RibbonTab>('home');
   /** 工具栏是否折叠 */
   const [collapsed, setCollapsed] = useState(false);
+  /** AI 公式生成输入框内容 */
+  const [aiPrompt, setAiPrompt] = useState('');
+  /** AI 分析/生成结果 */
+  const [aiResult, setAiResult] = useState('');
   const canUndo = store.getState().canUndo();
   const canRedo = store.getState().canRedo();
 
@@ -186,7 +190,7 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   /** 导出整个工作簿为 Excel 文件 */
   const handleExportExcel = () => exportToExcel(store.getState().workbook, 'snapsheet.xlsx');
 
-  /** 从 Excel 文件导入数据（取第一个工作表） */
+  /** 从 Excel 文件导入所有工作表数据 */
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -214,13 +218,21 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
         return;
       }
       store.getState().newWorkbook();
-      const importedSheet = result.sheets[0];
-      if (importedSheet.data && importedSheet.data.length > 0) {
-        const cells = importedSheet.data
-          .filter((cell) => cell.row >= 0 && cell.col >= 0 && cell.value !== null)
-          .map((cell) => ({ row: cell.row, col: cell.col, value: cell.value as string }));
-        store.getState().setCellsBulk(cells);
-      }
+      result.sheets.forEach((importedSheet, index) => {
+        const state = store.getState();
+        let targetSheetId = state.workbook.activeSheetId;
+        if (index > 0) {
+          state.addSheet();
+          targetSheetId = store.getState().workbook.activeSheetId;
+        }
+        store.getState().renameSheet(targetSheetId, importedSheet.name);
+        if (importedSheet.data && importedSheet.data.length > 0) {
+          const cells = importedSheet.data
+            .filter((cell) => cell.row >= 0 && cell.col >= 0 && cell.value !== null)
+            .map((cell) => ({ row: cell.row, col: cell.col, value: cell.value as string }));
+          store.getState().setCellsBulk(cells);
+        }
+      });
     } catch (err) {
       alert('导入 Excel 文件失败: ' + (err as Error).message);
     }
@@ -258,12 +270,86 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   /** 清空选择区域内容 */
   const handleClear = () => store.getState().clearSelection();
 
+  /** AI 分析选中区域：统计 SUM/AVG/MAX/MIN 并推荐公式 */
+  const handleAiAnalyze = () => {
+    const sel = store.getState().selection;
+    const sheet = store.getState().getActiveSheet();
+    const minRow = Math.min(sel.startRow, sel.endRow);
+    const maxRow = Math.max(sel.startRow, sel.endRow);
+    const minCol = Math.min(sel.startCol, sel.endCol);
+    const maxCol = Math.max(sel.startCol, sel.endCol);
+
+    const nums: number[] = [];
+    const strs: string[] = [];
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        const ref = coordsToCell(r, c);
+        const cell = sheet.cells.get(ref);
+        if (cell) {
+          const val = cell.computed !== undefined ? cell.computed : cell.value;
+          const parsed = typeof val === 'number' ? val : parseFloat(val as string);
+          if (!isNaN(parsed) && String(val).trim() !== '') nums.push(parsed);
+          else if (typeof val === 'string' && val.trim() !== '') strs.push(val);
+        }
+      }
+    }
+
+    let result = '';
+    if (nums.length > 0) {
+      const sum = nums.reduce((a, b) => a + b, 0);
+      const avg = sum / nums.length;
+      const mx = Math.max(...nums);
+      const mn = Math.min(...nums);
+      result += '区域共 ' + (maxRow - minRow + 1) * (maxCol - minCol + 1) + ' 个单元格\n';
+      result += '数值单元格: ' + nums.length + ' 个\n';
+      result += 'SUM = ' + sum.toFixed(2) + '\n';
+      result += 'AVG = ' + avg.toFixed(2) + '\n';
+      result += 'MAX = ' + mx + '\n';
+      result += 'MIN = ' + mn + '\n';
+      if (strs.length > 0) result += '文本单元格: ' + strs.length + ' 个\n';
+      result += '\n建议公式: =SUM(' + coordsToCell(minRow, minCol) + ':' + coordsToCell(maxRow, maxCol) + ')';
+    } else if (strs.length > 0) {
+      result += '区域有 ' + strs.length + ' 个文本单元格\n';
+      result += '前 5 个值: ' + strs.slice(0, 5).join(', ');
+    } else {
+      result = '选中区域无数据';
+    }
+    setAiResult(result);
+  };
+
+  /** AI 公式生成：根据自然语言关键词一键写入公式 */
+  const handleAiFormulaGenerate = () => {
+    if (!aiPrompt.trim()) return;
+    const sel = store.getState().selection;
+    const ref = coordsToCell(sel.startRow, sel.startCol);
+    const endRef = coordsToCell(sel.endRow, sel.endCol);
+    const range = ref === endRef ? ref : ref + ':' + endRef;
+
+    let formula = '';
+    const p = aiPrompt.toLowerCase();
+    if (p.includes('求和') || p.includes('sum') || p.includes('加')) formula = '=SUM(' + range + ')';
+    else if (p.includes('平均') || p.includes('avg') || p.includes('average')) formula = '=AVG(' + range + ')';
+    else if (p.includes('最大') || p.includes('max')) formula = '=MAX(' + range + ')';
+    else if (p.includes('最小') || p.includes('min')) formula = '=MIN(' + range + ')';
+    else if (p.includes('计数') || p.includes('count')) formula = '=COUNT(' + range + ')';
+
+    if (formula) {
+      const targetRow = Math.min(sel.endRow + 1, 999);
+      store.getState().setCellValue(targetRow, sel.startCol, formula);
+      setAiResult('已生成公式: ' + formula + ' 写入 ' + coordsToCell(targetRow, sel.startCol));
+      setAiPrompt('');
+    } else {
+      setAiResult('未能识别请求。请尝试:"求和""平均值""最大值""最小值""计数"等关键词。');
+    }
+  };
+
   /** Ribbon 标签页配置 */
   const tabs: { id: RibbonTab; label: string; icon: React.ReactNode }[] = [
     { id: 'file', label: '文件', icon: <FileText size={14} /> },
     { id: 'home', label: '开始', icon: <Home size={14} /> },
     { id: 'insert', label: '插入', icon: <Plus size={14} /> },
     { id: 'view', label: '视图', icon: <Eye size={14} /> },
+    { id: 'ai', label: 'AI', icon: <Sparkles size={14} /> },
   ];
 
   /** 右侧公共控制区：属性面板与主题切换 */
@@ -442,6 +528,35 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
               <ToolbarButton onClick={() => store.getState().sortByColumn(selection.startCol, 'asc')} icon={<SortAsc size={16} />} title="升序" />
               <ToolbarButton onClick={() => store.getState().sortByColumn(selection.startCol, 'desc')} icon={<SortDesc size={16} />} title="降序" />
             </ToolbarGroup>
+          </>
+        )}
+
+        {activeTab === 'ai' && (
+          <>
+            <ToolbarGroup title="AI 公式">
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="输入需求，如：求和、平均值..."
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAiFormulaGenerate(); } }}
+                className="h-8 w-48 rounded-md border px-2 text-xs outline-none transition-colors focus:border-[var(--ss-focus-ring)]"
+                style={{ borderColor: 'var(--ss-border)', background: 'var(--ss-input-bg)', color: 'var(--ss-text-primary)' }}
+              />
+              <ToolbarButton onClick={handleAiFormulaGenerate} icon={<Wand2 size={16} />} title="生成公式" />
+            </ToolbarGroup>
+            <ToolbarDivider />
+            <ToolbarGroup title="数据分析">
+              <ToolbarButton onClick={handleAiAnalyze} icon={<Sparkles size={16} />} title="分析选中区域" />
+            </ToolbarGroup>
+            {aiResult && (
+              <>
+                <ToolbarDivider />
+                <div className="ml-1 px-3 py-2 rounded-md text-xs whitespace-pre-wrap max-w-md" style={{ background: 'var(--ss-input-bg)', color: 'var(--ss-text-secondary)' }}>
+                  {aiResult}
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

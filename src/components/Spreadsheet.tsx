@@ -10,11 +10,20 @@ import { CanvasRenderer } from '../canvas/CanvasRenderer';
 import { useSpreadsheetStore, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../store/useSpreadsheetStore';
 import { coordsToCell } from '../utils/cellRef';
 import {
-  DEFAULT_ROW_HEIGHT,
+  FONT_SIZE,
   HEADER_COL_WIDTH,
   HEADER_ROW_HEIGHT,
 } from '../utils/constants';
 import ContextMenu from './ContextMenu';
+
+/** 测量文本渲染宽度，用于编辑框自适应 */
+function measureTextWidth(text: string, font: string): number {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return 0;
+  ctx.font = font;
+  return ctx.measureText(text).width;
+}
 
 interface SpreadsheetProps {
   isDark?: boolean;
@@ -37,6 +46,8 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
   const workbook = store((s) => s.workbook);
   /** 右键菜单位置状态，null 表示未打开 */
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  /** 编辑输入框自适应宽度 */
+  const [editInputWidth, setEditInputWidth] = useState<number>(0);
 
   /**
    * 初始化 CanvasRenderer，并绑定单元格读取、选择、编辑、粘贴、滚动等回调。
@@ -124,12 +135,23 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
   /** 进入编辑状态时聚焦并全选输入框内容 */
   useEffect(() => {
     if (editing && editInputRef.current) {
+      setEditInputWidth(0);
       setTimeout(() => {
         editInputRef.current?.focus();
         editInputRef.current?.select();
       }, 10);
     }
   }, [editing]);
+
+  /** 编辑内容变化时自适应输入框宽度 */
+  useEffect(() => {
+    if (!editing) return;
+    const sheet = store.getState().getActiveSheet();
+    const cell = sheet.cells.get(coordsToCell(editing.row, editing.col));
+    const font = `${cell?.style?.fontSize || FONT_SIZE}px ${cell?.style?.fontFamily || 'monospace'}`;
+    const textWidth = measureTextWidth(formulaBarValue || ' ', font);
+    setEditInputWidth(textWidth + 24);
+  }, [formulaBarValue, editing, store]);
 
   /** 主题切换时通知渲染器更新 */
   useEffect(() => {
@@ -157,27 +179,36 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
 
   /**
    * 计算编辑输入框在 Canvas 上的绝对定位样式。
-   * 基于行高、列宽与滚动偏移定位到对应单元格位置。
+   * 支持合并单元格覆盖整个合并区域，并随滚动实时跟随，宽度随内容自适应。
    */
   const getEditInputStyle = () => {
     if (!editing) return {};
-    const colWidths: number[] = [];
-    for (let c = 0; c < editing.col; c++) {
-      colWidths.push(store.getState().getColWidth(c));
-    }
-    const x = HEADER_COL_WIDTH - scrollLeft + colWidths.reduce((a, b) => a + b, 0);
-    const rowHeights: number[] = [];
-    for (let r = 0; r < editing.row; r++) {
-      rowHeights.push(store.getState().getRowHeight(r));
-    }
-    const y = HEADER_ROW_HEIGHT - scrollTop + rowHeights.reduce((a, b) => a + b, 0);
-    const width = store.getState().getColWidth(editing.col);
-    const height = store.getState().getRowHeight(editing.row);
+    const state = store.getState();
+    const merged = state.getMergedRange(editing.row, editing.col);
+    const startRow = merged ? merged.startRow : editing.row;
+    const startCol = merged ? merged.startCol : editing.col;
+    const endRow = merged ? merged.endRow : editing.row;
+    const endCol = merged ? merged.endCol : editing.col;
+
+    let x = HEADER_COL_WIDTH - scrollLeft;
+    for (let c = 0; c < startCol; c++) x += state.getColWidth(c);
+
+    let y = HEADER_ROW_HEIGHT - scrollTop;
+    for (let r = 0; r < startRow; r++) y += state.getRowHeight(r);
+
+    let width = 0;
+    for (let c = startCol; c <= endCol; c++) width += state.getColWidth(c);
+    width = Math.max(width, editInputWidth);
+
+    let height = 0;
+    for (let r = startRow; r <= endRow; r++) height += state.getRowHeight(r);
+
     return {
       left: x + 'px',
       top: y + 'px',
       width: width + 'px',
       height: height + 'px',
+      lineHeight: height + 'px',
     };
   };
 
@@ -220,12 +251,16 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
             background: 'var(--ss-bg)',
             color: 'var(--ss-text-primary)',
             fontFamily: getEditCell()?.style?.fontFamily || 'monospace',
-            fontSize: '13px',
-            lineHeight: String(DEFAULT_ROW_HEIGHT) + 'px',
+            fontSize: `${getEditCell()?.style?.fontSize || FONT_SIZE}px`,
           }}
           value={formulaBarValue}
           onChange={(e) => store.getState().setFormulaBarValue(e.target.value)}
-          onBlur={(e) => store.getState().commitEdit(e.target.value)}
+          onBlur={(e) => {
+            // 若 Esc 已取消编辑，则失焦不再提交
+            if (store.getState().editing) {
+              store.getState().commitEdit(e.target.value);
+            }
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
@@ -241,7 +276,7 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
               }
             } else if (e.key === 'Escape') {
               e.preventDefault();
-              store.getState().setEditing(0, null);
+              store.getState().cancelEdit();
             } else if (e.key === 'Tab') {
               e.preventDefault();
               const curEditing = store.getState().editing;

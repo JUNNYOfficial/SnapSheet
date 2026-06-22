@@ -10,7 +10,8 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Cell } from '../types';
-import { getCellsInRange } from '../utils/cellRef';
+import { getCellsInRange, parseRange, coordsToCell } from '../utils/cellRef';
+import { Parser as LegacyParser, Evaluator as LegacyEvaluator } from '../engine';
 import * as snaplangModule from './snaplang-wrapper';
 
 /** 返回 SnapLang 模块对象 */
@@ -26,6 +27,17 @@ function loadSnaplang() {
  */
 function preprocessFormula(formula: string): string {
   let source = formula.startsWith('=') ? formula.slice(1) : formula;
+
+  // 对查找函数（VLOOKUP/HLOOKUP/MATCH/INDEX）中的区域引用保留为字符串，
+  // 避免被默认展开为一维数组，以便函数内部按二维结构处理。
+  const lookupFunctions = ['VLOOKUP', 'HLOOKUP', 'MATCH', 'INDEX'];
+  for (const fname of lookupFunctions) {
+    const regex = new RegExp(`\\b${fname}\\s*\\(([^)]*)\\)`, 'gi');
+    source = source.replace(regex, (_, argsStr: string) => {
+      const replacedArgs = argsStr.replace(/\b([A-Z]+[0-9]+:[A-Z]+[0-9]+)\b/gi, '"$1"');
+      return `${fname.toUpperCase()}(${replacedArgs})`;
+    });
+  }
 
   // 按字符串常量分割，避免替换字符串内部看起来像单元格引用的内容
   const segments: { text: string; isString: boolean }[] = [];
@@ -289,29 +301,213 @@ export class SnapLangFormulaEngine {
       return !snaplang.isTruthy(value);
     });
 
-    snaplang.defineVariable(env, 'getCell', getCellValue, false, true);
-    snaplang.defineVariable(env, 'getCellRange', getCellRange, false, true);
-    snaplang.defineVariable(env, 'setCell', setCellValue, false, true);
-    snaplang.defineVariable(env, 'sum', sumRange, false, true);
-    snaplang.defineVariable(env, 'avg', avgRange, false, true);
-    snaplang.defineVariable(env, 'max', maxRange, false, true);
-    snaplang.defineVariable(env, 'min', minRange, false, true);
-    snaplang.defineVariable(env, 'count', countRange, false, true);
-    snaplang.defineVariable(env, 'abs', absFunc, false, true);
-    snaplang.defineVariable(env, 'sqrt', sqrtFunc, false, true);
-    snaplang.defineVariable(env, 'power', powerFunc, false, true);
-    snaplang.defineVariable(env, 'round', roundFunc, false, true);
-    snaplang.defineVariable(env, 'ceil', ceilFunc, false, true);
-    snaplang.defineVariable(env, 'floor', floorFunc, false, true);
-    snaplang.defineVariable(env, 'concat', concatFunc, false, true);
-    snaplang.defineVariable(env, 'len', lenFunc, false, true);
-    snaplang.defineVariable(env, 'upper', upperFunc, false, true);
-    snaplang.defineVariable(env, 'lower', lowerFunc, false, true);
-    snaplang.defineVariable(env, 'trim', trimFunc, false, true);
-    snaplang.defineVariable(env, 'if', ifFunc, false, true);
-    snaplang.defineVariable(env, 'and', andFunc, false, true);
-    snaplang.defineVariable(env, 'or', orFunc, false, true);
-    snaplang.defineVariable(env, 'not', notFunc, false, true);
+    // 查找函数，区域参数被预处理器保留为字符串
+    const vlookupFunc = snaplang.makeNativeFunction('vlookup', (...args: any[]) => this.evalVLookup(args[0], args[1], args[2], args[3]));
+    const hlookupFunc = snaplang.makeNativeFunction('hlookup', (...args: any[]) => this.evalHLookup(args[0], args[1], args[2], args[3]));
+    const matchFunc = snaplang.makeNativeFunction('match', (...args: any[]) => this.evalMatch(args[0], args[1], args[2]));
+    const indexFunc = snaplang.makeNativeFunction('index', (...args: any[]) => this.evalIndex(args[0], args[1], args[2]));
+
+    const functions: Record<string, any> = {
+      getCell: getCellValue,
+      getCellRange,
+      setCell: setCellValue,
+      sum: sumRange,
+      avg: avgRange,
+      max: maxRange,
+      min: minRange,
+      count: countRange,
+      abs: absFunc,
+      sqrt: sqrtFunc,
+      power: powerFunc,
+      round: roundFunc,
+      ceil: ceilFunc,
+      floor: floorFunc,
+      concat: concatFunc,
+      len: lenFunc,
+      upper: upperFunc,
+      lower: lowerFunc,
+      trim: trimFunc,
+      if: ifFunc,
+      and: andFunc,
+      or: orFunc,
+      not: notFunc,
+      vlookup: vlookupFunc,
+      hlookup: hlookupFunc,
+      match: matchFunc,
+      index: indexFunc,
+    };
+
+    for (const [name, fn] of Object.entries(functions)) {
+      snaplang.defineVariable(env, name, fn, false, true);
+      const upperName = name.toUpperCase();
+      if (upperName !== name) {
+        snaplang.defineVariable(env, upperName, fn, false, true);
+      }
+    }
+  }
+
+  /** 读取单个单元格的计算值或原始值 */
+  private getCellComputedValue(ref: string): number | string {
+    const cell = this.ctx.getCell(ref);
+    if (!cell) return '';
+    if (cell.computed !== undefined) return cell.computed;
+    if (cell.value !== undefined) {
+      const num = parseFloat(cell.value);
+      if (!isNaN(num) && cell.value.trim() !== '') return num;
+      return cell.value;
+    }
+    return '';
+  }
+
+  /** VLOOKUP 实现 */
+  private evalVLookup(lookupValue: any, tableArray: any, colIndex: any, rangeLookup?: any): number | string {
+    if (typeof tableArray !== 'string') return '#VALUE!';
+    try {
+      parseRange(tableArray);
+    } catch {
+      return '#REF!';
+    }
+    const parsed = parseRange(tableArray);
+    const colIdx = typeof colIndex === 'number' ? colIndex : parseInt(colIndex as string, 10);
+    if (isNaN(colIdx) || colIdx < 1) return '#VALUE!';
+    if (colIdx > parsed.endCol - parsed.startCol + 1) return '#REF!';
+
+    const rows: string[][] = [];
+    for (let r = parsed.startRow; r <= parsed.endRow; r++) {
+      const rowRefs: string[] = [];
+      for (let c = parsed.startCol; c <= parsed.endCol; c++) {
+        rowRefs.push(coordsToCell(r, c));
+      }
+      rows.push(rowRefs);
+    }
+
+    const lookupNum = typeof lookupValue === 'number' ? lookupValue : parseFloat(lookupValue as string);
+    const isNumericLookup = !isNaN(lookupNum);
+    const approximate = rangeLookup === undefined ? true : (typeof rangeLookup === 'number' ? rangeLookup !== 0 : String(rangeLookup).toLowerCase() !== 'false');
+
+    for (let i = 0; i < rows.length; i++) {
+      const firstCellValue = this.getCellComputedValue(rows[i][0]);
+      const firstNum = typeof firstCellValue === 'number' ? firstCellValue : parseFloat(firstCellValue as string);
+      if (approximate && isNumericLookup && !isNaN(firstNum)) {
+        if (firstNum > lookupNum) {
+          return i === 0 ? '#N/A' : this.getCellComputedValue(rows[i - 1][colIdx - 1]);
+        }
+        if (i === rows.length - 1) {
+          return this.getCellComputedValue(rows[i][colIdx - 1]);
+        }
+      } else {
+        if (String(firstCellValue) === String(lookupValue)) {
+          return this.getCellComputedValue(rows[i][colIdx - 1]);
+        }
+      }
+    }
+    return '#N/A';
+  }
+
+  /** HLOOKUP 实现 */
+  private evalHLookup(lookupValue: any, tableArray: any, rowIndex: any, rangeLookup?: any): number | string {
+    if (typeof tableArray !== 'string') return '#VALUE!';
+    try {
+      parseRange(tableArray);
+    } catch {
+      return '#REF!';
+    }
+    const parsed = parseRange(tableArray);
+    const rowIdx = typeof rowIndex === 'number' ? rowIndex : parseInt(rowIndex as string, 10);
+    if (isNaN(rowIdx) || rowIdx < 1) return '#VALUE!';
+    if (rowIdx > parsed.endRow - parsed.startRow + 1) return '#REF!';
+
+    const cols: string[][] = [];
+    for (let c = parsed.startCol; c <= parsed.endCol; c++) {
+      const colRefs: string[] = [];
+      for (let r = parsed.startRow; r <= parsed.endRow; r++) {
+        colRefs.push(coordsToCell(r, c));
+      }
+      cols.push(colRefs);
+    }
+
+    const lookupNum = typeof lookupValue === 'number' ? lookupValue : parseFloat(lookupValue as string);
+    const isNumericLookup = !isNaN(lookupNum);
+    const approximate = rangeLookup === undefined ? true : (typeof rangeLookup === 'number' ? rangeLookup !== 0 : String(rangeLookup).toLowerCase() !== 'false');
+
+    for (let i = 0; i < cols.length; i++) {
+      const firstCellValue = this.getCellComputedValue(cols[i][0]);
+      const firstNum = typeof firstCellValue === 'number' ? firstCellValue : parseFloat(firstCellValue as string);
+      if (approximate && isNumericLookup && !isNaN(firstNum)) {
+        if (firstNum > lookupNum) {
+          return i === 0 ? '#N/A' : this.getCellComputedValue(cols[i - 1][rowIdx - 1]);
+        }
+        if (i === cols.length - 1) {
+          return this.getCellComputedValue(cols[i][rowIdx - 1]);
+        }
+      } else {
+        if (String(firstCellValue) === String(lookupValue)) {
+          return this.getCellComputedValue(cols[i][rowIdx - 1]);
+        }
+      }
+    }
+    return '#N/A';
+  }
+
+  /** MATCH 实现 */
+  private evalMatch(lookupValue: any, lookupArray: any, matchType?: any): number | string {
+    if (typeof lookupArray !== 'string') return '#VALUE!';
+    let refs: string[];
+    try {
+      refs = getCellsInRange(lookupArray);
+    } catch {
+      return '#REF!';
+    }
+    const type = matchType === undefined ? 1 : (typeof matchType === 'number' ? matchType : parseInt(matchType as string, 10));
+    if (isNaN(type)) return '#VALUE!';
+
+    const values = refs.map((ref) => this.getCellComputedValue(ref));
+    if (type === 0) {
+      const idx = values.findIndex((v) => String(v) === String(lookupValue));
+      return idx === -1 ? '#N/A' : idx + 1;
+    }
+
+    const lookupNum = typeof lookupValue === 'number' ? lookupValue : parseFloat(lookupValue as string);
+    if (isNaN(lookupNum)) return '#N/A';
+
+    let bestIdx = -1;
+    let bestValue = type > 0 ? -Infinity : Infinity;
+    for (let i = 0; i < values.length; i++) {
+      const raw = values[i];
+      const n = typeof raw === 'number' ? raw : parseFloat(raw as string);
+      if (isNaN(n)) continue;
+      if (type > 0) {
+        if (n <= lookupNum && (bestIdx === -1 || n > bestValue)) {
+          bestIdx = i;
+          bestValue = n;
+        }
+      } else {
+        if (n >= lookupNum && (bestIdx === -1 || n < bestValue)) {
+          bestIdx = i;
+          bestValue = n;
+        }
+      }
+    }
+    return bestIdx === -1 ? '#N/A' : bestIdx + 1;
+  }
+
+  /** INDEX 实现 */
+  private evalIndex(array: any, rowNum: any, colNum?: any): number | string {
+    if (typeof array !== 'string') return '#VALUE!';
+    let parsed: { startRow: number; startCol: number; endRow: number; endCol: number };
+    try {
+      parsed = parseRange(array);
+    } catch {
+      return '#REF!';
+    }
+    const row = typeof rowNum === 'number' ? rowNum : parseInt(rowNum as string, 10);
+    const col = colNum === undefined ? 1 : (typeof colNum === 'number' ? colNum : parseInt(colNum as string, 10));
+    if (isNaN(row) || row < 1 || isNaN(col) || col < 1) return '#VALUE!';
+
+    const actualRow = parsed.startRow + row - 1;
+    const actualCol = parsed.startCol + col - 1;
+    if (actualRow > parsed.endRow || actualCol > parsed.endCol) return '#REF!';
+    return this.getCellComputedValue(coordsToCell(actualRow, actualCol));
   }
 
   /**
@@ -357,8 +553,30 @@ export class SnapLangFormulaEngine {
   }
 
   /**
+   * 使用旧版公式引擎对原文公式进行求值。
+   * 作为 SnapLang 无法识别函数/语法时的兜底方案，复用 Evaluator.ts 中已实现的 100+ 函数。
+   * @param formula 公式原文（以 = 开头）
+   * @returns 计算结果或错误字符串
+   */
+  private evaluateWithLegacy(formula: string): number | string {
+    try {
+      const parser = new LegacyParser(formula);
+      const ast = parser.parse();
+      const evaluator = new LegacyEvaluator({ getCell: this.ctx.getCell });
+      return evaluator.evaluate(ast);
+    } catch (e: any) {
+      const errorMsg = e.message || '未知错误';
+      if (errorMsg.startsWith('Unexpected') || errorMsg.startsWith('Expected')) {
+        return `#SYNTAX! ${errorMsg}`;
+      }
+      return `#ERROR! ${errorMsg}`;
+    }
+  }
+
+  /**
    * 对公式进行求值，并返回计算结果或错误字符串。
    * 错误码统一为 #LEX! / #SYNTAX! / #RUNTIME! / #ERROR! 等格式。
+   * 若 SnapLang 返回 #NAME? / #SYNTAX!，则回退到旧版公式引擎，以支持更多 Excel 函数。
    * @param formula 公式原文（以 = 开头）
    * @returns 计算结果或错误字符串
    */
@@ -379,11 +597,20 @@ export class SnapLangFormulaEngine {
       if (result === null || result === undefined) return '';
       if (typeof result === 'number') {
         if (isNaN(result)) return '#NUM!';
-        if (!isFinite(result)) return '#NUM!';
+        if (!isFinite(result)) {
+          // 除零在 SnapLang 中通常产生 Infinity，统一按公式是否包含除法返回 #DIV/0!
+          return formula.includes('/') ? '#DIV/0!' : '#NUM!';
+        }
         return result;
       }
       if (typeof result === 'string') {
-        if (result.startsWith('#')) return result;
+        if (result.startsWith('#')) {
+          // 未知函数或 SnapLang 无法解析的语法，回退到旧版公式引擎
+          if (result.startsWith('#NAME?') || result.startsWith('#SYNTAX!')) {
+            return this.evaluateWithLegacy(formula);
+          }
+          return result;
+        }
         return result;
       }
       if (typeof result === 'boolean') return result ? 1 : 0;
@@ -423,7 +650,7 @@ export class SnapLangFormulaEngine {
               }
               return `#REF! 单元格 '${ident}' 不存在`;
             }
-            return `#NAME! 未定义的函数或变量 '${ident}'`;
+            return `#NAME? 未定义的函数或变量 '${ident}'`;
           }
         }
 
