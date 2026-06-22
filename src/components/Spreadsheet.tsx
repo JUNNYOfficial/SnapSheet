@@ -15,6 +15,7 @@ import {
   HEADER_ROW_HEIGHT,
 } from '../utils/constants';
 import ContextMenu from './ContextMenu';
+import HeaderContextMenu from './HeaderContextMenu';
 import { requestDeleteConfirmation } from '../utils/deleteConfirmation';
 
 /** 测量文本渲染宽度，用于编辑框自适应 */
@@ -47,6 +48,8 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
   const workbook = store((s) => s.workbook);
   /** 右键菜单位置状态，null 表示未打开 */
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  /** 表头右键菜单状态 */
+  const [headerContextMenu, setHeaderContextMenu] = useState<{ type: 'row' | 'col'; index: number; x: number; y: number } | null>(null);
   /** 编辑输入框自适应宽度 */
   const [editInputWidth, setEditInputWidth] = useState<number>(0);
 
@@ -100,6 +103,10 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
         void row;
         void col;
         setContextMenu({ x, y });
+      },
+      onHeaderContextMenu: (type, index, x, y) => {
+        void index;
+        setHeaderContextMenu({ type, index, x, y });
       },
       getMergedRange: (row, col) => store.getState().getMergedRange(row, col),
       getConditionalFormats: () => store.getState().getActiveSheet().conditionalFormats,
@@ -268,6 +275,15 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
           onDeleteCol={() =>
             requestDeleteConfirmation(() => store.getState().deleteCol(selection.startCol), '删除列')
           }
+        />
+      )}
+      {headerContextMenu && (
+        <HeaderContextMenu
+          type={headerContextMenu.type}
+          index={headerContextMenu.index}
+          x={headerContextMenu.x}
+          y={headerContextMenu.y}
+          onClose={() => setHeaderContextMenu(null)}
         />
       )}
       {editing && (

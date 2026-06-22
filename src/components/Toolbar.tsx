@@ -14,7 +14,8 @@ import { coordsToCell, colToLetter } from '../utils/cellRef';
 import { requestDeleteConfirmation } from '../utils/deleteConfirmation';
 import { TEMPLATES } from '../templates';
 
-import { FONT_OPTIONS, FONT_SIZE_OPTIONS, FONT_FAMILY, FONT_SIZE, DEFAULT_ROW_HEIGHT, MIN_ROW_HEIGHT, MIN_COL_WIDTH, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../utils/constants';
+import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from '../utils/constants';
+import { autoFitCols, autoFitRows } from '../utils/autoFit';
 import { FileText, Upload, Download, Bold, Italic, Underline, Strikethrough, AlignLeft, AlignCenter, AlignRight,
   AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd,
   Type, Paintbrush, Palette, Minus, Plus, Merge, Split,
@@ -288,71 +289,22 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   /** 自动调整列宽 */
   const handleAutoFitCols = () => {
     const state = store.getState();
-    const sheet = state.getActiveSheet();
     const sel = state.selection;
+    const cols: number[] = [];
     const minCol = Math.min(sel.startCol, sel.endCol);
     const maxCol = Math.max(sel.startCol, sel.endCol);
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    for (let c = minCol; c <= maxCol; c++) {
-      let maxWidth = MIN_COL_WIDTH;
-      ctx.font = `${FONT_SIZE}px ${FONT_FAMILY}`;
-      const headerWidth = ctx.measureText(colToLetter(c)).width + 24;
-      maxWidth = Math.max(maxWidth, headerWidth);
-      for (let r = 0; r < SHEET_ROW_COUNT; r++) {
-        const cell = sheet.cells.get(coordsToCell(r, c));
-        if (!cell || !cell.value) continue;
-        const display = cell.computed !== undefined && cell.formula ? String(cell.computed) : cell.value;
-        const fontSize = cell.style?.fontSize || FONT_SIZE;
-        const fontFamily = cell.style?.fontFamily || FONT_FAMILY;
-        ctx.font = `${cell.style?.bold ? 'bold ' : ''}${cell.style?.italic ? 'italic ' : ''}${fontSize}px ${fontFamily}`;
-        const w = ctx.measureText(display).width + 12;
-        if (w > maxWidth) maxWidth = w;
-      }
-      state.setColWidth(c, Math.min(maxWidth, 600));
-    }
+    for (let c = minCol; c <= maxCol; c++) cols.push(c);
+    autoFitCols(state.getActiveSheet(), state, cols);
   };
   /** 自动调整行高 */
   const handleAutoFitRows = () => {
     const state = store.getState();
-    const sheet = state.getActiveSheet();
     const sel = state.selection;
+    const rows: number[] = [];
     const minRow = Math.min(sel.startRow, sel.endRow);
     const maxRow = Math.max(sel.startRow, sel.endRow);
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    for (let r = minRow; r <= maxRow; r++) {
-      let maxHeight = DEFAULT_ROW_HEIGHT;
-      for (let c = 0; c < SHEET_COL_COUNT; c++) {
-        const cell = sheet.cells.get(coordsToCell(r, c));
-        if (!cell || !cell.value) continue;
-        if (cell.style?.wrap) {
-          const display = cell.computed !== undefined && cell.formula ? String(cell.computed) : cell.value;
-          const fontSize = cell.style?.fontSize || FONT_SIZE;
-          const fontFamily = cell.style?.fontFamily || FONT_FAMILY;
-          ctx.font = `${cell.style?.bold ? 'bold ' : ''}${cell.style?.italic ? 'italic ' : ''}${fontSize}px ${fontFamily}`;
-          const colWidth = state.getColWidth(c);
-          const maxTextWidth = Math.max(0, colWidth - 12);
-          const words = String(display).split('');
-          let line = '';
-          let lines = 1;
-          for (const word of words) {
-            const test = line + word;
-            if (ctx.measureText(test).width > maxTextWidth && line) {
-              lines++;
-              line = word;
-            } else {
-              line = test;
-            }
-          }
-          const h = lines * (fontSize + 3) + 8;
-          if (h > maxHeight) maxHeight = h;
-        }
-      }
-      state.setRowHeight(r, Math.min(maxHeight, 400));
-    }
+    for (let r = minRow; r <= maxRow; r++) rows.push(r);
+    autoFitRows(state.getActiveSheet(), state, rows);
   };
   /** 左对齐 */
   const handleAlignLeft = () => store.getState().applyStyleToSelection({ align: 'left' });

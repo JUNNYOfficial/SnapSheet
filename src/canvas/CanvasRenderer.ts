@@ -43,6 +43,7 @@ export interface CanvasRendererOptions {
   onScrollChange: (scrollLeft: number, scrollTop: number) => void;
   onFill: (source: { startRow: number; startCol: number; endRow: number; endCol: number }, target: { startRow: number; startCol: number; endRow: number; endCol: number }) => void;
   onContextMenu: (row: number, col: number, x: number, y: number) => void;
+  onHeaderContextMenu: (type: 'row' | 'col', index: number, x: number, y: number) => void;
   getMergedRange: (row: number, col: number) => MergeRange | null;
   getConditionalFormats: () => ConditionalFormat[];
   maxRows: number;
@@ -1051,6 +1052,56 @@ export class CanvasRenderer {
     return lines.length === 0 ? [text] : lines;
   }
 
+  private getHeaderColAtPoint(clientX: number): number | null {
+    const rect = this.opts.canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    if (x < HEADER_COL_WIDTH) return null;
+
+    const frozenCols = this.opts.frozenCols ?? 0;
+    const frozenWidth = this.getFrozenWidth(frozenCols);
+
+    let colX = HEADER_COL_WIDTH;
+    for (let c = 0; c < frozenCols && c < this.opts.maxCols; c++) {
+      const cw = this.opts.getColWidth(c);
+      if (x >= colX && x < colX + cw) return c;
+      colX += cw;
+    }
+
+    colX = HEADER_COL_WIDTH + frozenWidth - this.scrollLeft;
+    for (let c = frozenCols; c < this.opts.maxCols; c++) {
+      const cw = this.opts.getColWidth(c);
+      if (x >= colX && x < colX + cw) return c;
+      colX += cw;
+      if (colX > rect.width) break;
+    }
+    return null;
+  }
+
+  private getHeaderRowAtPoint(clientY: number): number | null {
+    const rect = this.opts.canvas.getBoundingClientRect();
+    const y = clientY - rect.top;
+    if (y < HEADER_ROW_HEIGHT) return null;
+
+    const frozenRows = this.opts.frozenRows ?? 0;
+    const frozenHeight = this.getFrozenHeight(frozenRows);
+
+    let rowY = HEADER_ROW_HEIGHT;
+    for (let r = 0; r < frozenRows && r < this.opts.maxRows; r++) {
+      const rh = this.opts.getRowHeight(r);
+      if (y >= rowY && y < rowY + rh) return r;
+      rowY += rh;
+    }
+
+    rowY = HEADER_ROW_HEIGHT + frozenHeight - this.scrollTop;
+    for (let r = frozenRows; r < this.opts.maxRows; r++) {
+      const rh = this.opts.getRowHeight(r);
+      if (y >= rowY && y < rowY + rh) return r;
+      rowY += rh;
+      if (rowY > rect.height) break;
+    }
+    return null;
+  }
+
   getCellAtPoint(clientX: number, clientY: number): { row: number; col: number } | null {
     const rect = this.opts.canvas.getBoundingClientRect();
     const x = clientX - rect.left;
@@ -1260,6 +1311,32 @@ export class CanvasRenderer {
         return;
       }
 
+      const rect = this.opts.canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (x < HEADER_COL_WIDTH && y >= HEADER_ROW_HEIGHT) {
+        const row = this.getHeaderRowAtPoint(e.clientY);
+        if (row !== null) {
+          this.mouseDown = true;
+          this.dragStart = { row, col: 0 };
+          this.opts.onSelect(row, 0);
+          this.opts.onSelection({ startRow: row, startCol: 0, endRow: row, endCol: this.opts.maxCols - 1 });
+        }
+        return;
+      }
+
+      if (y < HEADER_ROW_HEIGHT && x >= HEADER_COL_WIDTH) {
+        const col = this.getHeaderColAtPoint(e.clientX);
+        if (col !== null) {
+          this.mouseDown = true;
+          this.dragStart = { row: 0, col };
+          this.opts.onSelect(0, col);
+          this.opts.onSelection({ startRow: 0, startCol: col, endRow: this.opts.maxRows - 1, endCol: col });
+        }
+        return;
+      }
+
       const cell = this.getCellAtPoint(e.clientX, e.clientY);
       if (cell) {
         this.mouseDown = true;
@@ -1365,6 +1442,30 @@ export class CanvasRenderer {
 
     this.bindEvent(canvas, 'contextmenu', (e) => {
       e.preventDefault();
+      const rect = this.opts.canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (x < HEADER_COL_WIDTH && y >= HEADER_ROW_HEIGHT) {
+        const row = this.getHeaderRowAtPoint(e.clientY);
+        if (row !== null) {
+          this.opts.onSelect(row, 0);
+          this.opts.onSelection({ startRow: row, startCol: 0, endRow: row, endCol: this.opts.maxCols - 1 });
+          this.opts.onHeaderContextMenu('row', row, e.clientX, e.clientY);
+        }
+        return;
+      }
+
+      if (y < HEADER_ROW_HEIGHT && x >= HEADER_COL_WIDTH) {
+        const col = this.getHeaderColAtPoint(e.clientX);
+        if (col !== null) {
+          this.opts.onSelect(0, col);
+          this.opts.onSelection({ startRow: 0, startCol: col, endRow: this.opts.maxRows - 1, endCol: col });
+          this.opts.onHeaderContextMenu('col', col, e.clientX, e.clientY);
+        }
+        return;
+      }
+
       const cell = this.getCellAtPoint(e.clientX, e.clientY);
       if (cell) {
         this.opts.onSelect(cell.row, cell.col);
