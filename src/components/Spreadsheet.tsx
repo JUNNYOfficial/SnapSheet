@@ -309,6 +309,9 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
           })()}
         </div>
       )}
+      {charts.map((chart) => (
+        <ChartCard key={chart.id} chart={chart} />
+      ))}
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
