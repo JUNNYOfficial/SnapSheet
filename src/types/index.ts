@@ -129,6 +129,30 @@ export interface MergeRange {
   endCol: number;
 }
 
+/** 图表类型 */
+export type ChartType = 'bar' | 'line' | 'pie';
+
+/** 图表对象 */
+export interface Chart {
+  /** 图表唯一标识 */
+  id: string;
+  /** 图表类型 */
+  type: ChartType;
+  /** 图表标题 */
+  title: string;
+  /** 数据范围 */
+  range: { startRow: number; startCol: number; endRow: number; endCol: number };
+  /** 类别所在列索引（范围相对列 0） */
+  categoryCol: number;
+  /** 数值所在列索引列表（范围相对列） */
+  valueCols: number[];
+  /** 图表位置与尺寸 */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /**
  * 工作表数据模型。
  * 使用 Map 存储单元格（key 为 "A1" 形式引用）以及行列尺寸，
@@ -159,6 +183,8 @@ export interface Sheet {
   conditionalFormats: ConditionalFormat[];
   /** 合并单元格映射，key 为左上角单元格引用 */
   mergedCells: Map<string, MergeRange>;
+  /** 图表列表 */
+  charts: Chart[];
 }
 
 /** 自动筛选配置 */

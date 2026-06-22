@@ -14,6 +14,7 @@ import FindDialog from './components/FindDialog';
 import PropertyPanel from './components/PropertyPanel';
 import StatusBar from './components/StatusBar';
 import ConfirmDialog from './components/ConfirmDialog';
+import ChartDialog from './components/ChartDialog';
 import { useSpreadsheetStore } from './store/useSpreadsheetStore';
 import { useTheme } from './hooks/useTheme';
 import { workbookToJSON, workbookFromJSON } from './utils/json';
@@ -37,6 +38,8 @@ export default function App() {
   const [confirmLabel, setConfirmLabel] = useState('删除');
   /** 待执行的删除操作 */
   const pendingActionRef = useRef<(() => void) | null>(null);
+  /** 图表插入对话框开关 */
+  const [chartOpen, setChartOpen] = useState(false);
   const store = useSpreadsheetStore;
   const { theme, toggleTheme, isDark } = useTheme();
 
@@ -233,7 +236,7 @@ export default function App() {
       </div>
 
       {/* Ribbon 工具栏 */}
-      <Toolbar isDark={isDark} onToggleTheme={toggleTheme} onTogglePanel={() => setPanelOpen(!panelOpen)} />
+      <Toolbar isDark={isDark} onToggleTheme={toggleTheme} onTogglePanel={() => setPanelOpen(!panelOpen)} onInsertChart={() => setChartOpen(true)} />
 
       {/* 公式栏 */}
       <FormulaBar />
@@ -251,6 +254,8 @@ export default function App() {
 
       {/* 查找对话框 */}
       <FindDialog open={findOpen} onClose={() => setFindOpen(false)} />
+
+      {chartOpen && <ChartDialog onClose={() => setChartOpen(false)} />}
 
       {/* 右侧属性面板 */}
       <PropertyPanel isOpen={panelOpen} onClose={() => setPanelOpen(false)} />

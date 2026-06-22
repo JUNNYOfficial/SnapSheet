@@ -155,5 +155,6 @@ export function cellsFromCSV(rows: string[][], startRow: number, startCol: numbe
     autoFilter: null,
     conditionalFormats: [],
     mergedCells: new Map(),
+    charts: [],
   };
 }

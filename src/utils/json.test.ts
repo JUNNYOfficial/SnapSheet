@@ -24,6 +24,7 @@ function createTestWorkbook(): Workbook {
         autoFilter: null,
         conditionalFormats: [],
         mergedCells: new Map(),
+        charts: [],
       },
     ],
     activeSheetId: 'sheet1',

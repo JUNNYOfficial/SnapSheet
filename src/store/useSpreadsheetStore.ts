@@ -7,7 +7,7 @@
  */
 
 import { create } from 'zustand';
-import type { Cell, Sheet, Workbook, Selection, CellStyle, NumberFormat, BorderStyle, MergeRange, ConditionalFormat, ValidationRule } from '../types';
+import type { Cell, Sheet, Workbook, Selection, CellStyle, NumberFormat, BorderStyle, MergeRange, ConditionalFormat, ValidationRule, Chart } from '../types';
 import { DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT, MIN_ROW_HEIGHT, SHEET_ROW_COUNT, SHEET_COL_COUNT } from '../utils/constants';
 import { coordsToCell, cellToCoords, colToLetter, letterToCol } from '../utils/cellRef';
 import { applyTemplateToSheet } from '../templates';
@@ -68,6 +68,12 @@ interface SpreadsheetState {
   clearAutoFilter: () => void;
   /** 根据自动筛选配置刷新隐藏行（内部使用） */
   refreshAutoFilterHiddenRows: () => void;
+  /** 添加图表 */
+  addChart: (chart: Omit<Chart, 'id'>) => void;
+  /** 删除图表 */
+  removeChart: (id: string) => void;
+  /** 更新图表 */
+  updateChart: (id: string, patch: Partial<Chart>) => void;
 
   setSelection: (selection: Selection) => void;
   setEditing: (row: number, col: number | null) => void;
@@ -144,6 +150,7 @@ function createSheet(name: string, id: string): Sheet {
     autoFilter: null,
     conditionalFormats: [],
     mergedCells: new Map<string, MergeRange>(),
+    charts: [],
   };
 }
 
@@ -837,6 +844,34 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       for (const r of sheet.hiddenRows) state.setRowHeight(r, DEFAULT_ROW_HEIGHT);
       for (const r of newHidden) state.setRowHeight(r, 0);
       sheet.hiddenRows = Array.from(newHidden).sort((a, b) => a - b);
+    },
+
+    /** 添加图表 */
+    addChart: (chart: Omit<Chart, 'id'>) => {
+      const state = get();
+      const sheet = state.getActiveSheet();
+      const newChart: Chart = { ...chart, id: crypto.randomUUID() };
+      sheet.charts = [...sheet.charts, newChart];
+      pushHistory();
+      set({ workbook: { ...state.workbook }, isDirty: true });
+    },
+
+    /** 删除图表 */
+    removeChart: (id: string) => {
+      const state = get();
+      const sheet = state.getActiveSheet();
+      sheet.charts = sheet.charts.filter((c) => c.id !== id);
+      pushHistory();
+      set({ workbook: { ...state.workbook }, isDirty: true });
+    },
+
+    /** 更新图表 */
+    updateChart: (id: string, patch: Partial<Chart>) => {
+      const state = get();
+      const sheet = state.getActiveSheet();
+      sheet.charts = sheet.charts.map((c) => (c.id === id ? { ...c, ...patch } : c));
+      pushHistory();
+      set({ workbook: { ...state.workbook }, isDirty: true });
     },
 
     /**

@@ -21,7 +21,7 @@ import { FileText, Upload, Download, Bold, Italic, Underline, Strikethrough, Ali
   Type, Paintbrush, Palette, Minus, Plus, Merge, Split,
   Percent, Hash, DollarSign, Calendar, WrapText, ArrowLeftRight, ArrowUpDown,
   MessageSquare, Eraser, Undo2, Redo2, Sun, Moon, ChevronLeft, ChevronRight,
-  Eye, Home, SortAsc, SortDesc, Filter,
+  Eye, Home, SortAsc, SortDesc, Filter, BarChart3,
   Lock, Unlock, PanelRight, Save, FolderOpen, Wand2, Sparkles, Grid3x3
 } from 'lucide-react';
 
@@ -29,6 +29,7 @@ interface ToolbarProps {
   isDark?: boolean;
   onToggleTheme?: () => void;
   onTogglePanel?: () => void;
+  onInsertChart?: () => void;
 }
 
 type RibbonTab = 'file' | 'home' | 'insert' | 'view' | 'ai';
@@ -91,7 +92,7 @@ function ToolbarDivider() {
   return <div className="mx-1 h-8 w-px rounded-full" style={{ background: 'var(--ss-border)' }} />;
 }
 
-export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }: ToolbarProps) {
+export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel, onInsertChart }: ToolbarProps) {
   const store = useSpreadsheetStore;
   const selection = useSpreadsheetStore((s) => s.selection);
   /** CSV 文件输入引用 */
@@ -636,6 +637,10 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
                 icon={<Minus size={16} />}
                 title="删列"
               />
+            </ToolbarGroup>
+            <ToolbarDivider />
+            <ToolbarGroup title="图表">
+              <ToolbarButton onClick={() => onInsertChart?.()} icon={<BarChart3 size={16} />} title="插入图表" />
             </ToolbarGroup>
           </>
         )}

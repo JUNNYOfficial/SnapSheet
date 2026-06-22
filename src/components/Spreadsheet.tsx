@@ -18,6 +18,7 @@ import ContextMenu from './ContextMenu';
 import HeaderContextMenu from './HeaderContextMenu';
 import FormulaAutocomplete from './FormulaAutocomplete';
 import AutoFilterDropdown from './AutoFilterDropdown';
+import ChartCard from './ChartCard';
 import { requestDeleteConfirmation } from '../utils/deleteConfirmation';
 
 /** 测量文本渲染宽度，用于编辑框自适应 */
@@ -60,6 +61,7 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
   const [editInputWidth, setEditInputWidth] = useState<number>(0);
 
   const autoFilter = store((s) => s.getActiveSheet().autoFilter);
+  const charts = store((s) => s.getActiveSheet().charts);
 
   /**
    * 初始化 CanvasRenderer，并绑定单元格读取、选择、编辑、粘贴、滚动等回调。
