@@ -5,8 +5,8 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-3178C6.svg)
 ![Vite](https://img.shields.io/badge/Vite-6.3.5-646CFF.svg)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3-06B6D4.svg)
-![Zustand](https://img.shields.io/badge/Zustand-4-35A29F.svg)
-![Electron](https://img.shields.io/badge/Electron-35-47848F.svg)
+![Zustand](https://img.shields.io/badge/Zustand-5-35A29F.svg)
+![Electron](https://img.shields.io/badge/Electron-42-47848F.svg)
 ![GitHub stars](https://img.shields.io/github/stars/JUNNYOfficial/SnapSheet)
 ![GitHub forks](https://img.shields.io/github/forks/JUNNYOfficial/SnapSheet)
 ![GitHub issues](https://img.shields.io/github/issues/JUNNYOfficial/SnapSheet)
@@ -20,7 +20,7 @@
 ## ✨ 功能特性
 
 ### 核心功能
-- 📊 **电子表格**：完整的表格编辑功能，支持 2000 行 × 100 列
+- 📊 **电子表格**：完整的表格编辑功能，支持 5000 行 × 200 列
 - 📝 **公式计算**：支持 260+ 种公式函数，自动依赖追踪和缓存优化
 - 📄 **多工作表**：创建、切换、删除多个工作表，支持工作表重命名
 - 🎨 **单元格样式**：支持加粗、对齐、边框、背景色、数字格式等样式设置
@@ -264,10 +264,10 @@ setCell('A11', '=SUM(A1:A10)');
 
 | 指标 | 数值 |
 |------|------|
-| **表格规模** | 1000 行 × 100 列 |
+| **表格规模** | 5000 行 × 200 列 |
 | **渲染性能** | 60fps 流畅滚动（虚拟滚动优化） |
 | **公式函数** | 260+ 种内置函数 |
-| **撤销/重做** | 无限历史记录 |
+| **撤销/重做** | 最近 100 条操作历史 |
 | **内存占用** | 轻量级设计，纯前端实现 |
 | **Web 构建大小** | ~85KB gzip |
 | **桌面安装包** | ~130MB（含 Electron 运行时） |
@@ -280,10 +280,10 @@ setCell('A11', '=SUM(A1:A10)');
 | **语言** | TypeScript | 5.8 |
 | **构建工具** | Vite | 6.3 |
 | **样式** | Tailwind CSS | 3 |
-| **状态管理** | Zustand | 4 |
-| **图标** | Lucide React | 0 |
+| **状态管理** | Zustand | 5 |
+| **图标** | Lucide React | 0.511 |
 | **画布渲染** | HTML5 Canvas | - |
-| **桌面框架** | Electron | 35 |
+| **桌面框架** | Electron | 42 |
 | **打包工具** | electron-builder | - |
 | **测试** | Vitest | - |
 
@@ -305,19 +305,23 @@ SnapSheet/
 │   ├── icon.png         # 窗口图标
 │   └── icon.icns        # macOS 程序图标
 ├── src/
+│   ├── canvas/          # Canvas 渲染引擎
+│   │   └── CanvasRenderer.ts
 │   ├── components/      # UI 组件
 │   │   ├── Toolbar.tsx       # 顶部 Ribbon 工具栏
 │   │   ├── FormulaBar.tsx    # 公式输入栏
 │   │   ├── Spreadsheet.tsx   # 表格主组件（Canvas 渲染）
 │   │   ├── SheetTabs.tsx     # 底部工作表标签
 │   │   ├── PropertyPanel.tsx # 右侧属性面板
-│   │   └── FindDialog.tsx    # 查找替换对话框
+│   │   ├── FindDialog.tsx    # 查找替换对话框
+│   │   └── ContextMenu.tsx   # 右键菜单
 │   ├── engine/          # 公式计算引擎
-│   │   ├── Lexer.ts            # 词法分析器
-│   │   ├── Parser.ts           # 语法分析器
-│   │   ├── Evaluator.ts        # 表达式求值器
+│   │   ├── Lexer.ts            # 词法分析器（旧版兼容）
+│   │   ├── Parser.ts           # 语法分析器（旧版兼容）
+│   │   ├── Evaluator.ts        # 表达式求值器（旧版兼容）
 │   │   ├── engineeringFormulas.ts # 工程领域专业公式库
-│   │   └── FormulaEngine.ts    # 公式引擎入口
+│   │   ├── FormulaEngine.ts    # 公式引擎入口（依赖图与重算）
+│   │   └── index.ts            # 引擎模块导出
 │   ├── snaplang/         # SnapLang 公式/脚本适配层
 │   │   ├── adapter.ts    # 公式预处理与原生函数注册
 │   │   ├── snaplang-wrapper.ts  # SnapLang 运行时 ES 模块包装
@@ -325,16 +329,23 @@ SnapSheet/
 │   ├── store/           # Zustand 状态管理
 │   │   └── useSpreadsheetStore.ts
 │   ├── hooks/           # 自定义 Hooks
+│   │   └── useTheme.ts  # 主题切换
 │   ├── types/           # TypeScript 类型定义
+│   │   └── index.ts
 │   ├── utils/           # 工具函数
 │   │   ├── cellRef.ts   # 单元格引用转换 (A1 ↔ 行列坐标)
+│   │   ├── constants.ts # 全局常量（行列数、字体、尺寸）
 │   │   ├── csv.ts       # CSV 导入导出
 │   │   ├── json.ts      # JSON 导入导出
-│   │   └── excel.ts     # Excel 导入导出
+│   │   ├── excel.ts     # Excel 导入导出
+│   │   ├── format.ts    # 数字/文本格式化
+│   │   └── theme.ts     # 主题相关工具
+│   ├── templates/       # 工作表模板
+│   ├── lib/             # 工具库（如 shadcn utils）
+│   ├── test/            # 测试配置
 │   ├── App.tsx          # 主应用组件
 │   ├── main.tsx         # 应用入口
 │   └── index.css        # 全局样式（主题变量）
-├── tests/               # 单元测试
 ├── website/             # 产品官网
 │   ├── index.html       # 官网落地页
 │   └── screenshot.png   # 界面预览图
@@ -351,7 +362,7 @@ SnapSheet/
 
 ### 代码规范
 
-项目使用 ESLint 和 Prettier 进行代码检查：
+项目使用 ESLint 进行代码检查：
 
 ```bash
 # 运行 ESLint 检查
@@ -383,7 +394,8 @@ SnapSheet 采用分层架构设计：
 │                Canvas 渲染引擎 + 虚拟滚动                    │
 ├─────────────────────────────────────────────────────────────┤
 │                      计算层 (Compute)                       │
-│        Lexer → Parser → Evaluator → 依赖追踪               │
+│   FormulaEngine (依赖图) → SnapLang Adapter → SnapLang     │
+│   Lexer/Parser/Evaluator 保留用于旧版兼容                   │
 ├─────────────────────────────────────────────────────────────┤
 │                      脚本层 (Script)                        │
 │                  SnapLang → Adapter → Store                │
@@ -392,16 +404,24 @@ SnapSheet 采用分层架构设计：
 
 ### 添加新公式函数
 
-在 `src/engine/Evaluator.ts` 中添加新的函数实现：
+当前主公式引擎已迁移至 SnapLang，新函数应优先在 `src/snaplang/adapter.ts` 的 `setupCellFunctions` 中注册：
+
+```typescript
+const myFunc = snaplang.makeNativeFunction('MYFUNCTION', (arg: any) => {
+  // 验证参数并实现逻辑
+  return arg * 2;
+});
+env.define('MYFUNCTION', myFunc);
+```
+
+如需兼容旧版 AST 求值，可同时在 `src/engine/Evaluator.ts` 的 `functions` Map 中添加实现：
 
 ```typescript
 private functions: Map<string, Function> = new Map([
   ['MYFUNCTION', (args: any[], context: EvaluationContext) => {
-    // 验证参数数量
     if (args.length !== 2) {
       throw new Error('MYFUNCTION 需要 2 个参数');
     }
-    // 实现自定义逻辑
     return args[0] + args[1];
   }]
 ]);
@@ -414,14 +434,19 @@ private functions: Map<string, Function> = new Map([
 ```typescript
 interface CellStyle {
   bold?: boolean;
-  align?: 'left' | 'center' | 'right';
-  bgColor?: string;
-  border?: CellBorder;
-  numberFormat?: NumberFormat;
-  // 添加新的样式属性
   italic?: boolean;
+  underline?: boolean;
+  align?: 'left' | 'center' | 'right';
   color?: string;
+  bgColor?: string;
+  fontFamily?: string;
   fontSize?: number;
+  wrap?: boolean;
+  borderTop?: BorderStyle;
+  borderBottom?: BorderStyle;
+  borderLeft?: BorderStyle;
+  borderRight?: BorderStyle;
+  // 添加新的样式属性
 }
 ```
 
@@ -498,7 +523,7 @@ npm run build
 npm run build:electron
 ```
 
-构建产物位于 `release/` 目录，包含：
+构建产物位于 `release/` 目录（由 electron-builder 配置），包含：
 
 - `SnapSheet-0.0.0-arm64.dmg` — Apple Silicon（M1/M2/M3/M4）
 - `SnapSheet-0.0.0.dmg` — Intel 处理器 Mac
@@ -551,7 +576,7 @@ npm run build:electron
 A: 点击工具栏"文件"标签页中的"导入 Excel"按钮，选择 .xlsx 或 .xls 文件即可导入。同时支持导出为 Excel 文件。
 
 ### Q: 公式计算性能如何？
-A: 公式引擎采用依赖追踪和缓存机制，只在依赖单元格变化时重新计算，1000 行 × 100 列的表格可以流畅运行。
+A: 公式引擎采用依赖追踪和缓存机制，只在依赖单元格变化时重新计算，5000 行 × 200 列的表格可以流畅运行。
 
 ### Q: 如何运行桌面版？
 A: 运行 `npm run build:electron` 后，打开 `release/` 目录中的 `.dmg` 文件，将 SnapSheet.app 拖到 Applications 文件夹即可。

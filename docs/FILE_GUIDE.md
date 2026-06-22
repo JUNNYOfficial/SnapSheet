@@ -59,10 +59,11 @@ SnapSheet/
 │   │   ├── format.ts        # 数字/文本格式化
 │   │   ├── json.ts          # JSON 工作簿序列化
 │   │   └── theme.ts         # 主题相关工具
+│   ├── test/                # 测试配置
+│   │   └── setup.ts         # Vitest 测试环境配置
 │   ├── App.tsx              # 应用根组件
 │   ├── main.tsx             # React 应用入口
 │   └── index.css            # 全局样式与主题变量
-├── tests/                   # 端到端/集成测试
 ├── website/                 # 产品官网
 │   ├── index.html
 │   └── screenshot.png
@@ -80,11 +81,12 @@ SnapSheet/
 
 | 文件 | 职责 | 维护注意 |
 |------|------|----------|
-| `Lexer.ts` | 将公式字符串拆分为 Token 序列 | 新增运算符或函数名时需同步更新 token 规则 |
-| `Parser.ts` | 将 Token 序列解析为 AST | 修改语法时需同步测试嵌套表达式 |
-| `Evaluator.ts` | 遍历 AST 并求值，注册所有内置函数 | 新增函数优先在 `engineeringFormulas.ts` 中注册；简单函数可直接添加 case |
-| `FormulaEngine.ts` | 管理依赖图、检测循环引用、拓扑排序重算 | 修改重算逻辑时注意避免无限递归 |
+| `FormulaEngine.ts` | 管理依赖图、检测循环引用、拓扑排序重算 | 修改重算逻辑时注意避免无限递归；实际求值委托给 SnapLang 适配层 |
+| `Lexer.ts` | 将公式字符串拆分为 Token 序列 | 旧版兼容组件，当前主引擎已迁移至 SnapLang |
+| `Parser.ts` | 将 Token 序列解析为 AST | 旧版兼容组件 |
+| `Evaluator.ts` | 遍历 AST 并求值，注册旧版内置函数 | 新增函数优先在 `src/snaplang/adapter.ts` 注册；仅旧版兼容函数在此添加 |
 | `engineeringFormulas.ts` | 工程领域专业公式库 | 新增公式需标注单位、适用条件，并更新 README 示例 |
+| `index.ts` | 引擎模块导出 | 旧版 `evaluate` 便捷函数保留兼容 |
 
 ### 2. 状态管理（src/store/）
 
@@ -148,11 +150,12 @@ export function cellToCoords(ref: string): { row: number; col: number } { ... }
 
 ### 添加新公式函数
 
-1. **通用/数学/逻辑/文本/日期函数**：在 `src/engine/Evaluator.ts` 的对应分类区块中添加 case。
-2. **工程领域公式**：优先添加到 `src/engine/engineeringFormulas.ts`，然后在 `Evaluator.ts` default 分支中通过 Map 调用。
-3. 在 `README.md` 的「公式使用」或「工程领域专业公式」章节补充示例。
-4. 如函数行为复杂，请在 README.md 的「工程领域专业公式」章节补充推导与应用场景。
-5. 为关键路径添加单元测试。
+1. **通用/数学/逻辑/文本/日期函数**：优先在 `src/snaplang/adapter.ts` 的 `setupCellFunctions` 中注册为 SnapLang 原生函数。
+2. **旧版兼容**：如需兼容旧版 AST 求值，在 `src/engine/Evaluator.ts` 的对应分类区块中添加 case。
+3. **工程领域公式**：优先添加到 `src/engine/engineeringFormulas.ts`，然后在 `Evaluator.ts` default 分支中通过 Map 调用。
+4. 在 `README.md` 的「公式使用」或「工程领域专业公式」章节补充示例。
+5. 如函数行为复杂，请在 README.md 的「工程领域专业公式」章节补充推导与应用场景。
+6. 为关键路径添加单元测试。
 
 ### 添加新 UI 组件
 
@@ -179,10 +182,10 @@ export function cellToCoords(ref: string): { row: number; col: number } { ... }
 ## 🆘 常见问题
 
 **Q: 修改公式后单元格不更新？**  
-A: 检查 `Evaluator.ts` 中是否正确返回错误码（如 `#VALUE!`），并确认 `FormulaEngine.ts` 的依赖图是否包含新引用的单元格。
+A: 检查 `src/snaplang/adapter.ts` 是否正确返回错误码（如 `#VALUE!`），并确认 `FormulaEngine.ts` 的依赖图是否包含新引用的单元格。
 
 **Q: 新增工程公式后显示 `#NAME?`？**  
-A: 确认函数名已注册到 `engineeringFormulas` Map，或在 `Evaluator.ts` 的 switch 中有对应 case。
+A: 确认函数名已注册到 `engineeringFormulas` Map，或在 `src/snaplang/adapter.ts` 的 `setupCellFunctions` 中有对应原生函数。
 
 **Q: GitHub Pages 部署失败？**  
 A: 检查 `.github/workflows/deploy.yml` 各步骤是否成功；确认 `snaplang-v1.0.0/dist` 等必要目录已提交到仓库。

@@ -56,6 +56,8 @@ SnapSheet 的公式引擎由两部分组成：
 
 ## 核心组件
 
+> 以下 Lexer、Parser、Evaluator 为旧版公式引擎组件，当前主引擎已通过 `src/snaplang/adapter.ts` 委托给 SnapLang v1.0.0 执行求值。这些组件保留用于兼容旧版 AST 形式的公式表达式。
+
 ### 1. Lexer（词法分析器）
 
 **职责**：将公式字符串分解为 Token 序列。

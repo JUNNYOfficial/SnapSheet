@@ -56,6 +56,7 @@
 | | SheetTabs | 底部工作表标签 |
 | **面板组件** | PropertyPanel | 右侧属性面板 |
 | **对话框组件** | FindDialog | 查找替换对话框 |
+| **菜单组件** | ContextMenu | 右键上下文菜单 |
 
 ## 组件详情
 
@@ -69,10 +70,10 @@
 
 ```
 Toolbar
-├── TabSelector (标签选择器)
+├── 标签切换区
 │   ├── [文件] [开始] [插入] [视图]
 │   └── [主题切换] [属性面板]
-└── TabContent (标签内容)
+└── 标签内容区
     ├── 文件: 新建、模板、导入、导出
     ├── 开始: 撤销、重做、字体、对齐、数字格式、清除
     ├── 插入: 合并、批注、行列插入
@@ -112,16 +113,14 @@ store.getState().applyNumberFormat({ type: 'percentage' })
 
 ```
 FormulaBar
-├── CellReference (单元格引用显示)
-├── FormulaInput (公式输入框)
-└── AutoComplete (自动补全)
+├── 单元格引用显示区
+├── 公式输入区
+└── 自动补全区
 ```
 
 **关键 Props**：
 
-| Prop | 类型 | 说明 |
-|------|------|------|
-| `selectedCell` | `Cell` | 当前选中的单元格 |
+无外部 Props，直接从 Zustand store 读取 `selection`、`editing`、`formulaBarValue` 等状态。
 
 **核心功能**：
 
@@ -141,13 +140,13 @@ FormulaBar
 ```
 Spreadsheet
 ├── Canvas (主画布)
-│   ├── HeaderRow (列头)
-│   ├── HeaderCol (行头)
-│   └── Cells (单元格区域)
-├── GridOverlay (网格覆盖层)
-├── SelectionOverlay (选择覆盖层)
-├── EditorOverlay (编辑器覆盖层)
-└── ScrollContainer (滚动容器)
+│   ├── 列头
+│   ├── 行头
+│   └── 单元格区域
+├── 网格覆盖层
+├── 选择覆盖层
+├── 编辑器覆盖层
+└── 滚动容器
 ```
 
 **关键 Props**：
@@ -192,10 +191,10 @@ Spreadsheet
 
 ```
 SheetTabs
-├── SheetList (工作表标签列表)
+├── 工作表标签列表
 │   ├── [Sheet1] [Sheet2] [+]
 │   └── 右键菜单 (重命名、删除)
-└── StatusBar (状态栏)
+└── 状态栏
     ├── 选中区域: A1:C10
     ├── 求和: 100 | 平均: 50 | 计数: 6
     └── [更多...]
@@ -223,10 +222,10 @@ PropertyPanel
 ├── Header (标题栏)
 │   ├── 属性面板
 │   └── [关闭]
-├── TabSelector (标签选择器)
+├── 标签选择区
 │   ├── [格式] [数据] [插入] [视图] [AI]
 │   └── 选中指示器
-└── TabContent (标签内容)
+└── 标签内容区
     ├── 格式: 对齐、字体、边框、背景色、数字格式
     ├── 数据: 数据验证、条件格式、排序
     ├── 插入: 合并、批注、行列插入
@@ -286,6 +285,20 @@ FindDialog
 - 正则匹配
 - 区分大小写
 - 导航（上一个、下一个）
+
+### 7. ContextMenu
+
+**文件**：`src/components/ContextMenu.tsx`
+
+**职责**：表格右键上下文菜单，提供复制、粘贴、插入/删除行列等快捷操作。
+
+**核心功能**：
+
+- 复制 / 粘贴 / 剪切
+- 插入行 / 列
+- 删除行 / 列
+- 清除内容
+- 右键触发定位
 
 ## 开发规范
 
@@ -426,8 +439,8 @@ try {
 
 ### 添加新功能到 Toolbar
 
-1. 在 `src/components/Toolbar.tsx` 中添加新的 Group
-2. 在对应的 TabContent 中添加按钮
+1. 在 `src/components/Toolbar.tsx` 中添加新的 ToolbarGroup
+2. 在对应的标签内容区添加按钮
 3. 实现按钮的 onClick 逻辑
 
 ### 添加新标签到 PropertyPanel
