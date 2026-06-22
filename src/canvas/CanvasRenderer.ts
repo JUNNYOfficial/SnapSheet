@@ -482,7 +482,13 @@ export class CanvasRenderer {
       const display = cell.computed !== undefined && cell.formula ? String(cell.computed) : cell.value;
       const isError = display.startsWith('#');
       const formattedDisplay = isError ? display : this.formatCellValue(display, cell.numberFormat);
-      const isNumeric = !isError && !isNaN(parseFloat(display)) && !cell.formula;
+      // 公式单元格应依据计算结果判断是否为数字；普通单元格按原始值判断
+      const valueForNumericCheck = cell.formula ? cell.computed : display;
+      const isNumeric =
+        !isError &&
+        valueForNumericCheck !== undefined &&
+        valueForNumericCheck !== '' &&
+        !isNaN(parseFloat(String(valueForNumericCheck)));
       const hasExplicitAlign = cell.style?.align !== undefined;
       ctx.font = this.buildCellFont(cell.style);
       ctx.fillStyle = isError ? this.themeColor('errorText') : (cell.style?.color || this.themeColor('cellText'));

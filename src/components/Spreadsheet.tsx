@@ -15,6 +15,7 @@ import {
   HEADER_ROW_HEIGHT,
 } from '../utils/constants';
 import ContextMenu from './ContextMenu';
+import { requestDeleteConfirmation } from '../utils/deleteConfirmation';
 
 /** 测量文本渲染宽度，用于编辑框自适应 */
 function measureTextWidth(text: string, font: string): number {
@@ -76,10 +77,20 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
       onSelection: (sel) => store.getState().setSelection(sel),
       onEdit: (row, col) => store.getState().setEditing(row, col),
       onEditWithChar: (row, col, ch) => {
-        store.getState().setEditing(row, col);
-        store.getState().setFormulaBarValue(ch);
+        const current = store.getState().editing;
+        console.log('onEditWithChar', row, col, ch, current);
+        if (current && current.row === row && current.col === col) {
+          // 输入框尚未获得焦点时，后续字符仍可能由 Canvas 派发，直接追加
+          const next = store.getState().formulaBarValue + ch;
+          console.log('append', next);
+          store.getState().setFormulaBarValue(next);
+        } else {
+          store.getState().setEditing(row, col);
+          store.getState().setFormulaBarValue(ch);
+        }
       },
-      onClearSelection: () => store.getState().clearSelection(),
+      onClearSelection: () =>
+        requestDeleteConfirmation(() => store.getState().clearSelection(), '清除内容'),
       onCopy: () => store.getState().copySelection(),
       onPaste: (text) => {
         const sel = store.getState().selection;
@@ -132,16 +143,28 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
     }
   }, [selection]);
 
-  /** 进入编辑状态时聚焦并全选输入框内容 */
+  /**
+   * 进入编辑状态时聚焦输入框并设置光标位置。
+   * - 双击 / F2 / Delete 进入编辑：全选已有内容。
+   * - 直接输入字符进入编辑：光标放到末尾，避免第二个字符覆盖第一个字符。
+   */
   useEffect(() => {
     if (editing && editInputRef.current) {
       setEditInputWidth(0);
       setTimeout(() => {
-        editInputRef.current?.focus();
-        editInputRef.current?.select();
+        const input = editInputRef.current;
+        if (!input) return;
+        input.focus();
+        const original = store.getState().editOriginalValue;
+        const current = store.getState().formulaBarValue;
+        if (current === original && current !== '') {
+          input.select();
+        } else {
+          input.setSelectionRange(current.length, current.length);
+        }
       }, 10);
     }
-  }, [editing]);
+  }, [editing, store]);
 
   /** 编辑内容变化时自适应输入框宽度 */
   useEffect(() => {
@@ -161,14 +184,17 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
     }
   }, [isDark]);
 
-  /** 激活工作表变化时同步冻结窗格配置 */
+  /**
+   * 工作簿数据变化（单元格、样式、行列尺寸、冻结窗格等）时重绘。
+   * 依赖整个 workbook 对象，确保单元格内容更新后表格立即刷新。
+   */
   useEffect(() => {
     if (rendererRef.current) {
       const sheet = store.getState().getActiveSheet();
       rendererRef.current.setFrozenPanes(sheet.frozenRows, sheet.frozenCols);
       rendererRef.current.render();
     }
-  }, [workbook.activeSheetId, store]);
+  }, [workbook, store]);
 
   /** 获取当前编辑单元格的数据 */
   const getEditCell = () => {
@@ -232,12 +258,18 @@ export default function Spreadsheet({ isDark = false }: SpreadsheetProps) {
             if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
           }}
           onPaste={handlePaste}
-          onClear={() => store.getState().clearSelection()}
+          onClear={() =>
+            requestDeleteConfirmation(() => store.getState().clearSelection(), '清除内容')
+          }
           onClearFormat={() => store.getState().clearFormatSelection()}
           onInsertRow={() => store.getState().insertRow(selection.startRow)}
-          onDeleteRow={() => store.getState().deleteRow(selection.startRow)}
+          onDeleteRow={() =>
+            requestDeleteConfirmation(() => store.getState().deleteRow(selection.startRow), '删除行')
+          }
           onInsertCol={() => store.getState().insertCol(selection.startCol)}
-          onDeleteCol={() => store.getState().deleteCol(selection.startCol)}
+          onDeleteCol={() =>
+            requestDeleteConfirmation(() => store.getState().deleteCol(selection.startCol), '删除列')
+          }
         />
       )}
       {editing && (

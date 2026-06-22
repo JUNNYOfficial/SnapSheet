@@ -11,6 +11,7 @@ import { toCSV, parseCSV } from '../utils/csv';
 import { workbookToJSON, workbookFromJSON, downloadFile } from '../utils/json';
 import { exportToExcel, importFromExcel } from '../utils/excel';
 import { coordsToCell } from '../utils/cellRef';
+import { requestDeleteConfirmation } from '../utils/deleteConfirmation';
 
 import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from '../utils/constants';
 import {
@@ -268,7 +269,8 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
   /** 右对齐 */
   const handleAlignRight = () => store.getState().applyStyleToSelection({ align: 'right' });
   /** 清空选择区域内容 */
-  const handleClear = () => store.getState().clearSelection();
+  const handleClear = () =>
+    requestDeleteConfirmation(() => store.getState().clearSelection(), '清除内容');
 
   /** AI 分析选中区域：统计 SUM/AVG/MAX/MIN 并推荐公式 */
   const handleAiAnalyze = () => {
@@ -508,9 +510,21 @@ export default function Toolbar({ isDark = false, onToggleTheme, onTogglePanel }
             <ToolbarDivider />
             <ToolbarGroup title="行列">
               <ToolbarButton onClick={() => store.getState().insertRow(selection.startRow)} icon={<Plus size={16} />} title="插行" />
-              <ToolbarButton onClick={() => store.getState().deleteRow(selection.startRow)} icon={<Minus size={16} />} title="删行" />
+              <ToolbarButton
+                onClick={() =>
+                  requestDeleteConfirmation(() => store.getState().deleteRow(selection.startRow), '删除行')
+                }
+                icon={<Minus size={16} />}
+                title="删行"
+              />
               <ToolbarButton onClick={() => store.getState().insertCol(selection.startCol)} icon={<Plus size={16} />} title="插列" />
-              <ToolbarButton onClick={() => store.getState().deleteCol(selection.startCol)} icon={<Minus size={16} />} title="删列" />
+              <ToolbarButton
+                onClick={() =>
+                  requestDeleteConfirmation(() => store.getState().deleteCol(selection.startCol), '删除列')
+                }
+                icon={<Minus size={16} />}
+                title="删列"
+              />
             </ToolbarGroup>
           </>
         )}

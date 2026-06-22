@@ -5,16 +5,18 @@
  *              并负责自动保存、Ctrl+S/Ctrl+F 快捷键、主题切换等全局行为。
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Toolbar from './components/Toolbar';
 import FormulaBar from './components/FormulaBar';
 import Spreadsheet from './components/Spreadsheet';
 import SheetTabs from './components/SheetTabs';
 import FindDialog from './components/FindDialog';
 import PropertyPanel from './components/PropertyPanel';
+import ConfirmDialog from './components/ConfirmDialog';
 import { useSpreadsheetStore } from './store/useSpreadsheetStore';
 import { useTheme } from './hooks/useTheme';
 import { workbookToJSON, workbookFromJSON } from './utils/json';
+import { registerDeleteConfirmation } from './utils/deleteConfirmation';
 import { Save, CheckCircle } from 'lucide-react';
 
 const STORAGE_KEY = 'snapsheet_autosave';
@@ -28,6 +30,12 @@ export default function App() {
   const [panelOpen, setPanelOpen] = useState(false);
   /** 自动保存状态：已保存/保存中/未保存 */
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
+  /** 删除确认对话框开关 */
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  /** 删除确认对话框展示的操作名称 */
+  const [confirmLabel, setConfirmLabel] = useState('删除');
+  /** 待执行的删除操作 */
+  const pendingActionRef = useRef<(() => void) | null>(null);
   const store = useSpreadsheetStore;
   const { theme, toggleTheme, isDark } = useTheme();
 
@@ -55,6 +63,55 @@ export default function App() {
       }
     }
   }, [store]);
+
+  /**
+   * 注册删除确认处理器。
+   * 当各组件触发删除/清空操作时，若当前工作簿存在未保存修改，则弹出确认对话框。
+   */
+  useEffect(() => {
+    return registerDeleteConfirmation(({ action, label }) => {
+      if (!store.getState().isDirty) {
+        action();
+        return;
+      }
+      pendingActionRef.current = action;
+      setConfirmLabel(label);
+      setConfirmOpen(true);
+    });
+  }, [store]);
+
+  /** 确认保存并继续执行删除 */
+  const handleConfirmSave = () => {
+    try {
+      const json = workbookToJSON(store.getState().workbook);
+      if (json.length > 4 * 1024 * 1024) {
+        alert('工作簿过大，无法保存到本地存储。建议导出为文件。');
+        return;
+      }
+      localStorage.setItem(STORAGE_KEY, json);
+      store.getState().markSaved();
+      setSaveStatus('saved');
+    } catch (err) {
+      alert('保存失败: ' + (err as Error).message);
+      return;
+    }
+    setConfirmOpen(false);
+    pendingActionRef.current?.();
+    pendingActionRef.current = null;
+  };
+
+  /** 不保存并继续执行删除 */
+  const handleConfirmDiscard = () => {
+    setConfirmOpen(false);
+    pendingActionRef.current?.();
+    pendingActionRef.current = null;
+  };
+
+  /** 取消删除 */
+  const handleConfirmCancel = () => {
+    setConfirmOpen(false);
+    pendingActionRef.current = null;
+  };
 
   /**
    * 自动保存订阅：状态变更后延迟 800ms 序列化工作簿到 localStorage。
@@ -107,6 +164,7 @@ export default function App() {
             return;
           }
           localStorage.setItem(STORAGE_KEY, json);
+          store.getState().markSaved();
           setSaveStatus('saved');
         } catch (err) {
           alert('保存失败: ' + (err as Error).message);
@@ -191,6 +249,16 @@ export default function App() {
 
       {/* 右侧属性面板 */}
       <PropertyPanel isOpen={panelOpen} onClose={() => setPanelOpen(false)} />
+
+      {/* 删除前保存确认对话框 */}
+      <ConfirmDialog
+        open={confirmOpen}
+        title={`保存更改 - ${confirmLabel}`}
+        message="当前表格内容已修改，是否保存更改？"
+        onSave={handleConfirmSave}
+        onDiscard={handleConfirmDiscard}
+        onCancel={handleConfirmCancel}
+      />
     </div>
   );
 }

@@ -23,6 +23,7 @@ interface SpreadsheetState {
   formulaBarValue: string;
   scrollLeft: number;
   scrollTop: number;
+  isDirty: boolean;
 
   getActiveSheet: () => Sheet;
   setActiveSheet: (id: string) => void;
@@ -43,6 +44,12 @@ interface SpreadsheetState {
   setEditing: (row: number, col: number | null) => void;
   setFormulaBarValue: (value: string) => void;
   setScroll: (scrollLeft: number, scrollTop: number) => void;
+  markSaved: () => void;
+
+  insertRow: (row: number) => void;
+  deleteRow: (row: number) => void;
+  insertCol: (col: number) => void;
+  deleteCol: (col: number) => void;
 
   setColWidth: (col: number, width: number) => void;
   setRowHeight: (row: number, height: number) => void;
@@ -51,11 +58,6 @@ interface SpreadsheetState {
 
   setFrozenRows: (rows: number) => void;
   setFrozenCols: (cols: number) => void;
-
-  insertRow: (row: number) => void;
-  deleteRow: (row: number) => void;
-  insertCol: (col: number) => void;
-  deleteCol: (col: number) => void;
 
   fillRange: (
     source: { startRow: number; startCol: number; endRow: number; endCol: number },
@@ -185,7 +187,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     for (const [key, width] of snapshot.colWidths.entries()) {
       sheet.colWidths.set(key, width);
     }
-    set({ workbook: { ...get().workbook } });
+    set({ workbook: { ...get().workbook }, isDirty: true });
   };
 
   /**
@@ -296,6 +298,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
     scrollLeft: 0,
     /** 垂直滚动偏移 */
     scrollTop: 0,
+    isDirty: false,
 
     /** 获取当前激活的工作表 */
     getActiveSheet: () => {
@@ -407,7 +410,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
         }
       }
 
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -462,7 +465,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
         }
       }
 
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -533,7 +536,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
         sheet.cells.set(ref, cell);
       }
 
-      set({ workbook: { ...get().workbook }, editing: null, formulaBarValue: '', editOriginalValue: '' });
+      set({ workbook: { ...get().workbook }, isDirty: true, editing: null, formulaBarValue: '', editOriginalValue: '' });
     },
 
     /**
@@ -555,7 +558,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       pushHistory();
       cell.style = { ...cell.style, ...style };
       sheet.cells.set(ref, cell);
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -589,7 +592,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       }
       if (!hasChanges) return;
       pushHistory();
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /** 清除当前选择区域的所有单元格样式 */
@@ -616,7 +619,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       }
       if (!hasChanges) return;
       pushHistory();
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -661,6 +664,11 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       set({ scrollLeft, scrollTop });
     },
 
+    /** 标记当前工作簿已保存，清除脏状态 */
+    markSaved: () => {
+      set({ isDirty: false });
+    },
+
     /**
      * 设置列宽。
      * @param col 列索引
@@ -673,7 +681,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       if (existing === width) return;
       pushHistory();
       sheet.colWidths.set(col, width);
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -688,7 +696,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       if (existing === height) return;
       pushHistory();
       sheet.rowHeights.set(row, Math.max(MIN_ROW_HEIGHT, height));
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /** 获取列宽，未设置时返回默认值 */
@@ -710,7 +718,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       if (sheet.frozenRows === value) return;
       pushHistory();
       sheet.frozenRows = value;
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /** 设置冻结列数 */
@@ -720,7 +728,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       if (sheet.frozenCols === value) return;
       pushHistory();
       sheet.frozenCols = value;
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -759,7 +767,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
         sheet.rowHeights.set(r, h);
       }
 
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -803,7 +811,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
         const newRow = Math.max(0, sel.startRow - 1);
         state.setSelection({ startRow: newRow, startCol: sel.startCol, endRow: newRow, endCol: sel.endCol });
       }
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -842,7 +850,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
         sheet.colWidths.set(c, w);
       }
 
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -886,7 +894,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
         const newCol = Math.max(0, sel.startCol - 1);
         state.setSelection({ startRow: sel.startRow, startCol: newCol, endRow: sel.endRow, endCol: newCol });
       }
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -975,7 +983,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
           }
         }
       }
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -1049,7 +1057,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       for (const [r, h] of newRowHeights.entries()) {
         sheet.rowHeights.set(r, h);
       }
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -1091,7 +1099,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       }
       if (!hasChanges) return;
       pushHistory();
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -1162,7 +1170,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       }
       if (!hasChanges) return;
       pushHistory();
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /** 合并当前选择区域的单元格 */
@@ -1193,7 +1201,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       const mainRef = coordsToCell(minRow, minCol);
       sheet.mergedCells.set(mainRef, { startRow: minRow, startCol: minCol, endRow: maxRow, endCol: maxCol });
       pushHistory();
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /** 拆分当前选择区域中的合并单元格 */
@@ -1207,7 +1215,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       if (!sheet.mergedCells.has(ref)) return;
       sheet.mergedCells.delete(ref);
       pushHistory();
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -1236,7 +1244,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       const sheet = get().getActiveSheet();
       sheet.conditionalFormats.push(format);
       pushHistory();
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /** 清除当前工作表的所有条件格式 */
@@ -1245,7 +1253,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       if (sheet.conditionalFormats.length === 0) return;
       sheet.conditionalFormats = [];
       pushHistory();
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -1266,7 +1274,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       if (cell.comment === comment) return;
       cell.comment = comment;
       pushHistory();
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -1282,7 +1290,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       if (!cell || !cell.comment) return;
       cell.comment = undefined;
       pushHistory();
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -1302,7 +1310,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       }
       cell.validation = rule;
       pushHistory();
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -1318,7 +1326,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       if (!cell || !cell.validation) return;
       cell.validation = undefined;
       pushHistory();
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /**
@@ -1432,7 +1440,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
           sheet.cells.set(ref, cell);
         }
       }
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /** 复制当前选择区域为制表符分隔文本 */
@@ -1493,7 +1501,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
           sheet.cells.delete(ref);
         }
       }
-      set({ workbook: { ...get().workbook } });
+      set({ workbook: { ...get().workbook }, isDirty: true });
     },
 
     /** 撤销上一次操作 */
@@ -1529,6 +1537,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
         selection: { startRow: 0, startCol: 0, endRow: 0, endCol: 0 },
         editing: null,
         formulaBarValue: '',
+        isDirty: false,
       });
     },
 
@@ -1539,6 +1548,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
         selection: { startRow: 0, startCol: 0, endRow: 0, endCol: 0 },
         editing: null,
         formulaBarValue: '',
+        isDirty: false,
       });
     },
 
