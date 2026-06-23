@@ -60,7 +60,7 @@ function createWindow() {
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {
-    win.loadFile(path.join(RENDERER_DIST, 'index.html'));
+    win.loadURL('https://snapsheet.asia/app/index.html');
   }
 
   win.webContents.setWindowOpenHandler(({ url }) => {
