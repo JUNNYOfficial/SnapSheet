@@ -11,7 +11,7 @@
     "dev:electron": "npm run build:snaplang && vite --config vite.electron.config.ts",
     "build": "npm run build:snaplang && tsc -b && vite build",
     "build:electron": "npm run build:snaplang && npm run build:icon && tsc -b && vite build --config vite.electron.config.ts && tsc -p electron/tsconfig.json && electron-builder --publish=never",
-    "build:electron:ci": "npm run build:snaplang && tsc -b && vite build --config vite.electron.config.ts && tsc -p electron/tsconfig.json && electron-builder",
+    "build:electron:ci": "npm run build:snaplang && tsc -b && vite build --config vite.electron.config.ts && tsc -p electron/tsconfig.json && electron-builder --publish=never",
     "lint": "eslint .",
     "preview": "vite preview",
     "check": "tsc -b --noEmit",
