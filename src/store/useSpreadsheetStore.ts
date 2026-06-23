@@ -813,7 +813,6 @@ export const useSpreadsheetStore = create<SpreadsheetState>()((set, get) => {
       const sheet = state.getActiveSheet();
       sheet.autoFilter = null;
       // 恢复所有由筛选导致的隐藏行
-      const hiddenByFilter = new Set(sheet.hiddenRows);
       for (const r of sheet.hiddenRows) state.setRowHeight(r, DEFAULT_ROW_HEIGHT);
       sheet.hiddenRows = [];
       set({ workbook: { ...state.workbook }, isDirty: true });

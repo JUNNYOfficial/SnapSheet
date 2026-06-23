@@ -28,18 +28,28 @@ let win: BrowserWindow | null = null;
  * 开发环境加载 Vite 开发服务器，生产环境加载构建后的 index.html。
  */
 function createWindow() {
+  const isMac = process.platform === 'darwin';
+  const isWin = process.platform === 'win32';
+  const iconExt = isWin ? 'icon.ico' : 'icon.png';
+
   win = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 900,
     minHeight: 600,
     title: 'SnapSheet',
-    icon: path.join(process.env.VITE_PUBLIC ?? __dirname, 'icon.png'),
-    titleBarStyle: 'hiddenInset',
-    transparent: true,
-    vibrancy: 'under-window',
-    backgroundMaterial: 'acrylic',
-    backgroundColor: '#00000000',
+    icon: path.join(process.env.VITE_PUBLIC ?? __dirname, iconExt),
+    ...(isMac
+      ? {
+          titleBarStyle: 'hiddenInset',
+          transparent: true,
+          vibrancy: 'under-window',
+          backgroundColor: '#00000000',
+        }
+      : {
+          backgroundMaterial: 'acrylic',
+          backgroundColor: '#ffffff',
+        }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,

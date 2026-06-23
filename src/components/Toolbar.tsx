@@ -10,7 +10,7 @@ import { useSpreadsheetStore } from '../store/useSpreadsheetStore';
 import { toCSV, parseCSV } from '../utils/csv';
 import { workbookToJSON, workbookFromJSON, downloadFile } from '../utils/json';
 import { exportToExcel, importFromExcel } from '../utils/excel';
-import { coordsToCell, colToLetter } from '../utils/cellRef';
+import { coordsToCell } from '../utils/cellRef';
 import { requestDeleteConfirmation } from '../utils/deleteConfirmation';
 import { TEMPLATES } from '../templates';
 

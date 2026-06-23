@@ -4,7 +4,7 @@
  *              根据单元格内容长度或自动换行后的行数计算合适的尺寸。
  */
 
-import { FONT_FAMILY, FONT_SIZE, DEFAULT_ROW_HEIGHT, MIN_ROW_HEIGHT, MIN_COL_WIDTH, SHEET_ROW_COUNT, SHEET_COL_COUNT } from './constants';
+import { FONT_FAMILY, FONT_SIZE, DEFAULT_ROW_HEIGHT, MIN_COL_WIDTH, SHEET_ROW_COUNT, SHEET_COL_COUNT } from './constants';
 import { coordsToCell, colToLetter } from './cellRef';
 import type { Sheet } from '../types';
 

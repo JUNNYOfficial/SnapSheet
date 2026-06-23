@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapSheet - 高性能电子表格</title>
+  <title>SnapSheet - 重新想象电子表格</title>
   <meta name="description" content="SnapSheet 是一款基于 Canvas 的高性能电子表格，支持 260+ 公式函数、公式自动补全、XLOOKUP、自动筛选、图表插入、多工作表与导入导出。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -22,19 +25,22 @@
               700: '#15803d',
               800: '#166534',
               900: '#14532d',
+              950: '#052e16',
             }
           },
           fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'],
+            sans: ['Inter', 'Noto Sans SC', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'],
           },
           animation: {
             'fade-up': 'fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
             'fade-in': 'fadeIn 1s ease-out forwards',
             'float': 'float 6s ease-in-out infinite',
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'shimmer': 'shimmer 2.5s linear infinite',
           },
           keyframes: {
             fadeUp: {
-              '0%': { opacity: '0', transform: 'translateY(24px)' },
+              '0%': { opacity: '0', transform: 'translateY(28px)' },
               '100%': { opacity: '1', transform: 'translateY(0)' },
             },
             fadeIn: {
@@ -43,260 +49,687 @@
             },
             float: {
               '0%, 100%': { transform: 'translateY(0)' },
-              '50%': { transform: 'translateY(-12px)' },
+              '50%': { transform: 'translateY(-16px)' },
             },
+            shimmer: {
+              '0%': { backgroundPosition: '-1000px 0' },
+              '100%': { backgroundPosition: '1000px 0' },
+            }
           }
         }
       }
     }
   </script>
   <style>
+    :root {
+      --snap-primary: #16a34a;
+      --snap-primary-light: #4ade80;
+      --snap-dark: #14532d;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans SC', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Glass morphism utilities */
     .glass {
-      background: rgba(255, 255, 255, 0.75);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(20px) saturate(1.8);
+      -webkit-backdrop-filter: blur(20px) saturate(1.8);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(16px) saturate(1.5);
+      -webkit-backdrop-filter: blur(16px) saturate(1.5);
       border: 1px solid rgba(255, 255, 255, 0.5);
     }
-    .glass-dark {
-      background: rgba(20, 83, 45, 0.65);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-    }
+
+    /* Grid backgrounds */
     .hero-grid {
       background-image:
-        linear-gradient(rgba(22, 163, 74, 0.06) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(22, 163, 74, 0.06) 1px, transparent 1px);
-      background-size: 48px 48px;
+        linear-gradient(rgba(22, 163, 74, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(22, 163, 74, 0.05) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
+      -webkit-mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
     }
+
+    .dot-grid {
+      background-image: radial-gradient(circle, rgba(22, 163, 74, 0.12) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    /* Animation delays */
     .delay-100 { animation-delay: 100ms; }
     .delay-200 { animation-delay: 200ms; }
     .delay-300 { animation-delay: 300ms; }
     .delay-400 { animation-delay: 400ms; }
+    .delay-500 { animation-delay: 500ms; }
+    .delay-600 { animation-delay: 600ms; }
+
+    /* Reveal on scroll */
     .reveal {
       opacity: 0;
-      transform: translateY(24px);
-      transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+      transform: translateY(32px);
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .reveal.visible {
       opacity: 1;
       transform: translateY(0);
     }
+
+    /* Button hover lift */
+    .btn-lift {
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    }
+    .btn-lift:hover {
+      transform: translateY(-2px);
+    }
+    .btn-lift:active {
+      transform: translateY(0);
+    }
+
+    /* Card hover effects */
+    .feature-card {
+      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px -12px rgba(22, 163, 74, 0.15);
+      border-color: rgba(134, 239, 172, 0.5);
+    }
+
+    /* Download card */
+    .download-card {
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .download-card:hover {
+      transform: translateY(-6px) scale(1.01);
+      box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Icon container animation */
+    .icon-box {
+      transition: transform 0.3s ease, background-color 0.3s ease;
+    }
+    .feature-card:hover .icon-box {
+      transform: scale(1.1) rotate(-2deg);
+      background-color: #dcfce7;
+    }
+
+    /* Navigation link underline effect */
+    .nav-link {
+      position: relative;
+    }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #16a34a, #4ade80);
+      transition: width 0.3s ease;
+      border-radius: 2px;
+    }
+    .nav-link:hover::after {
+      width: 100%;
+    }
+
+    /* Shimmer effect for badges */
+    .shimmer-bg {
+      background: linear-gradient(90deg, #f0fdf4 25%, #dcfce7 50%, #f0fdf4 75%);
+      background-size: 1000px 100%;
+      animation: shimmer 3s linear infinite;
+    }
+
+    /* Mobile menu */
+    .mobile-menu {
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .mobile-menu.open {
+      transform: translateX(0);
+    }
+
+    /* Stats counter animation */
+    .stat-item {
+      position: relative;
+    }
+    .stat-item::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 40px;
+      background: linear-gradient(180deg, #22c55e, #16a34a);
+      border-radius: 3px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .stat-item:hover::before {
+      opacity: 1;
+    }
+
+    /* Screenshot frame */
+    .screenshot-frame {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,0.08),
+        0 20px 60px -15px rgba(0,0,0,0.15),
+        0 40px 100px -20px rgba(22, 163, 74, 0.1);
+    }
+    .screenshot-frame::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      padding: 1.5px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.4), rgba(255,255,255,0));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f8fafc;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-900 antialiased">
+<body class="bg-slate-50 text-slate-900 antialiased overflow-x-hidden">
+
   <!-- Navigation -->
-  <nav class="fixed top-0 left-0 right-0 z-50 glass">
-    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-      <a href="#" class="flex items-center gap-2.5">
-        <img src="./icon.svg" alt="SnapSheet" class="w-8 h-8 rounded-lg shadow-sm" />
-        <span class="font-semibold text-lg tracking-tight text-black">SnapSheet</span>
-      </a>
-      <div class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-        <a href="#features" class="hover:text-snap-700 transition-colors">功能</a>
-        <a href="#download" class="hover:text-snap-700 transition-colors">下载</a>
-        <a href="./app/index.html" class="text-snap-700 hover:text-snap-800 transition-colors">在线试用</a>
+  <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 lg:h-20">
+        <!-- Logo -->
+        <a href="#" class="flex items-center gap-3 group">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-snap-500 to-snap-700 flex items-center justify-center shadow-lg shadow-snap-700/20 group-hover:shadow-snap-700/30 transition-shadow">
+            <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <span class="font-bold text-xl tracking-tight text-slate-900">SnapSheet</span>
+        </a>
+
+        <!-- Desktop Navigation -->
+        <div class="hidden md:flex items-center gap-10">
+          <a href="#features" class="nav-link text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">功能特性</a>
+          <a href="#showcase" class="nav-link text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">产品展示</a>
+          <a href="#download" class="nav-link text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">下载</a>
+          <a href="./app/index.html" class="text-sm font-medium text-snap-700 hover:text-snap-800 transition-colors">在线试用</a>
+        </div>
+
+        <!-- CTA + Mobile Menu Button -->
+        <div class="flex items-center gap-4">
+          <a href="#download" class="hidden sm:inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 btn-lift shadow-lg shadow-slate-900/20">
+            立即下载
+          </a>
+          <button id="menuBtn" class="md:hidden p-2 rounded-xl hover:bg-slate-100 transition-colors" aria-label="菜单">
+            <svg id="menuIcon" class="w-6 h-6 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            <svg id="closeIcon" class="w-6 h-6 text-slate-700 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
-      <a href="#download" class="hidden sm:inline-flex items-center justify-center px-4 py-2 rounded-full bg-snap-700 text-white text-sm font-medium hover:bg-snap-800 transition-all shadow-md shadow-snap-700/20 hover:shadow-lg hover:shadow-snap-700/25">
-        立即下载
-      </a>
     </div>
   </nav>
 
-  <!-- Hero -->
-  <section class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
-    <div class="absolute inset-0 hero-grid opacity-60"></div>
-    <div class="absolute top-0 right-0 w-[600px] h-[600px] bg-snap-300/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-    <div class="absolute bottom-0 left-0 w-[500px] h-[500px] bg-emerald-300/20 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4"></div>
+  <!-- Mobile Menu Overlay -->
+  <div id="mobileMenu" class="mobile-menu fixed inset-0 z-40 bg-white/95 backdrop-blur-xl md:hidden flex flex-col">
+    <div class="flex-1 flex flex-col items-center justify-center gap-8">
+      <a href="#features" class="mobile-nav-link text-2xl font-semibold text-slate-900">功能特性</a>
+      <a href="#showcase" class="mobile-nav-link text-2xl font-semibold text-slate-900">产品展示</a>
+      <a href="#download" class="mobile-nav-link text-2xl font-semibold text-slate-900">下载</a>
+      <a href="./app/index.html" class="text-2xl font-semibold text-snap-700">在线试用</a>
+      <a href="#download" class="mt-4 inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-slate-900 text-white text-lg font-semibold hover:bg-slate-800 transition-colors">
+        立即下载
+      </a>
+    </div>
+  </div>
 
-    <div class="relative z-10 max-w-5xl mx-auto px-6 text-center">
-      <div class="opacity-0 animate-fade-up inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 border border-snap-200 text-snap-800 text-xs font-semibold shadow-sm mb-8">
-        <span class="w-1.5 h-1.5 rounded-full bg-snap-500 animate-pulse"></span>
-        v1.0.0 现已发布
-      </div>
+  <!-- Hero Section -->
+  <section class="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 lg:pt-24">
+    <!-- Background layers -->
+    <div class="absolute inset-0 hero-grid opacity-70"></div>
+    <div class="absolute top-1/4 right-0 w-[700px] h-[700px] bg-gradient-to-br from-snap-300/30 to-emerald-300/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 animate-pulse-slow"></div>
+    <div class="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-emerald-200/25 to-snap-200/20 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4"></div>
 
-      <h1 class="opacity-0 animate-fade-up delay-100 text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight text-slate-900 mb-6 leading-[1.1]">
-        重新想象<br />
-        <span class="text-transparent bg-clip-text bg-gradient-to-r from-snap-600 to-emerald-600">电子表格</span>
-      </h1>
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
+      <div class="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+        <!-- Left: Text content -->
+        <div class="text-center lg:text-left order-2 lg:order-1">
+          <div class="opacity-0 animate-fade-up inline-flex items-center gap-2.5 px-4 py-2 rounded-full shimmer-bg border border-snap-200 text-snap-800 text-sm font-semibold shadow-sm mb-8">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-snap-500 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-snap-600"></span>
+            </span>
+            v1.0.0 正式发布
+          </div>
 
-      <p class="opacity-0 animate-fade-up delay-200 text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-        基于 Canvas 渲染的高性能表格工具。支持 260+ 公式函数、公式自动补全、XLOOKUP、自动筛选、图表插入、多工作表与 Excel / CSV 导入导出。
-      </p>
+          <h1 class="opacity-0 animate-fade-up delay-100 text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tight text-slate-900 mb-6 leading-[1.08]">
+            重新想象<br />
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-snap-600 via-snap-500 to-emerald-600">电子表格</span>
+          </h1>
 
-      <div class="opacity-0 animate-fade-up delay-300 flex flex-col sm:flex-row items-center justify-center gap-4">
-        <a href="./app/index.html" class="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-snap-700 text-white font-medium hover:bg-snap-800 transition-all shadow-lg shadow-snap-700/25 hover:shadow-xl hover:shadow-snap-700/30 hover:-translate-y-0.5">
-          在线使用
-          <svg class="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-        </a>
-        <a href="#download" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-white text-slate-700 border border-slate-200 font-medium hover:border-snap-300 hover:bg-snap-50 transition-all">
-          下载 Mac 版
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-        </a>
-      </div>
+          <p class="opacity-0 animate-fade-up delay-200 text-lg sm:text-xl text-slate-600 max-w-xl mx-auto lg:mx-0 mb-10 leading-relaxed">
+            基于 Canvas 渲染的高性能表格工具。260+ 公式函数、智能自动补全、XLOOKUP、图表可视化、自动筛选，让数据处理前所未有的流畅。
+          </p>
 
-      <div class="opacity-0 animate-fade-up delay-400 mt-16 mx-auto max-w-5xl">
-        <div class="relative rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10 overflow-hidden animate-float">
-          <img src="screenshot.png" alt="SnapSheet 界面预览" class="w-full h-auto block" />
+          <div class="opacity-0 animate-fade-up delay-300 flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4">
+            <a href="./app/index.html" class="group w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-full bg-snap-700 text-white font-semibold hover:bg-snap-800 btn-lift shadow-xl shadow-snap-700/25 hover:shadow-2xl hover:shadow-snap-700/30">
+              在线免费使用
+              <svg class="w-5 h-5 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </a>
+            <a href="#download" class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-full bg-white text-slate-700 border border-slate-200 font-semibold hover:border-snap-300 hover:bg-snap-50/50 btn-lift shadow-sm">
+              下载桌面版
+              <svg class="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </a>
+          </div>
+
+          <!-- Mini stats -->
+          <div class="opacity-0 animate-fade-up delay-400 mt-12 flex items-center justify-center lg:justify-start gap-8 text-sm text-slate-500">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-snap-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              <span>260+ 公式</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-snap-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              <span>离线可用</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-snap-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              <span>开源免费</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Screenshot -->
+        <div class="opacity-0 animate-fade-up delay-300 order-1 lg:order-2">
+          <div class="screenshot-frame animate-float">
+            <img src="screenshot.png" alt="SnapSheet 界面预览" class="w-full h-auto block" loading="eager" />
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Features -->
-  <section id="features" class="py-24 bg-slate-50 relative overflow-hidden">
+  <!-- Stats Bar -->
+  <section class="relative py-12 lg:py-16 bg-white border-y border-slate-100 overflow-hidden">
+    <div class="absolute inset-0 dot-grid opacity-50"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+        <div class="reveal stat-item pl-6">
+          <div class="text-3xl lg:text-4xl font-extrabold text-slate-900 mb-1">260+</div>
+          <div class="text-sm text-slate-500 font-medium">内置公式函数</div>
+        </div>
+        <div class="reveal stat-item pl-6" style="transition-delay: 100ms;">
+          <div class="text-3xl lg:text-4xl font-extrabold text-slate-900 mb-1">5000</div>
+          <div class="text-sm text-slate-500 font-medium">行 × 200 列</div>
+        </div>
+        <div class="reveal stat-item pl-6" style="transition-delay: 200ms;">
+          <div class="text-3xl lg:text-4xl font-extrabold text-slate-900 mb-1">60<span class="text-xl">fps</span></div>
+          <div class="text-sm text-slate-500 font-medium">流畅滚动渲染</div>
+        </div>
+        <div class="reveal stat-item pl-6" style="transition-delay: 300ms;">
+          <div class="text-3xl lg:text-4xl font-extrabold text-slate-900 mb-1">~85<span class="text-xl">KB</span></div>
+          <div class="text-sm text-slate-500 font-medium">gzip 构建体积</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="py-24 lg:py-32 bg-slate-50 relative overflow-hidden">
     <div class="absolute inset-0 hero-grid opacity-40"></div>
-    <div class="max-w-6xl mx-auto px-6 relative z-10">
-      <div class="text-center max-w-2xl mx-auto mb-16 reveal">
-        <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 mb-4">为效率而生的表格体验</h2>
-        <p class="text-slate-600">从数据录入到复杂分析，SnapSheet 在每个环节都提供流畅、可预期的操作体验。</p>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div class="text-center max-w-3xl mx-auto mb-16 lg:mb-20 reveal">
+        <span class="inline-block px-4 py-1.5 rounded-full bg-snap-100 text-snap-800 text-sm font-semibold mb-6">功能特性</span>
+        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 mb-6">为效率而生的表格体验</h2>
+        <p class="text-lg text-slate-600 leading-relaxed">从数据录入到复杂分析，SnapSheet 在每个环节都提供流畅、可预期的操作体验。</p>
       </div>
 
-      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-        <div class="reveal p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:border-snap-200 hover:shadow-lg hover:shadow-snap-900/5 transition-all group">
-          <div class="w-12 h-12 rounded-xl bg-snap-100 text-snap-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 3.666V14m-4.416-.797l-3.6 3.6M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+        <!-- Feature 1 -->
+        <div class="reveal feature-card p-8 rounded-2xl bg-white border border-slate-100 shadow-sm">
+          <div class="icon-box w-14 h-14 rounded-2xl bg-snap-50 text-snap-700 flex items-center justify-center mb-6">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
           </div>
-          <h3 class="text-lg font-semibold text-slate-900 mb-2">公式与自动补全</h3>
-          <p class="text-slate-600 text-sm leading-relaxed">支持 260+ 公式函数，输入 = 即可看到函数列表与中英文说明，自动依赖追踪、实时重算。</p>
+          <h3 class="text-xl font-bold text-slate-900 mb-3">公式与自动补全</h3>
+          <p class="text-slate-600 leading-relaxed">支持 260+ 公式函数，输入 = 即可看到函数列表与中英文说明，自动依赖追踪、实时重算。</p>
         </div>
 
-        <div class="reveal p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:border-snap-200 hover:shadow-lg hover:shadow-snap-900/5 transition-all group" style="transition-delay: 100ms;">
-          <div class="w-12 h-12 rounded-xl bg-snap-100 text-snap-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+        <!-- Feature 2 -->
+        <div class="reveal feature-card p-8 rounded-2xl bg-white border border-slate-100 shadow-sm" style="transition-delay: 100ms;">
+          <div class="icon-box w-14 h-14 rounded-2xl bg-snap-50 text-snap-700 flex items-center justify-center mb-6">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
           </div>
-          <h3 class="text-lg font-semibold text-slate-900 mb-2">XLOOKUP 与查找</h3>
-          <p class="text-slate-600 text-sm leading-relaxed">内置现代查找函数 XLOOKUP，支持精确匹配、近似匹配及自定义未找到返回值。</p>
+          <h3 class="text-xl font-bold text-slate-900 mb-3">XLOOKUP 现代查找</h3>
+          <p class="text-slate-600 leading-relaxed">内置现代查找函数 XLOOKUP，支持精确匹配、近似匹配及自定义未找到返回值。</p>
         </div>
 
-        <div class="reveal p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:border-snap-200 hover:shadow-lg hover:shadow-snap-900/5 transition-all group" style="transition-delay: 200ms;">
-          <div class="w-12 h-12 rounded-xl bg-snap-100 text-snap-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+        <!-- Feature 3 -->
+        <div class="reveal feature-card p-8 rounded-2xl bg-white border border-slate-100 shadow-sm" style="transition-delay: 200ms;">
+          <div class="icon-box w-14 h-14 rounded-2xl bg-snap-50 text-snap-700 flex items-center justify-center mb-6">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
           </div>
-          <h3 class="text-lg font-semibold text-slate-900 mb-2">筛选与隐藏行列</h3>
-          <p class="text-slate-600 text-sm leading-relaxed">一键开启自动筛选，通过下拉菜单勾选显示值；同时支持手动隐藏/显示任意行或列。</p>
+          <h3 class="text-xl font-bold text-slate-900 mb-3">筛选与隐藏行列</h3>
+          <p class="text-slate-600 leading-relaxed">一键开启自动筛选，通过下拉菜单勾选显示值；同时支持手动隐藏/显示任意行或列。</p>
         </div>
 
-        <div class="reveal p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:border-snap-200 hover:shadow-lg hover:shadow-snap-900/5 transition-all group">
-          <div class="w-12 h-12 rounded-xl bg-snap-100 text-snap-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+        <!-- Feature 4 -->
+        <div class="reveal feature-card p-8 rounded-2xl bg-white border border-slate-100 shadow-sm">
+          <div class="icon-box w-14 h-14 rounded-2xl bg-snap-50 text-snap-700 flex items-center justify-center mb-6">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+            </svg>
           </div>
-          <h3 class="text-lg font-semibold text-slate-900 mb-2">图表可视化</h3>
-          <p class="text-slate-600 text-sm leading-relaxed">支持柱状图、折线图、面积图、散点图、饼图，可拖拽移动、缩放并双击编辑。</p>
+          <h3 class="text-xl font-bold text-slate-900 mb-3">图表可视化</h3>
+          <p class="text-slate-600 leading-relaxed">支持柱状图、折线图、面积图、散点图、饼图，可拖拽移动、缩放并双击编辑。</p>
         </div>
 
-        <div class="reveal p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:border-snap-200 hover:shadow-lg hover:shadow-snap-900/5 transition-all group" style="transition-delay: 100ms;">
-          <div class="w-12 h-12 rounded-xl bg-snap-100 text-snap-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" /></svg>
+        <!-- Feature 5 -->
+        <div class="reveal feature-card p-8 rounded-2xl bg-white border border-slate-100 shadow-sm" style="transition-delay: 100ms;">
+          <div class="icon-box w-14 h-14 rounded-2xl bg-snap-50 text-snap-700 flex items-center justify-center mb-6">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+            </svg>
           </div>
-          <h3 class="text-lg font-semibold text-slate-900 mb-2">多工作表</h3>
-          <p class="text-slate-600 text-sm leading-relaxed">创建、切换、重命名多个工作表，轻松管理复杂数据。</p>
+          <h3 class="text-xl font-bold text-slate-900 mb-3">多工作表管理</h3>
+          <p class="text-slate-600 leading-relaxed">创建、切换、重命名多个工作表，轻松管理复杂数据。支持工作表标签拖拽与右键操作。</p>
         </div>
 
-        <div class="reveal p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:border-snap-200 hover:shadow-lg hover:shadow-snap-900/5 transition-all group" style="transition-delay: 200ms;">
-          <div class="w-12 h-12 rounded-xl bg-snap-100 text-snap-700 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+        <!-- Feature 6 -->
+        <div class="reveal feature-card p-8 rounded-2xl bg-white border border-slate-100 shadow-sm" style="transition-delay: 200ms;">
+          <div class="icon-box w-14 h-14 rounded-2xl bg-snap-50 text-snap-700 flex items-center justify-center mb-6">
+            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
           </div>
-          <h3 class="text-lg font-semibold text-slate-900 mb-2">导入与导出</h3>
-          <p class="text-slate-600 text-sm leading-relaxed">支持 Excel (.xlsx)、CSV、JSON 格式，与现有工作流无缝衔接。</p>
+          <h3 class="text-xl font-bold text-slate-900 mb-3">导入与导出</h3>
+          <p class="text-slate-600 leading-relaxed">支持 Excel (.xlsx)、CSV、JSON 格式导入导出，与现有工作流无缝衔接，数据迁移零 friction。</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Download -->
-  <section id="download" class="py-24 bg-gradient-to-b from-slate-50 to-white relative overflow-hidden">
-    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-snap-200/30 rounded-full blur-3xl"></div>
-    <div class="max-w-4xl mx-auto px-6 relative z-10">
-      <div class="text-center mb-14 reveal">
-        <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 mb-4">下载 SnapSheet</h2>
-        <p class="text-slate-600">选择适合你的 Mac 版本。安装后从 Applications 启动即可。</p>
+  <!-- Showcase Section -->
+  <section id="showcase" class="py-24 lg:py-32 bg-white relative overflow-hidden">
+    <div class="absolute inset-0 dot-grid opacity-40"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+        <div class="reveal order-2 lg:order-1">
+          <span class="inline-block px-4 py-1.5 rounded-full bg-snap-100 text-snap-800 text-sm font-semibold mb-6">产品展示</span>
+          <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 mb-6">高性能 Canvas 渲染引擎</h2>
+          <p class="text-lg text-slate-600 leading-relaxed mb-8">
+            告别传统 DOM 表格的卡顿。SnapSheet 基于 HTML5 Canvas 构建渲染引擎，配合虚拟滚动技术，即使面对海量数据也能保持 60fps 流畅体验。
+          </p>
+
+          <div class="space-y-5">
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 rounded-xl bg-snap-100 text-snap-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                </svg>
+              </div>
+              <div>
+                <h4 class="font-bold text-slate-900 mb-1">极速响应</h4>
+                <p class="text-slate-600 text-sm leading-relaxed">Canvas 直接绘制，绕过 DOM 开销，滚动、缩放、编辑零延迟。</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 rounded-xl bg-snap-100 text-snap-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                </svg>
+              </div>
+              <div>
+                <h4 class="font-bold text-slate-900 mb-1">智能交互</h4>
+                <p class="text-slate-600 text-sm leading-relaxed">表头点击选中整行整列，右键菜单支持插入、删除、隐藏，操作直观高效。</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 rounded-xl bg-snap-100 text-snap-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+                </svg>
+              </div>
+              <div>
+                <h4 class="font-bold text-slate-900 mb-1">精确控制</h4>
+                <p class="text-slate-600 text-sm leading-relaxed">拖拽调整列宽行高，双击自动适配，冻结窗格锁定关键数据。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="reveal order-1 lg:order-2" style="transition-delay: 200ms;">
+          <div class="screenshot-frame">
+            <img src="screenshot.png" alt="SnapSheet Canvas 渲染效果" class="w-full h-auto block" loading="lazy" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download Section -->
+  <section id="download" class="py-24 lg:py-32 bg-gradient-to-b from-slate-50 to-white relative overflow-hidden">
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-gradient-to-b from-snap-200/30 to-transparent rounded-full blur-3xl"></div>
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div class="text-center mb-16 reveal">
+        <span class="inline-block px-4 py-1.5 rounded-full bg-snap-100 text-snap-800 text-sm font-semibold mb-6">下载</span>
+        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 mb-6">获取 SnapSheet</h2>
+        <p class="text-lg text-slate-600 max-w-2xl mx-auto">选择适合你系统的桌面版本，安装后即可离线使用。也可以直接在浏览器中试用，无需安装。</p>
       </div>
 
-      <div class="grid sm:grid-cols-2 gap-6">
-        <a href="https://github.com/JUNNYOfficial/SnapSheet/releases/download/v1.0.0/SnapSheet-1.0.0-arm64.dmg" class="reveal group relative p-8 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-snap-900/10 hover:border-snap-300 transition-all hover:-translate-y-1">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8 max-w-3xl mx-auto">
+        <!-- Apple Silicon -->
+        <a href="https://github.com/JUNNYOfficial/SnapSheet/releases/download/v1.0.0/SnapSheet-1.0.0-arm64.dmg" class="reveal download-card group relative p-8 rounded-3xl bg-white border border-slate-200 shadow-sm" style="transition-delay: 0ms;">
           <div class="flex items-start justify-between mb-6">
-            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-snap-500 to-snap-700 flex items-center justify-center text-white shadow-lg shadow-snap-700/25">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-snap-500 to-snap-700 flex items-center justify-center text-white shadow-xl shadow-snap-700/25 group-hover:shadow-snap-700/40 transition-shadow">
               <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.22 7.13-.57 1.5-1.31 2.99-2.27 4.08zm-5.85-15.1c.07-2.04 1.76-3.79 3.8-3.94.29 2.32-1.94 4.48-3.8 3.94z"/></svg>
             </div>
-            <span class="px-2.5 py-1 rounded-full bg-snap-100 text-snap-800 text-xs font-semibold">推荐</span>
+            <span class="px-2.5 py-1 rounded-full bg-snap-100 text-snap-800 text-xs font-bold tracking-wide">推荐</span>
           </div>
-          <h3 class="text-xl font-semibold text-slate-900 mb-1">Apple Silicon</h3>
+          <h3 class="text-xl font-bold text-slate-900 mb-1">Apple Silicon</h3>
           <p class="text-slate-500 text-sm mb-4">M1 / M2 / M3 / M4 系列芯片</p>
-          <div class="flex items-center justify-between">
-            <span class="text-snap-700 font-medium group-hover:underline">下载 arm64 版本</span>
-            <span class="text-xs text-slate-400">约 125 MB · .dmg</span>
+          <div class="flex items-center justify-between pt-5 border-t border-slate-100">
+            <span class="flex items-center gap-1.5 text-snap-700 text-sm font-bold group-hover:text-snap-800 transition-colors">
+              下载 arm64
+              <svg class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </span>
+            <span class="text-xs text-slate-400 font-medium">~125 MB · .dmg</span>
           </div>
         </a>
 
-        <a href="https://github.com/JUNNYOfficial/SnapSheet/releases/download/v1.0.0/SnapSheet-1.0.0.dmg" class="reveal group relative p-8 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-snap-900/10 hover:border-snap-300 transition-all hover:-translate-y-1" style="transition-delay: 100ms;">
+        <!-- Intel Mac -->
+        <a href="https://github.com/JUNNYOfficial/SnapSheet/releases/download/v1.0.0/SnapSheet-1.0.0.dmg" class="reveal download-card group relative p-8 rounded-3xl bg-white border border-slate-200 shadow-sm" style="transition-delay: 100ms;">
           <div class="flex items-start justify-between mb-6">
-            <div class="w-14 h-14 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center">
+            <div class="w-14 h-14 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center group-hover:bg-slate-200 transition-colors">
               <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.22 7.13-.57 1.5-1.31 2.99-2.27 4.08zm-5.85-15.1c.07-2.04 1.76-3.79 3.8-3.94.29 2.32-1.94 4.48-3.8 3.94z"/></svg>
             </div>
           </div>
-          <h3 class="text-xl font-semibold text-slate-900 mb-1">Intel</h3>
+          <h3 class="text-xl font-bold text-slate-900 mb-1">Intel</h3>
           <p class="text-slate-500 text-sm mb-4">Intel 处理器 Mac</p>
-          <div class="flex items-center justify-between">
-            <span class="text-snap-700 font-medium group-hover:underline">下载 x64 版本</span>
-            <span class="text-xs text-slate-400">约 129 MB · .dmg</span>
+          <div class="flex items-center justify-between pt-5 border-t border-slate-100">
+            <span class="flex items-center gap-1.5 text-snap-700 text-sm font-bold group-hover:text-snap-800 transition-colors">
+              下载 x64
+              <svg class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </span>
+            <span class="text-xs text-slate-400 font-medium">~129 MB · .dmg</span>
           </div>
         </a>
       </div>
 
-      <p class="reveal mt-8 text-center text-sm text-slate-500">
-        也可以 <a href="./app/index.html" class="text-snap-700 hover:underline font-medium">在浏览器中直接试用</a>，无需下载。
-      </p>
+      <div class="reveal mt-10 text-center" style="transition-delay: 400ms;">
+        <a href="./app/index.html" class="inline-flex items-center gap-2 text-snap-700 hover:text-snap-800 font-semibold transition-colors group">
+          <span class="group-hover:underline">或在浏览器中直接试用</span>
+          <svg class="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          </svg>
+        </a>
+      </div>
     </div>
   </section>
 
   <!-- Footer CTA -->
-  <section class="py-20 bg-snap-900 text-white relative overflow-hidden">
-    <div class="absolute inset-0 hero-grid opacity-20"></div>
-    <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-snap-500/20 rounded-full blur-3xl"></div>
-    <div class="max-w-4xl mx-auto px-6 text-center relative z-10 reveal">
-      <h2 class="text-3xl sm:text-4xl font-bold tracking-tight mb-6">准备好提升表格效率了吗？</h2>
-      <p class="text-snap-100/80 mb-10 max-w-xl mx-auto">无论是本地桌面应用还是浏览器端，SnapSheet 都能为你提供一致的高性能表格体验。</p>
+  <section class="py-24 lg:py-32 bg-slate-900 text-white relative overflow-hidden">
+    <div class="absolute inset-0 hero-grid opacity-10"></div>
+    <div class="absolute top-0 right-0 w-[600px] h-[600px] bg-snap-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+    <div class="absolute bottom-0 left-0 w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/4"></div>
+
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 reveal">
+      <h2 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight mb-6">准备好提升表格效率了吗？</h2>
+      <p class="text-lg text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed">无论是本地桌面应用还是浏览器端，SnapSheet 都能为你提供一致的高性能表格体验。开源、免费、即刻开始。</p>
       <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-        <a href="./app/index.html" class="w-full sm:w-auto px-8 py-3.5 rounded-full bg-white text-snap-900 font-medium hover:bg-snap-50 transition-all">
+        <a href="./app/index.html" class="w-full sm:w-auto px-8 py-4 rounded-full bg-white text-slate-900 font-bold hover:bg-slate-100 btn-lift shadow-xl shadow-white/10">
           在线使用
         </a>
-        <a href="#download" class="w-full sm:w-auto px-8 py-3.5 rounded-full bg-snap-800 text-white border border-snap-700 font-medium hover:bg-snap-700 transition-all">
-          下载 Mac 版
+        <a href="#download" class="w-full sm:w-auto px-8 py-4 rounded-full bg-slate-800 text-white border border-slate-700 font-bold hover:bg-slate-700 transition-colors">
+          下载桌面版
         </a>
       </div>
     </div>
   </section>
 
   <!-- Footer -->
-  <footer class="py-8 bg-white text-slate-500 text-sm border-t border-slate-200">
-    <div class="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <div class="flex items-center gap-2">
-        <img src="./icon.svg" alt="SnapSheet" class="w-6 h-6 rounded" />
-        <span class="font-medium text-black">SnapSheet</span>
+  <footer class="py-12 bg-white border-t border-slate-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col lg:flex-row items-center justify-between gap-8">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-snap-500 to-snap-700 flex items-center justify-center">
+            <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <span class="font-bold text-slate-900">SnapSheet</span>
+        </div>
+
+        <div class="flex items-center gap-8 text-sm text-slate-500">
+          <a href="#features" class="hover:text-slate-900 transition-colors">功能</a>
+          <a href="#showcase" class="hover:text-slate-900 transition-colors">展示</a>
+          <a href="#download" class="hover:text-slate-900 transition-colors">下载</a>
+          <a href="./app/index.html" class="hover:text-slate-900 transition-colors">在线试用</a>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <a href="https://github.com/JUNNYOfficial/SnapSheet" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-xl bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-600 hover:text-slate-900 transition-colors" aria-label="GitHub">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          </a>
+        </div>
       </div>
-      <p>© 2026 SnapSheet. 版权所有。</p>
+
+      <div class="mt-10 pt-8 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-400">
+        <p> 2026 SnapSheet. 开源项目，MIT 协议。</p>
+        <p>由 <a href="https://github.com/JUNNYOfficial" target="_blank" rel="noopener noreferrer" class="text-slate-500 hover:text-slate-700 transition-colors">JUNNYOfficial</a> 构建</p>
+      </div>
     </div>
   </footer>
 
   <script>
-    // Scroll reveal
+    // Scroll reveal observer
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.classList.add('visible');
         }
       });
-    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+    }, { threshold: 0.08, rootMargin: '0px 0px -60px 0px' });
 
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // Navbar glass effect on scroll
+    const navbar = document.getElementById('navbar');
+    let lastScroll = 0;
+
+    window.addEventListener('scroll', () => {
+      const currentScroll = window.pageYOffset;
+      if (currentScroll > 20) {
+        navbar.classList.add('glass');
+      } else {
+        navbar.classList.remove('glass');
+      }
+      lastScroll = currentScroll;
+    });
+
+    // Mobile menu toggle
+    const menuBtn = document.getElementById('menuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const menuIcon = document.getElementById('menuIcon');
+    const closeIcon = document.getElementById('closeIcon');
+    let menuOpen = false;
+
+    function toggleMenu() {
+      menuOpen = !menuOpen;
+      mobileMenu.classList.toggle('open', menuOpen);
+      menuIcon.classList.toggle('hidden', menuOpen);
+      closeIcon.classList.toggle('hidden', !menuOpen);
+      document.body.style.overflow = menuOpen ? 'hidden' : '';
+    }
+
+    menuBtn.addEventListener('click', toggleMenu);
+
+    document.querySelectorAll('.mobile-nav-link').forEach(link => {
+      link.addEventListener('click', toggleMenu);
+    });
 
     // Smooth scroll for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
       anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const targetId = this.getAttribute('href');
+        if (targetId === '#') return;
+        const target = document.querySelector(targetId);
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       });
     });
   </script>
