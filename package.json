@@ -10,7 +10,7 @@
     "dev": "npm run build:snaplang && vite",
     "dev:electron": "npm run build:snaplang && vite --config vite.electron.config.ts",
     "build": "npm run build:snaplang && tsc -b && vite build",
-    "build:electron": "npm run build:snaplang && npm run build:icon && tsc -b && vite build --config vite.electron.config.ts && tsc -p electron/tsconfig.json && electron-builder",
+    "build:electron": "npm run build:snaplang && npm run build:icon && tsc -b && vite build --config vite.electron.config.ts && tsc -p electron/tsconfig.json && electron-builder --publish=never",
     "build:electron:ci": "npm run build:snaplang && tsc -b && vite build --config vite.electron.config.ts && tsc -p electron/tsconfig.json && electron-builder",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -33,6 +33,7 @@
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "public/icon.icns",
+      "identity": null,
       "target": [
         {
           "target": "dmg",
@@ -80,6 +81,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@fiahfy/icns": "^0.0.7",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^22.20.0",
